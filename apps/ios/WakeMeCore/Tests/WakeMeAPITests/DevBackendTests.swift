@@ -64,5 +64,10 @@ final class DevBackendTests: XCTestCase {
 
         let mine = try await api.plans().mine
         XCTAssertEqual(mine.first { $0.id == plan.id }?.readiness, "ready", "the server counts this phone's receipt")
+
+        // The wake session's outcome, as the challenge screen reports it (signed by this phone).
+        let occurrence = String(Instant.format(next).prefix(10))
+        try await api.reportOccurrence(planId: plan.id, occurrenceKey: occurrence, version: version, outcome: "challenge_completed")
+        try await api.reportOccurrence(planId: plan.id, occurrenceKey: occurrence, version: version, outcome: "rang") // late, lower rank: ignored, not an error
     }
 }

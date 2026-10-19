@@ -120,6 +120,7 @@ final class AppModel {
 
     func signOut() async {
         for planId in WakeAlarms.shared.installedPlanIds() { WakeAlarms.shared.cancel(planId: planId) }
+        await ChallengeStore.shared.clear()
         await Session.shared.signOut()
         DeviceKey.shared.setDeviceId(nil)
         defaults.removeObject(forKey: meCacheKey)

@@ -59,6 +59,10 @@ struct RootView: View {
         .alert(app.error ?? "", isPresented: Binding(get: { app.error != nil }, set: { if !$0 { app.error = nil } })) {
             Button("OK") { app.error = nil }
         }
+        // The alarm's "Start challenge" button lands here, over whatever is on screen.
+        .fullScreenCover(item: Binding(get: { WakeSessionRouter.shared.pending }, set: { WakeSessionRouter.shared.pending = $0 })) { pending in
+            WakeSessionView(pending: pending).environment(app)
+        }
     }
 }
 
@@ -68,12 +72,7 @@ struct MainTabs: View {
         TabView {
             Tab("Friends", systemImage: "person.2") { NavigationStack { FriendsView() } }
             Tab("Routines", systemImage: "alarm") { NavigationStack { RoutinesView() } }
-            Tab("Challenges", systemImage: "trophy") {
-                NavigationStack {
-                    PlaceholderView(title: "Challenges", message: "Group challenges come in a later build. Wake-ups and quacks work now.")
-                        .navigationTitle("Challenges")
-                }
-            }
+            Tab("Challenges", systemImage: "trophy") { NavigationStack { ChallengesView() } }
             Tab("You", systemImage: "person.crop.circle") { NavigationStack { YouView() } }
         }
     }

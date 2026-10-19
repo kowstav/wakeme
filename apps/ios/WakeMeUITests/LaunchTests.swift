@@ -149,5 +149,9 @@ final class LaunchTests: XCTestCase {
         app.navigationBars["What can Alex do?"].buttons["Save"].tap()
         try must(app.staticTexts["Alex can send quacks."].waitForExistence(timeout: 15), "the grant is saved and shown in words")
         shot(app, "15-friend-granted")
+
+        app.tabBars.buttons["Challenges"].tap()
+        try must(app.staticTexts["No challenges yet. Quizzes and puzzles made on Android, or shared in your circles, appear here."].waitForExistence(timeout: 15), "the Challenges tab lists what can be practised")
+        shot(app, "16-challenges")
     }
 }

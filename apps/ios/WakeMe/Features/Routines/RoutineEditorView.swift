@@ -16,6 +16,9 @@ struct RoutineEditorView: View {
     @State private var sound = bundledSounds[0]
     @State private var ring = 90
     @State private var followTravel = false
+    @State private var challenges: [WakeMeAPI.ChallengeSummary] = []
+    @State private var challengeRevision: String?
+    @State private var followUp = false
     @State private var saving = false
     @State private var message: String?
 
@@ -44,6 +47,21 @@ struct RoutineEditorView: View {
                 } header: {
                     Text("Sound")
                 }
+                if challenges.contains(where: { $0.publishedRevisionId != nil }) {
+                    Section {
+                        Picker("Challenge", selection: $challengeRevision) {
+                            Text("None").tag(String?.none)
+                            ForEach(challenges.filter { $0.publishedRevisionId != nil }) { c in Text(c.title).tag(c.publishedRevisionId) }
+                        }
+                        if challengeRevision != nil {
+                            Toggle("One follow-up alarm", isOn: $followUp)
+                        }
+                    } header: {
+                        Text("Challenge (optional)")
+                    } footer: {
+                        Text("A follow-up rings 3 minutes later unless you finish the challenge. You can always end the session.")
+                    }
+                }
                 Section {
                     Toggle("Follow my phone when I travel", isOn: $followTravel)
                 } footer: {
@@ -61,6 +79,7 @@ struct RoutineEditorView: View {
                 }
             }
             .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
+            .task { challenges = (try? await app.api.challenges()) ?? [] }
         }
     }
 
@@ -75,7 +94,9 @@ struct RoutineEditorView: View {
             timeZonePolicy: followTravel ? "device" : "fixed",
             recurrence: .weekly(days.sorted()),
             soundId: sound,
-            ringSeconds: ring
+            ringSeconds: ring,
+            challengeRevisionId: challengeRevision,
+            followUpDelaySeconds: challengeRevision != nil && followUp ? 180 : nil
         )
         do {
             _ = try await app.api.createPlan(terms)

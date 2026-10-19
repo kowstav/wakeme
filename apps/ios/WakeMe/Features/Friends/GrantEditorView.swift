@@ -4,8 +4,8 @@ import WakeMeCore
 
 /// What a friend may do on YOUR phone (doc 03 §6). Grants are recipient-owned, directional,
 /// bounded, versioned and revocable; friendship and circles grant nothing. Mirrors the Android
-/// GrantEditorScreen. Challenges and check-ins are not offered on iPhone until this app can
-/// run them; Focus buddy stays hidden (Stage 6).
+/// GrantEditorScreen. Check-ins and location requests are not offered on iPhone until this
+/// app can answer them; Focus buddy stays hidden (Stage 6).
 struct GrantEditorView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -15,6 +15,7 @@ struct GrantEditorView: View {
     @State private var caps: Set<String> = []
     @State private var nudge = NudgeLimits(maxPerHour: 3, windows: [LocalWindow(days: [1, 2, 3, 4, 5, 6, 7], start: "08:00", end: "22:00")], sounds: ["bundled:quack.classic", "bundled:quack.double"], overridesQuietHours: false)
     @State private var alarm = AlarmLimits(maxAlarmSeconds: 120, maxPerDay: 1, windows: [LocalWindow(days: [1, 2, 3, 4, 5], start: "06:00", end: "10:00")], sounds: ["bundled:rise.gentle", "bundled:bell.bright"], followUp: FollowUp(allowed: true, maxDelaySeconds: 300))
+    @State private var challenge = ChallengeLimits(types: ["multiple_choice", "short_answer", "math", "memory_order", "chess"], maxDurationSeconds: 90, maxDifficulty: "medium")
     @State private var validDays = 90
     @State private var presets: [WakeMeAPI.PresetDTO] = []
     @State private var saving = false
@@ -79,6 +80,19 @@ struct GrantEditorView: View {
                     Text("You see and accept every routine before it's active. Wake hours are your explicit OK to be woken, even during quiet hours.")
                 }
                 Section {
+                    Toggle("Assign challenges", isOn: capability(Capability.challengeAssign))
+                    if caps.contains(Capability.challengeAssign) {
+                        Picker("At most", selection: $challenge.maxDurationSeconds) {
+                            ForEach([30, 60, 90, 180], id: \.self) { Text("\($0) seconds").tag($0) }
+                        }
+                        Picker("Hardest", selection: $challenge.maxDifficulty) {
+                            ForEach(["easy", "medium", "hard"], id: \.self) { Text($0.capitalized).tag($0) }
+                        }
+                    }
+                } footer: {
+                    Text("Quizzes and puzzles to finish your wake-up. New versions always need your OK, and the escape always works.")
+                }
+                Section {
                     Picker("Keep these permissions for", selection: $validDays) {
                         ForEach([30, 90, 180], id: \.self) { Text("\($0) days").tag($0) }
                     }
@@ -138,17 +152,19 @@ struct GrantEditorView: View {
             caps = Set(g.capabilities).intersection(Self.offered)
             if let n = g.limits.nudge { nudge = n }
             if let a = g.limits.alarm { alarm = a }
+            if let c = g.limits.challenge { challenge = c }
         }
         presets = (try? await app.api.presets()) ?? []
     }
 
     /// Capabilities this iPhone app can act on today.
-    private static let offered: Set<String> = [Capability.nudge, Capability.alarmRequest, Capability.alarmSchedule]
+    private static let offered: Set<String> = [Capability.nudge, Capability.alarmRequest, Capability.alarmSchedule, Capability.challengeAssign]
 
     private func apply(_ p: WakeMeAPI.PresetDTO) {
         caps = Set(p.capabilities).intersection(Self.offered)
         if let n = p.limits.nudge { nudge = n }
         if let a = p.limits.alarm { alarm = a }
+        if let c = p.limits.challenge { challenge = c }
     }
 
     private func save() async {
@@ -156,7 +172,7 @@ struct GrantEditorView: View {
         saving = true
         defer { saving = false }
         let until = Date().addingTimeInterval(TimeInterval(validDays) * 86_400)
-        let limits = GrantLimits(nudge: caps.contains(Capability.nudge) ? nudge : nil, alarm: wakeOn ? alarm : nil)
+        let limits = GrantLimits(nudge: caps.contains(Capability.nudge) ? nudge : nil, alarm: wakeOn ? alarm : nil, challenge: caps.contains(Capability.challengeAssign) ? challenge : nil)
         do {
             if let g = friend.iAllowThem, g.revokedAt == nil {
                 _ = try await app.api.updateGrant(g.id, expectedVersion: g.version, paused: g.paused, capabilities: caps.sorted(), limits: limits, validUntil: until)

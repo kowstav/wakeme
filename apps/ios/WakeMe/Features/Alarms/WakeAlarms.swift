@@ -39,7 +39,11 @@ struct OpenWakeChallengeIntent: LiveActivityIntent {
 @Observable
 final class WakeSessionRouter {
     static let shared = WakeSessionRouter()
-    struct Pending: Equatable { let planId: String; let occurrenceKey: String }
+    struct Pending: Equatable, Identifiable {
+        let planId: String
+        let occurrenceKey: String
+        var id: String { "\(planId):\(occurrenceKey)" }
+    }
     var pending: Pending?
 }
 
@@ -65,6 +69,7 @@ final class WakeAlarms: @unchecked Sendable {
     static let shared = WakeAlarms()
     private let manager = AlarmManager.shared
     private let installedKey = "wakeme.installedAlarms" // planId → [alarm UUID]
+    private let routinesKey = "wakeme.installedRoutines" // planId → installed version and challenge
 
     var authorization: AlarmAuthorization {
         switch manager.authorizationState {
@@ -125,7 +130,17 @@ final class WakeAlarms: @unchecked Sendable {
         var installed = installedMap()
         installed[routine.planId] = ids
         UserDefaults.standard.set(installed, forKey: installedKey)
+        var routines = UserDefaults.standard.dictionary(forKey: routinesKey) ?? [:]
+        routines[routine.planId] = ["version": routine.version, "challenge": routine.challengeRevisionId ?? ""]
+        UserDefaults.standard.set(routines, forKey: routinesKey)
         return .scheduled(alarms.map(\.fireAt))
+    }
+
+    /// The installed version and challenge for a routine on this phone (for the wake session).
+    func installedRoutine(planId: String) -> (version: Int, challengeRevisionId: String?)? {
+        guard let info = UserDefaults.standard.dictionary(forKey: routinesKey)?[planId] as? [String: Any], let version = info["version"] as? Int else { return nil }
+        let challenge = info["challenge"] as? String
+        return (version, challenge?.isEmpty == false ? challenge : nil)
     }
 
     /// Local cancellation first, so an ended routine never rings even when offline.
@@ -134,6 +149,9 @@ final class WakeAlarms: @unchecked Sendable {
         for id in (installed[planId] ?? []).compactMap(UUID.init(uuidString:)) { try? manager.cancel(id: id) }
         installed[planId] = nil
         UserDefaults.standard.set(installed, forKey: installedKey)
+        var routines = UserDefaults.standard.dictionary(forKey: routinesKey) ?? [:]
+        routines[planId] = nil
+        UserDefaults.standard.set(routines, forKey: routinesKey)
     }
 
     /// Completion or the safe escape cancels the pending follow-up; the system Stop alone does not.

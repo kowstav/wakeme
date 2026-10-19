@@ -117,16 +117,24 @@ struct RoutinesView: View {
                 WakeAlarms.shared.cancel(planId: plan.id)
                 continue
             }
+            // The challenge is installed and verified now, so the wake-up never needs the network.
+            // If it can't be, the alarm still rings, without the challenge, and the server is told.
+            var challenge = v.challengeRevisionId
+            if let revision = challenge {
+                let installed = await ChallengeStore.shared.ensureInstalled(revision, api: app.api)
+                if !installed { challenge = nil }
+            }
+            let challengeMissing = v.challengeRevisionId != nil && challenge == nil
             let routine = InstalledRoutine(planId: plan.id, version: v.version, label: v.label, localTime: v.localTime, timeZone: v.timeZone, timeZonePolicy: v.timeZonePolicy,
-                                           recurrence: v.recurrence, soundId: v.soundId, ringSeconds: v.ringSeconds, challengeRevisionId: v.challengeRevisionId,
-                                           followUpDelaySeconds: v.followUpDelaySeconds, paused: false)
+                                           recurrence: v.recurrence, soundId: v.soundId, ringSeconds: v.ringSeconds, challengeRevisionId: challenge,
+                                           followUpDelaySeconds: challenge == nil ? nil : v.followUpDelaySeconds, paused: false)
             let receipt: WakeMeAPI.InstallationReceipt
             switch await WakeAlarms.shared.install(routine, label: v.label) {
             case .scheduled(let dates):
                 // Same version already confirmed with the same next ring: nothing new to report.
                 let reportedNext = plan.installation?.nextFireAt.flatMap { try? Instant.parse($0) } // server sends milliseconds
-                if plan.readiness == "ready", plan.installation?.version == v.version, reportedNext == dates.first { continue }
-                receipt = .init(version: v.version, result: "scheduled", nextFireAt: dates.first.map(Instant.format), scheduledInstants: dates.map(Instant.format))
+                if plan.readiness == "ready", plan.installation?.version == v.version, reportedNext == dates.first, !challengeMissing { continue }
+                receipt = .init(version: v.version, result: "scheduled", nextFireAt: dates.first.map(Instant.format), scheduledInstants: dates.map(Instant.format), errorCode: challengeMissing ? "challenge_unavailable" : nil)
             case .nothingToSchedule:
                 continue
             case .notAuthorized:

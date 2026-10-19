@@ -209,6 +209,14 @@ public struct WakeMeAPI: Sendable {
             self.errorCode = errorCode
         }
     }
+    struct OccurrenceReceipt: Encodable { let occurrenceKey: String; let version: Int; let outcome: String }
+    /// What happened to one occurrence on this phone: rang, stopped (system Stop),
+    /// challenge_completed, bypassed (the safe escape), follow_up_rang, session_ended.
+    /// Outcomes only move forward on the server, so a retry is harmless.
+    public func reportOccurrence(planId: String, occurrenceKey: String, version: Int, outcome: String) async throws {
+        let _: OkDTO = try await client.post("/v1/alarm-plans/\(planId)/occurrences", body: OccurrenceReceipt(occurrenceKey: occurrenceKey, version: version, outcome: outcome), signed: true, idempotent: true)
+    }
+
     /// "Ready" on the server means this receipt arrived, not merely that the plan was saved.
     public func reportInstallation(planId: String, _ receipt: InstallationReceipt) async throws {
         let _: OkDTO = try await client.post("/v1/alarm-plans/\(planId)/installations", body: receipt, signed: true, idempotent: true)
@@ -246,6 +254,19 @@ public struct WakeMeAPI: Sendable {
         return try await client.get("/v1/sync?cursor=\(escaped)")
     }
     public func challengeRevision(_ id: String) async throws -> SignedEnvelope { try await client.get("/v1/challenge-revisions/\(id)") }
+
+    public struct ChallengeRevisionRef: Codable, Equatable, Sendable { public var id: String; public var revision: Int; public var state: String }
+    public struct ChallengeSummary: Codable, Equatable, Sendable, Identifiable {
+        public var id: String
+        public var title: String
+        public var publishedRevision: Int?
+        public var revisions: [ChallengeRevisionRef]
+        /// The revision a routine or practice run uses; nil until one is published.
+        public var publishedRevisionId: String? { revisions.first { $0.revision == publishedRevision && $0.state == "published" }?.id }
+    }
+    struct ChallengesList: Codable { let challenges: [ChallengeSummary] }
+    /// Your challenges and those shared in your circles.
+    public func challenges() async throws -> [ChallengeSummary] { try await client.get("/v1/challenges", as: ChallengesList.self).challenges }
 
     // MARK: billing
     public func billingStatus() async throws -> BillingStatusDTO { try await client.get("/v1/billing/status") }
