@@ -63,7 +63,8 @@ final class LaunchTests: XCTestCase {
     /// A second account that redeems an invite code; returns its token.
     @MainActor
     private func friendRedeems(code: String, name: String) async throws -> String {
-        let token = try XCTUnwrap(try await http("POST", "/dev/token", nil, [:])["accessToken"] as? String)
+        let issued = try await http("POST", "/dev/token", nil, [:])
+        let token = try XCTUnwrap(issued["accessToken"] as? String)
         _ = try await http("POST", "/v1/account", token, ["displayName": name, "timeZone": "UTC", "locale": "en-US", "ageAttestation": true])
         _ = try await http("POST", "/v1/invites/redeem", token, ["code": code])
         return token
