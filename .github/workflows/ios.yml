@@ -31,7 +31,7 @@ jobs:
       run:
         working-directory: apps/ios
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Toolchain
         run: |
           ls -d /Applications/Xcode*.app
@@ -47,7 +47,7 @@ jobs:
           grep -E "public (struct|enum|class|protocol|init|func|static|var|typealias|actor)|@available" "$IF" | grep -v "^ *//" | head -400
       - name: WakeMeCore tests (shared fixtures)
         run: swift test --package-path WakeMeCore
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24.19.0
       - name: Start the local dev backend (embedded database) for UI journeys
@@ -111,7 +111,7 @@ jobs:
             sips -Z 640 "$f" --out "$RUNNER_TEMP/$n.small.png" > /dev/null
             echo "=====BEGIN SCREENSHOT $n====="; base64 -i "$RUNNER_TEMP/$n.small.png"; echo; echo "=====END SCREENSHOT $n====="
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: ios-simulator-evidence

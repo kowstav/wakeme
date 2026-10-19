@@ -28,34 +28,37 @@ env:
 jobs:
   emulator:
     name: Android ${{ matrix.release }} emulator (API ${{ matrix.api }})
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Android 17 is the target; its CI image crash-looped system_server in earlier runs,
-          # so Android 16 also runs to verify the app itself on a stable image.
+          # Android 17 is the target. On Ubuntu 24.04 hosts its image crash-looped SurfaceFlinger
+          # (virtual GPU mapper: "!hasReadColorBufferDma"); other projects report it clean on
+          # 26.04 hosts. Android 16 runs too, to verify the app itself on a stable image.
           - api: 37
             release: 17
             image: system-images;android-37.0;google_apis;x86_64
+            runner: ubuntu-26.04
           - api: 36
             release: 16
             image: system-images;android-36;google_apis;x86_64
+            runner: ubuntu-24.04
     env:
       SYSTEM_IMAGE: ${{ matrix.image }}
     defaults:
       run:
         working-directory: apps/android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Free runner disk for the emulator's data partition
         run: |
           df -h / "$RUNNER_TEMP"
           # Preinstalled toolchains this job never uses (the Android NDK included).
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$ANDROID_HOME/ndk" || true
           df -h / "$RUNNER_TEMP"
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: |
@@ -68,15 +71,39 @@ jobs:
           ls -l /dev/kvm
       - name: Install SDK packages and system image
         run: |
+          if [ ! -x "${ANDROID_HOME:-/nonexistent}/cmdline-tools/latest/bin/sdkmanager" ]; then
+            # Runner image without the Android SDK: bootstrap Google's command-line tools.
+            export ANDROID_HOME="$HOME/android-sdk"
+            echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+            echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+            mkdir -p "$ANDROID_HOME/cmdline-tools" "$RUNNER_TEMP/clt"
+            curl -sSfL -o "$RUNNER_TEMP/clt.zip" https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+            unzip -q "$RUNNER_TEMP/clt.zip" -d "$RUNNER_TEMP/clt" && mv "$RUNNER_TEMP/clt/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          fi
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKM" --licenses > /dev/null || true
-          "$SDKM" "platform-tools" "emulator" "platforms;android-37.0" "build-tools;37.0.0" "$SYSTEM_IMAGE" > /dev/null
+          # Downloads occasionally arrive corrupted ("Error on ZipFile unknown archive"): retry.
+          for attempt in 1 2 3; do
+            if "$SDKM" "cmdline-tools;latest" "platform-tools" "emulator" "platforms;android-37.0" "build-tools;37.0.0" "$SYSTEM_IMAGE" > /dev/null; then break; fi
+            [ "$attempt" = 3 ] && exit 1
+            echo "sdkmanager attempt $attempt failed; retrying"; sleep 15
+          done
+          # avdmanager from the newest command-line tools: older tools created the API 37 AVD
+          # with target=android-0, which another project saw crash-loop SurfaceFlinger.
+          best=""; bestrev=0
+          for d in "$ANDROID_HOME"/cmdline-tools/*/; do
+            [ -x "${d}bin/avdmanager" ] || continue
+            rev=$(sed -n 's/^Pkg.Revision=//p' "${d}source.properties" 2>/dev/null | head -n 1)
+            if [ -z "$best" ] || [ "$(printf '%s\n%s\n' "$bestrev" "$rev" | sort -V | tail -n 1)" = "$rev" ]; then best="$d"; bestrev="$rev"; fi
+          done
+          echo "command-line tools $bestrev at $best"
+          echo "AVDMANAGER=${best}bin/avdmanager" >> "$GITHUB_ENV"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
       - name: Build app and test APKs
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24.19.0
       - name: Start the local dev backend (embedded database) for the journey test
@@ -96,17 +123,17 @@ jobs:
           export ANDROID_AVD_HOME="$RUNNER_TEMP/avd"
           mkdir -p "$ANDROID_AVD_HOME"
           echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" --force
-          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list avd
+          echo no | "$AVDMANAGER" create avd -n wakeme -k "$SYSTEM_IMAGE" --force
+          "$AVDMANAGER" list avd
+          emulator -version | head -n 1
+          grep -h '^target=\|^image.sysdir' "$ANDROID_AVD_HOME"/wakeme.ini "$ANDROID_AVD_HOME"/wakeme.avd/config.ini || true
           # The default data partition is too small for the debug APK ("not enough space");
           # the emulator wants 1.2x the partition size free on the host disk.
           echo "disk.dataPartition.size=4G" >> "$ANDROID_AVD_HOME/wakeme.avd/config.ini"
           # A typical phone screen (360 x 800 dp); the default 320 x 640 px pushed buttons off screen.
           printf 'hw.lcd.width=720\nhw.lcd.height=1600\nhw.lcd.density=320\n' >> "$ANDROID_AVD_HOME/wakeme.avd/config.ini"
           df -h "$ANDROID_AVD_HOME"
-          # -feature -ReadColorBufferDma: on the Android 17 image, SurfaceFlinger's region sampling
-          # aborted in the virtual GPU mapper ("!hasReadColorBufferDma") and the system crash-looped.
-          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -feature -ReadColorBufferDma -camera-back none -camera-front none -memory 4096 -partition-size 4096 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none -memory 4096 -partition-size 4096 > "$RUNNER_TEMP/emulator.log" 2>&1 &
           sleep 20 # let QEMU start before checking that its process is alive
           booted=0
           for i in $(seq 1 120); do
@@ -211,7 +238,7 @@ jobs:
       - name: Fail on a Wake Me crash (system-app crashes on the emulator are reported, not failed on)
         run: '! grep -A1 "FATAL EXCEPTION" "$RUNNER_TEMP/evidence/logcat.txt" | grep -q "Process: $APP_ID"'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: android-emulator-evidence-api${{ matrix.api }}
