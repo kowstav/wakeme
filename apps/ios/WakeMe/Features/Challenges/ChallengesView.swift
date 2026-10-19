@@ -15,10 +15,13 @@ struct ChallengesView: View {
     @State private var tryOut: TryOut?
     @State private var pendingTryOut: TryOut?
     @State private var creating = false
+    @State private var editing: EditTarget?
     @State private var busy = false
     @State private var message: String?
 
     struct PracticeRun: Identifiable { let id: String; let definition: ChallengeDefinition }
+    /// Your own quiz, opened to write its next version.
+    struct EditTarget: Identifiable { let id: String; let definition: ChallengeDefinition; let nextRevision: Int }
 
     /// A draft is tried before it can be published; publishing freezes exactly what was tried.
     struct TryOut: Identifiable {
@@ -46,7 +49,18 @@ struct ChallengesView: View {
             if !ready.isEmpty {
                 Section("Try one") {
                     ForEach(ready) { c in
-                        Button(c.title) { Task { await practise(c) } }.frame(minHeight: WMSize.minTouchTarget)
+                        HStack {
+                            Button(c.title) { Task { await practise(c) } }
+                                .buttonStyle(.borderless)
+                                .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget, alignment: .leading)
+                            if c.creatorId == app.me?.id {
+                                Button("Edit") { Task { await edit(c.id) } }
+                                    .buttonStyle(.borderless)
+                                    .frame(minHeight: WMSize.minTouchTarget)
+                                    .accessibilityLabel("Edit \(c.title)")
+                                    .disabled(busy)
+                            }
+                        }
                     }
                 }
             }
@@ -92,6 +106,17 @@ struct ChallengesView: View {
                 creating = false
             }
         }
+        .sheet(item: $editing, onDismiss: {
+            if let next = pendingTryOut {
+                pendingTryOut = nil
+                tryOut = next
+            }
+        }) { target in
+            ChallengeCreatorView(editing: target) { detail, _ in
+                pendingTryOut = tryOutFor(detail)
+                editing = nil
+            }
+        }
         .fullScreenCover(item: $practice) { run in
             ChallengeRunnerView(definition: run.definition, escapeLabel: "Close", onComplete: { _ in practice = nil }, onEscape: { practice = nil })
         }
@@ -116,6 +141,22 @@ struct ChallengesView: View {
             practice = PracticeRun(id: revision, definition: definition)
         } else {
             message = "This challenge couldn't be checked and installed. Try again when you're connected."
+        }
+    }
+
+    /// Opens the latest version of your quiz in the editor; saving it makes the next version.
+    private func edit(_ id: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            let detail = try await app.api.challenge(id)
+            guard let latest = detail.latest, let definition = latest.definition, WakeMeAPI.quizQuestions(in: definition) != nil else {
+                message = "Only quizzes can be edited. Make a template challenge again to change it."
+                return
+            }
+            editing = EditTarget(id: detail.id, definition: definition, nextRevision: latest.revision + 1)
+        } catch {
+            message = (error as? APIError)?.message ?? "You're offline. Try again when you're connected."
         }
     }
 
@@ -198,6 +239,8 @@ private struct TryOutView: View {
 struct ChallengeCreatorView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
+    /// Your quiz whose next version this writes; nil to make a new challenge.
+    var editing: ChallengesView.EditTarget? = nil
     /// The new draft, and notes from the AI author about it, if any.
     let onCreated: (WakeMeAPI.ChallengeDetail, String?) -> Void
 
@@ -217,6 +260,7 @@ struct ChallengeCreatorView: View {
     @State private var working = false
     @State private var progress: String?
     @State private var message: String?
+    @State private var filledFromEdit = false
 
     private var filled: [WakeMeAPI.QuizQuestion] {
         questions.compactMap { q in
@@ -224,7 +268,8 @@ struct ChallengeCreatorView: View {
             let answer = q.answer.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !question.isEmpty, !answer.isEmpty else { return nil }
             let wrong = q.wrong.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-            return .init(question: question, answer: answer, wrongOptions: Array(wrong.prefix(3)))
+            // Up to five wrong options (six choices); the AI author takes at most three of them.
+            return .init(question: question, answer: answer, wrongOptions: Array(wrong.prefix(5)))
         }
     }
     private var canCreate: Bool {
@@ -245,11 +290,18 @@ struct ChallengeCreatorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker("How", selection: $mode) {
-                        ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                if let editing {
+                    Section {
+                        Text("Your changes become version \(editing.nextRevision). You try it before publishing, and friends keep the version they accepted until they accept the new one.")
+                            .foregroundStyle(WMColor.textSecondary)
                     }
-                    .pickerStyle(.segmented)
+                } else {
+                    Section {
+                        Picker("How", selection: $mode) {
+                            ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                    }
                 }
                 if mode == .ai {
                     Section {
@@ -301,16 +353,26 @@ struct ChallengeCreatorView: View {
             }
             .scrollContentBackground(.hidden)
             .background(WMColor.surface)
-            .navigationTitle("Create a challenge")
+            .navigationTitle(editing == nil ? "Create a challenge" : "Edit challenge")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(working ? "Working…" : "Create") { Task { await create() } }.disabled(!canCreate || working)
+                    Button(working ? "Working…" : editing == nil ? "Create" : "Save") { Task { await create() } }.disabled(!canCreate || working)
                 }
             }
+            .onAppear(perform: fillFromEdit)
             .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
         }
+    }
+
+    /// The form starts from the version being edited (once, so typing isn't undone).
+    private func fillFromEdit() {
+        guard let editing, !filledFromEdit, let existing = WakeMeAPI.quizQuestions(in: editing.definition) else { return }
+        filledFromEdit = true
+        mode = .quiz
+        title = editing.definition.title
+        questions = existing.map { Question(question: $0.question, answer: $0.answer, wrong: $0.wrongOptions.joined(separator: ", ")) }
     }
 
     private func create() async {
@@ -323,7 +385,12 @@ struct ChallengeCreatorView: View {
             switch mode {
             case .quiz:
                 let name = title.trimmingCharacters(in: .whitespaces)
-                onCreated(try await app.api.createQuiz(title: name.isEmpty ? "Our morning quiz" : name, questions: filled), nil)
+                let quizTitle = name.isEmpty ? "Our morning quiz" : name
+                if let editing {
+                    onCreated(try await app.api.reviseQuiz(editing.id, title: quizTitle, questions: filled, editing: editing.definition), nil)
+                } else {
+                    onCreated(try await app.api.createQuiz(title: quizTitle, questions: filled), nil)
+                }
             case .ai:
                 try await draftWithAI()
             }

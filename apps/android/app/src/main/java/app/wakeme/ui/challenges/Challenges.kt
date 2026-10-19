@@ -31,7 +31,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.wakeme.challenge.ChallengeRunner
 import app.wakeme.core.ChallengeDefinition
+import app.wakeme.core.QuizQuestion
 import app.wakeme.core.WakeMeJson
+import app.wakeme.core.quizDefinition
+import app.wakeme.core.quizQuestions
 import app.wakeme.data.WakeMeApi
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.ChallengeDto
@@ -53,13 +56,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import javax.inject.Inject
 
 data class ChallengesState(
@@ -72,6 +71,9 @@ data class ChallengesState(
     val error: String? = null,
     val needsPlus: Boolean = false,
     val saved: Boolean = false,
+    val meId: String? = null,
+    /** The challenge whose next version is being written. */
+    val editing: ChallengeDto? = null,
 )
 
 @HiltViewModel
@@ -85,7 +87,8 @@ class ChallengesViewModel @Inject constructor(private val api: WakeMeApi) : View
 
     fun load() = viewModelScope.launch {
         runCatching {
-            _s.value = _s.value.copy(templates = api.templates(), challenges = api.challenges(), credits = api.me().billing.credits.available)
+            val me = api.me()
+            _s.value = _s.value.copy(templates = api.templates(), challenges = api.challenges(), credits = me.billing.credits.available, meId = me.id)
         }.onFailure { _s.value = _s.value.copy(error = (it as? ApiException)?.message) }
     }
 
@@ -106,31 +109,26 @@ class ChallengesViewModel @Inject constructor(private val api: WakeMeApi) : View
 
     fun fromTemplate(id: String, difficulty: String) = guard("template") { tryOut(api.fromTemplate(id, difficulty)) }
 
-    fun createQuiz(title: String, questions: List<Triple<String, String, List<String>>>) = guard("quiz") {
-        val steps = buildJsonArray {
-            questions.forEachIndexed { i, (q, answer, wrong) ->
-                if (wrong.isEmpty()) add(buildJsonObject { put("type", "short_answer"); put("id", "q${i + 1}"); put("prompt", q); put("acceptedAnswers", buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive(answer)) }); put("source", "creator_provided") })
-                else {
-                    val options = (wrong + answer).shuffled()
-                    add(buildJsonObject {
-                        put("type", "multiple_choice"); put("id", "q${i + 1}"); put("prompt", q)
-                        put("options", buildJsonArray { options.forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) } })
-                        put("correctIndex", options.indexOf(answer)); put("source", "creator_provided")
-                    })
-                }
-            }
-        }
-        val body = buildJsonObject {
-            put("schemaVersion", 1); put("title", title.ifBlank { "Our morning quiz" }); put("kind", "sequence"); put("difficulty", "easy")
-            put("maxDurationSeconds", (questions.size * 25 + 30).coerceAtMost(600)); put("steps", steps); put("verification", "local_deterministic")
-            put("fallback", buildJsonObject { put("type", "accessible_checkin") }); put("permissionsRequired", JsonArray(emptyList()))
-        }
-        tryOut(api.createChallenge(body))
+    /** A new quiz, or (while [ChallengesState.editing]) a new draft version of the one being edited. */
+    fun createQuiz(title: String, questions: List<QuizQuestion>) = guard("quiz") {
+        val editing = _s.value.editing
+        val before = editing?.let { latestDefinition(it) }
+        val def = quizDefinition(title, questions, before?.difficulty ?: "easy", before?.steps.orEmpty())
+        val body = WakeMeJson.encodeToJsonElement(ChallengeDefinition.serializer(), def)
+        tryOut(if (editing != null) api.reviseChallenge(editing.id, body) else api.createChallenge(body))
     }
 
+    fun startEditing(id: String) = guard("load") {
+        _s.value = _s.value.copy(editing = api.challenge(id))
+    }
+
+    /** Only the creator edits, and only quizzes (templates are made again from the template). */
+    fun canEdit(c: ChallengeDto) = c.creatorId == _s.value.meId && latestDefinition(c)?.let(::quizQuestions) != null
+
     /** AI drafts from facts the creator supplies; the result is an editable draft, never active. */
-    fun generate(prompt: String, facts: List<Triple<String, String, List<String>>>, difficulty: String) = guard("ai") {
-        val g = api.generate(prompt, facts, difficulty)
+    fun generate(prompt: String, facts: List<QuizQuestion>, difficulty: String) = guard("ai") {
+        // The AI author takes at most three wrong options per fact.
+        val g = api.generate(prompt, facts.map { Triple(it.prompt, it.answer, it.wrong.take(3)) }, difficulty)
         var status = g
         repeat(30) {
             if (status.status in setOf("succeeded", "rejected", "failed")) return@repeat
@@ -149,9 +147,13 @@ class ChallengesViewModel @Inject constructor(private val api: WakeMeApi) : View
         }
     }
 
+    private fun latestDefinition(c: ChallengeDto): ChallengeDefinition? {
+        val latest = c.revisions.maxByOrNull { it.revision } ?: return null
+        return runCatching { WakeMeJson.decodeFromJsonElement(ChallengeDefinition.serializer(), latest.body) }.getOrNull()
+    }
+
     private fun tryOut(c: ChallengeDto) {
-        val latest = c.revisions.maxByOrNull { it.revision } ?: return
-        val def = WakeMeJson.decodeFromJsonElement(ChallengeDefinition.serializer(), latest.body)
+        val def = latestDefinition(c) ?: return
         _s.value = _s.value.copy(trying = c to def)
     }
 
@@ -175,8 +177,10 @@ class ChallengesViewModel @Inject constructor(private val api: WakeMeApi) : View
 }
 
 @Composable
-fun ChallengesScreen(onNew: () -> Unit, onUpgrade: () -> Unit, vm: ChallengesViewModel = hiltViewModel()) {
+fun ChallengesScreen(onNew: () -> Unit, onEdit: (String) -> Unit, onUpgrade: () -> Unit, vm: ChallengesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
+    // Coming back from the editor shows what was just published.
+    LaunchedEffect(Unit) { vm.load() }
     s.trying?.let { (c, def) -> TryOut(c, def, vm); return }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
@@ -199,6 +203,7 @@ fun ChallengesScreen(onNew: () -> Unit, onUpgrade: () -> Unit, vm: ChallengesVie
                 Text(c.title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 StatusPill(if (c.publishedRevision != null) "Ready to use · version ${c.publishedRevision}" else "Draft", if (c.publishedRevision != null) Tone.Success else Tone.Neutral)
                 QuietButton("Open", onClick = { vm.open(c) })
+                if (vm.canEdit(c)) QuietButton("Edit", onClick = { onEdit(c.id) })
             }
         }
         item { Gap(WakeMeTokens.spaceXl) }
@@ -241,18 +246,44 @@ private fun Messages(s: ChallengesState, vm: ChallengesViewModel, onUpgrade: () 
 }
 
 @Composable
-fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, vm: ChallengesViewModel = hiltViewModel()) {
+fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: String? = null, vm: ChallengesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
-    s.trying?.let { (c, def) -> TryOut(c, def, vm); return }
-    LaunchedEffect(s.saved) { if (s.saved) onDone() }
+    LaunchedEffect(editId) { if (editId != null) vm.startEditing(editId) }
     var mode by remember { mutableStateOf("quiz") }
     var title by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
     var difficulty by remember { mutableStateOf("easy") }
-    val facts = remember { mutableStateListOf(Triple("", "", listOf<String>())) }
+    val facts = remember { mutableStateListOf(QuizRow()) }
+    var filledFrom by remember { mutableStateOf<String?>(null) }
+    val editing = s.editing
+    val editQuestions = remember(editing) {
+        editing?.revisions?.maxByOrNull { it.revision }
+            ?.let { runCatching { WakeMeJson.decodeFromJsonElement(ChallengeDefinition.serializer(), it.body) }.getOrNull() }
+            ?.let { def -> quizQuestions(def)?.let { def.title to it } }
+    }
+    // Fill the form once from the version being edited.
+    LaunchedEffect(editQuestions) {
+        if (editing != null && editQuestions != null && filledFrom != editing.id) {
+            title = editQuestions.first
+            facts.clear(); facts.addAll(editQuestions.second.map { QuizRow(it.prompt, it.answer, it.wrong.joinToString(", ")) })
+            filledFrom = editing.id
+        }
+    }
+    s.trying?.let { (c, def) -> TryOut(c, def, vm); return }
+    LaunchedEffect(s.saved) { if (s.saved) onDone() }
+    if (editId != null && filledFrom != editId) {
+        Column(Modifier.padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+            Body(if (editing != null && editQuestions == null) "Only quizzes can be edited. Make a template challenge again to change it." else "Loading…")
+            QuietButton("Back", onClick = onDone)
+        }
+        Messages(s, vm, onUpgrade)
+        return
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-        Text("Create a challenge", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+        Text(if (editId != null) "Edit challenge" else "Create a challenge", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+        if (editId != null) {
+            Body("Your changes become version ${(editing?.latestRevision ?: 0) + 1}. You try it before publishing, and friends keep the version they accepted until they accept the new one.")
+        } else FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             FilterChip(selected = mode == "quiz", onClick = { mode = "quiz" }, label = { Text("Build a quiz myself") })
             FilterChip(selected = mode == "ai", onClick = { mode = "ai" }, label = { Text("Describe it") })
         }
@@ -268,13 +299,14 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, vm: Challen
         Body(if (mode == "ai") "Add the facts and answers. The AI only uses what you write here; it never invents details about your friends." else "Each question needs your answer. Add wrong options to make it multiple choice.")
         facts.forEachIndexed { i, (q, a, wrong) ->
             WMCard {
-                OutlinedTextField(q, { facts[i] = Triple(it.take(200), a, wrong) }, label = { Text("Question ${i + 1}") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(a, { facts[i] = Triple(q, it.take(60), wrong) }, label = { Text("Your answer") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(wrong.joinToString(", "), { facts[i] = Triple(q, a, it.split(",").map(String::trim).filter(String::isNotEmpty).take(3)) }, label = { Text("Wrong options (comma separated, optional)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(q, { facts[i] = facts[i].copy(prompt = it.take(200)) }, label = { Text("Question ${i + 1}") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(a, { facts[i] = facts[i].copy(answer = it.take(60)) }, label = { Text("Your answer") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(wrong, { facts[i] = facts[i].copy(wrong = it.take(300)) }, label = { Text("Wrong options (comma separated, optional)") }, modifier = Modifier.fillMaxWidth())
+                if (facts.size > 1) QuietButton("Remove question ${i + 1}", onClick = { facts.removeAt(i) })
             }
         }
-        if (facts.size < 8) QuietButton("Add another question", onClick = { facts += Triple("", "", emptyList()) })
-        val complete = facts.filter { it.first.isNotBlank() && it.second.isNotBlank() }
+        if (facts.size < 8) QuietButton("Add another question", onClick = { facts += QuizRow() })
+        val complete = facts.map { it.question() }.filter { it.prompt.isNotBlank() && it.answer.isNotBlank() }
         if (mode == "ai") PrimaryButton(if (s.busy == "ai") "Drafting…" else "Draft it", onClick = { vm.generate(prompt, complete, difficulty) }, enabled = prompt.isNotBlank() && s.busy == null)
         else PrimaryButton(if (s.busy == "quiz") "Saving…" else "Save and try it", onClick = { vm.createQuiz(title, complete) }, enabled = complete.isNotEmpty() && s.busy == null)
         QuietButton("Cancel", onClick = onDone)
@@ -284,3 +316,8 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, vm: Challen
 
 @Suppress("unused")
 private fun JsonObject.str(key: String) = this[key]?.jsonPrimitive?.content ?: this[key]?.jsonObject?.toString()
+
+/** One question while it's being typed; wrong options stay as typed (commas included) until saved. */
+private data class QuizRow(val prompt: String = "", val answer: String = "", val wrong: String = "") {
+    fun question() = QuizQuestion(prompt.trim(), answer.trim(), wrong.split(",").map(String::trim).filter(String::isNotEmpty).take(5))
+}

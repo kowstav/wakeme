@@ -142,8 +142,9 @@ private fun NavGraph(nav: NavHostController, app: AppViewModel, modifier: Modifi
         composable("routine-new?owner={owner}", listOf(navArgument("owner") { type = NavType.StringType; nullable = true; defaultValue = null })) {
             RoutineEditorScreen(ownerId = it.arguments?.getString("owner"), onDone = { nav.popBackStack() })
         }
-        composable("challenges") { ChallengesScreen(onNew = { nav.navigate("challenge-new") }, onUpgrade = { nav.navigate("paywall") }) }
+        composable("challenges") { ChallengesScreen(onNew = { nav.navigate("challenge-new") }, onEdit = { id -> nav.navigate("challenge-edit/$id") }, onUpgrade = { nav.navigate("paywall") }) }
         composable("challenge-new") { ChallengeEditorScreen(onDone = { nav.popBackStack() }, onUpgrade = { nav.navigate("paywall") }) }
+        composable("challenge-edit/{id}", listOf(navArgument("id") { type = NavType.StringType })) { ChallengeEditorScreen(onDone = { nav.popBackStack() }, onUpgrade = { nav.navigate("paywall") }, editId = it.arguments!!.getString("id")!!) }
         composable("safety") { SafetyScreen() }
         composable("safety/{id}", listOf(navArgument("id") { type = NavType.StringType })) { SafetyScreen(focusSessionId = it.arguments?.getString("id")) }
         composable("you") { YouScreen(app = app, onPaywall = { nav.navigate("paywall") }, onSafety = { nav.navigate("safety") }) }

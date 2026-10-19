@@ -384,22 +384,27 @@ public struct WakeMeAPI: Sendable {
         let schemaVersion = 1
         let title: String
         let kind = "sequence"
-        let difficulty = "easy"
+        let difficulty: String
         let maxDurationSeconds: Int
         let steps: [Step]
         let verification = "local_deterministic"
         let fallback = Fallback()
         let permissionsRequired: [String] = []
 
-        init(title: String, questions: [QuizQuestion]) {
+        /// When editing, `original` is the version being edited: a short answer whose main answer
+        /// is unchanged keeps its other accepted spellings (same rule as Android's `quizSteps`).
+        init(title: String, questions: [QuizQuestion], difficulty: String = "easy", original: [ChallengeStep] = []) {
             self.title = title
+            self.difficulty = difficulty
             maxDurationSeconds = min(questions.count * 25 + 30, 600)
             steps = questions.enumerated().map { i, q in
                 // Options must differ from each other and from the answer (the server checks).
                 var seen: Set<String> = [q.answer.lowercased()]
-                let wrong = q.wrongOptions.filter { seen.insert($0.lowercased()).inserted }
+                let wrong = Array(q.wrongOptions.filter { seen.insert($0.lowercased()).inserted }.prefix(5))
                 guard !wrong.isEmpty else {
-                    return Step(type: "short_answer", id: "q\(i + 1)", prompt: q.question, options: nil, correctIndex: nil, acceptedAnswers: [q.answer])
+                    var accepted = [q.answer]
+                    if i < original.count, case let .shortAnswer(_, _, before) = original[i], before.first == q.answer { accepted = before }
+                    return Step(type: "short_answer", id: "q\(i + 1)", prompt: q.question, options: nil, correctIndex: nil, acceptedAnswers: accepted)
                 }
                 let options = (wrong + [q.answer]).shuffled()
                 return Step(type: "multiple_choice", id: "q\(i + 1)", prompt: q.question, options: options, correctIndex: options.firstIndex(of: q.answer), acceptedAnswers: nil)
@@ -410,6 +415,31 @@ public struct WakeMeAPI: Sendable {
     /// Not retried automatically: a lost response must not make a second draft.
     public func createQuiz(title: String, questions: [QuizQuestion]) async throws -> ChallengeDetail {
         try await client.post("/v1/challenges", body: NewChallenge(body: QuizBody(title: title, questions: questions)))
+    }
+    /// An edit is a new draft revision of your own challenge; published revisions never change.
+    /// Not retried automatically: a lost response must not make a second draft.
+    public func reviseQuiz(_ challengeId: String, title: String, questions: [QuizQuestion], editing previous: ChallengeDefinition?) async throws -> ChallengeDetail {
+        let body = QuizBody(title: title, questions: questions, difficulty: previous?.difficulty ?? "easy", original: previous?.steps ?? [])
+        return try await client.post("/v1/challenges/\(challengeId)/revisions", body: NewChallenge(body: body))
+    }
+    /// The questions of a quiz-shaped challenge (only multiple-choice and short-answer steps), for
+    /// editing; nil for anything else (templates such as maths or chess are made again instead).
+    public static func quizQuestions(in definition: ChallengeDefinition) -> [QuizQuestion]? {
+        guard !definition.steps.isEmpty else { return nil }
+        var questions: [QuizQuestion] = []
+        for step in definition.steps {
+            switch step {
+            case let .multipleChoice(_, prompt, options, correctIndex):
+                guard options.indices.contains(correctIndex) else { return nil }
+                questions.append(.init(question: prompt, answer: options[correctIndex], wrongOptions: options.enumerated().filter { $0.offset != correctIndex }.map(\.element)))
+            case let .shortAnswer(_, prompt, accepted):
+                guard let answer = accepted.first else { return nil }
+                questions.append(.init(question: prompt, answer: answer))
+            default:
+                return nil
+            }
+        }
+        return questions
     }
 
     public struct ChallengeGeneration: Decodable, Sendable {

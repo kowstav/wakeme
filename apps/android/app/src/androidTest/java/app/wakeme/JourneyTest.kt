@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -105,6 +106,56 @@ class JourneyTest {
         waitFor("You're not sharing anything", timeout = 30_000)
         val sos = get("/v1/location-sessions", alex).getJSONArray("mine").let { a -> (0 until a.length()).map { a.getJSONObject(it) } }.first { it.getString("purpose") == "sos" }
         check(!sos.getJSONArray("viewers").getJSONObject(0).isNull("acknowledgedAt")) { "Alex is told that Sam saw the SOS" }
+
+        // Challenges: write a quiz with two wrong options, try it and publish it; then edit it,
+        // add a question, try the new version and publish it as version 2.
+        tap("Challenges")
+        tap("Create a challenge")
+        type("Title", "HQ quiz")
+        type("Question 1", "Where is headquarters?")
+        type("Your answer", "Chaos curry")
+        type("Wrong options (comma separated, optional)", "Blue door, Bean there")
+        waitFor("Blue door, Bean there") // the comma stays while typing
+        DeviceEvidence.screenshot("29-quiz-written")
+        tap("Save and try it")
+        waitFor("Step 1 of 1", timeout = 30_000)
+        tap("Chaos curry")
+        tap("Publish")
+        waitInList("Ready to use · version 1")
+        tap("Edit")
+        waitFor("Edit challenge", timeout = 30_000)
+        waitFor("Blue door, Bean there") // the form starts from version 1
+        tap("Add another question")
+        type("Question 2", "Who forgets the keys?")
+        compose.onAllNodes(hasText("Your answer"))[1].run { runCatching { performScrollTo() }; performTextInput("Sam") }
+        DeviceEvidence.screenshot("30-quiz-edited")
+        tap("Save and try it")
+        waitFor("Step 1 of 2", timeout = 30_000)
+        tap("Chaos curry")
+        waitFor("Step 2 of 2")
+        compose.onNode(hasSetTextAction()).performTextInput("Sam")
+        tap("Check")
+        tap("Publish")
+        waitInList("Ready to use · version 2")
+        DeviceEvidence.screenshot("31-quiz-version-2")
+    }
+
+    /** Waits for text that may be further down a lazy list, scrolling each list towards it. */
+    private fun waitInList(text: String, timeout: Long = 30_000) {
+        val deadline = System.currentTimeMillis() + timeout
+        while (!found(text)) {
+            check(System.currentTimeMillis() < deadline) { "\"$text\" never appeared" }
+            val lists = compose.onAllNodes(hasScrollToNodeAction())
+            for (i in 0 until lists.fetchSemanticsNodes().size) runCatching { lists[i].performScrollToNode(hasText(text)) }
+            if (!found(text)) Thread.sleep(500)
+            compose.waitForIdle()
+        }
+    }
+
+    /** Types into the text field labelled [label], scrolling it into view first. */
+    private fun type(label: String, text: String) {
+        waitFor(label)
+        compose.onAllNodes(hasText(label))[0].run { runCatching { performScrollTo() }; performTextInput(text) }
     }
 
     private fun found(text: String) = compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()

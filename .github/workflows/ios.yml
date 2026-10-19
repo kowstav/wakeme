@@ -59,7 +59,7 @@ jobs:
           curl -sf http://127.0.0.1:8787/healthz || { tail -n 40 "$RUNNER_TEMP/dev-backend.log"; exit 1; }
       - name: Client-server contract (WakeMeAPI against the dev backend)
         working-directory: apps/ios/WakeMeCore
-        run: WAKEME_DEV_BACKEND=http://127.0.0.1:8787 swift test --filter DevBackendTests 2>&1 | grep -E "error|passed|failed|skipped|Executed"
+        run: set -o pipefail; WAKEME_DEV_BACKEND=http://127.0.0.1:8787 swift test --filter DevBackendTests 2>&1 | grep -E "error|passed|failed|skipped|Executed"
       - name: Generate project
         run: brew install xcodegen && xcodegen generate
       - name: Build and UI-test on a simulator

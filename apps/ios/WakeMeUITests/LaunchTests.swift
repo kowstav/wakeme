@@ -226,6 +226,34 @@ final class LaunchTests: XCTestCase {
         try must(app.buttons["Thursday quiz"].waitForExistence(timeout: 10), "the published quiz can be practised")
         shot(app, "25-challenge-published")
 
+        // Edit it: the form starts from version 1; a second question makes version 2, which is
+        // tried and published like any draft.
+        app.buttons["Edit Thursday quiz"].tap()
+        try must(app.navigationBars["Edit challenge"].waitForExistence(timeout: 15), "the editor opens")
+        try must((quizField("quizWrong").value as? String) == "Brunch, Pasta night", "the form starts from version 1")
+        app.buttons["Add another"].tap()
+        for (id, text) in [("quizQuestion", "Who forgets the keys?"), ("quizAnswer", "Sam")] {
+            let field = app.descendants(matching: .any).matching(identifier: id).element(boundBy: 1)
+            for _ in 0..<3 where !field.isHittable { app.swipeUp() }
+            field.tap()
+            field.typeText(text)
+        }
+        shot(app, "25b-edit-challenge")
+        app.navigationBars["Edit challenge"].buttons["Save"].tap()
+        try must(app.staticTexts["What do we call our Thursday dinner?"].waitForExistence(timeout: 20), "version 2 opens to be tried first")
+        app.buttons["Chaos curry"].tap()
+        let typed = app.textFields["Your answer"]
+        try must(typed.waitForExistence(timeout: 5), "the new question")
+        typed.tap()
+        typed.typeText("Sam")
+        app.buttons["Check"].tap()
+        try must(app.buttons["Publish"].waitForExistence(timeout: 10), "version 2 can be published")
+        app.buttons["Publish"].tap()
+        let republished = app.alerts.firstMatch
+        try must(republished.waitForExistence(timeout: 15), "publishing version 2 is confirmed")
+        republished.buttons["OK"].tap()
+        try must(app.buttons["Thursday quiz"].waitForExistence(timeout: 10), "still listed for practice")
+
         // Safety: Alex sends Sam an SOS (no location); Sam sees it and confirms, then starts a
         // check-in with Alex and checks in.
         let alexFriends = try await http("GET", "/v1/friends", alex)["friends"] as? [[String: Any]] ?? []

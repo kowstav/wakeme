@@ -103,6 +103,19 @@ final class DevBackendTests: XCTestCase {
         let listed = try await api.challenges()
         XCTAssertNotNil(listed.first { $0.id == draft.id }?.publishedRevisionId, "listed for practice and wake-ups")
 
+        // Editing makes version 2 as a draft; version 1 stays published until 2 is tried and published.
+        var questions = try XCTUnwrap(WakeMeAPI.quizQuestions(in: XCTUnwrap(revision.definition)))
+        questions.append(.init(question: "Who forgets the keys?", answer: "Sam"))
+        let edited = try await api.reviseQuiz(draft.id, title: "Morning warm-up", questions: questions, editing: revision.definition)
+        let second = try XCTUnwrap(edited.latest)
+        XCTAssertEqual(second.revision, revision.revision + 1)
+        XCTAssertEqual(second.state, "draft")
+        XCTAssertEqual(second.definition?.steps.count, 3)
+        XCTAssertEqual(edited.publishedRevision, revision.revision, "the published version doesn't change")
+        try await api.markPreviewed(challengeId: draft.id, revision: second.revision)
+        let republished = try await api.publishChallenge(draft.id, revision: second.revision)
+        XCTAssertEqual(republished.publishedRevision, second.revision)
+
         let templates = try await api.challengeTemplates()
         XCTAssertFalse(templates.isEmpty)
         for t in templates {

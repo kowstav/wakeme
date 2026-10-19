@@ -190,6 +190,31 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(steps[1]["source"] as? String, "creator_provided")
     }
 
+    func testEditingAQuizMakesANewRevisionFromWhatWasWritten() async throws {
+        let previous = try JSONDecoder().decode(ChallengeDefinition.self, from: Data(#"""
+            {"schemaVersion":1,"title":"HQ quiz","kind":"sequence","difficulty":"medium","maxDurationSeconds":55,"verification":"local_deterministic",
+             "fallback":{"type":"accessible_checkin"},"permissionsRequired":[],"steps":[
+              {"type":"multiple_choice","id":"q1","prompt":"Where is headquarters?","options":["Blue door","Chaos curry","Bean there"],"correctIndex":1,"source":"creator_provided"},
+              {"type":"short_answer","id":"q2","prompt":"Who forgets the keys?","acceptedAnswers":["Sam","Samuel"],"source":"creator_provided"}]}
+            """#.utf8))
+        var questions = try XCTUnwrap(WakeMeAPI.quizQuestions(in: previous))
+        XCTAssertEqual(questions[0], .init(question: "Where is headquarters?", answer: "Chaos curry", wrongOptions: ["Blue door", "Bean there"]))
+        XCTAssertEqual(questions[1], .init(question: "Who forgets the keys?", answer: "Sam"))
+        var maths = previous
+        maths.steps = [.math(id: "m1", operands: [2, 3], operator: "+", answer: 5)]
+        XCTAssertNil(WakeMeAPI.quizQuestions(in: maths), "templates aren't edited as quizzes")
+
+        questions[1].question = "Who always forgets the keys?"
+        let t = FakeTransport([(201, #"{"id":"c1","title":"HQ quiz","publishedRevision":1,"revisions":[]}"#, [:])])
+        _ = try await WakeMeAPI(client: client(t)).reviseQuiz("c1", title: "HQ quiz", questions: questions, editing: previous)
+        XCTAssertEqual(t.requests[0].url?.path, "/v1/challenges/c1/revisions")
+        let body = try XCTUnwrap((JSONSerialization.jsonObject(with: XCTUnwrap(t.requests[0].httpBody)) as? [String: Any])?["body"] as? [String: Any])
+        XCTAssertEqual(body["difficulty"] as? String, "medium", "the edit keeps the difficulty")
+        let steps = try XCTUnwrap(body["steps"] as? [[String: Any]])
+        XCTAssertEqual(Set(try XCTUnwrap(steps[0]["options"] as? [String])), ["Blue door", "Chaos curry", "Bean there"])
+        XCTAssertEqual(steps[1]["acceptedAnswers"] as? [String], ["Sam", "Samuel"], "an unchanged answer keeps its other spellings")
+    }
+
     func testMessagingAndReportRequests() async throws {
         let t = FakeTransport([(200, #"{"ok":true}"#, [:]), (200, #"{"ok":true}"#, [:]), (200, #"{"ok":true}"#, [:]), (201, #"{"id":"r1"}"#, [:])])
         let api = WakeMeAPI(client: client(t))
