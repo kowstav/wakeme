@@ -1,0 +1,114 @@
+{
+  "description": "ES256 challenge envelopes signed by packages/challenges signEnvelope. trustedKeys maps keyId to base64 SPKI DER.",
+  "trustedKeys": {
+    "fixture-key-1": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnP9BDU50NRqlPD0mXCz7IQ7x/nqIOnsBT4atJmTTwX6RwWj2F2hfhgRNnkB/jAQuz2Xm4SkYUcb0R7s2bmoPQA=="
+  },
+  "cases": [
+    {
+      "name": "valid envelope verifies and parses",
+      "envelope": {
+        "revisionId": "11111111-1111-4111-8111-111111111111",
+        "payload": "eyJkZWZpbml0aW9uIjp7ImRpZmZpY3VsdHkiOiJlYXN5IiwiZmFsbGJhY2siOnsicHJvbXB0IjoiVGFwIFwiSSdtIHVwXCIgd2hlbiB5b3UncmUgcmVhZHkgdG8gc3RhcnQgeW91ciBkYXkuIiwidHlwZSI6ImFjY2Vzc2libGVfY2hlY2tpbiJ9LCJraW5kIjoic2VxdWVuY2UiLCJtYXhEdXJhdGlvblNlY29uZHMiOjYwLCJwZXJtaXNzaW9uc1JlcXVpcmVkIjpbXSwic2NoZW1hVmVyc2lvbiI6MSwic3RlcHMiOlt7ImFuc3dlciI6MjMsImlkIjoibTEiLCJvcGVyYW5kcyI6WzIwLDNdLCJvcGVyYXRvciI6IisiLCJ0eXBlIjoibWF0aCJ9LHsiYW5zd2VyIjoyLCJpZCI6Im0yIiwib3BlcmFuZHMiOlsxMSw5XSwib3BlcmF0b3IiOiItIiwidHlwZSI6Im1hdGgifV0sInRpdGxlIjoiTW9ybmluZyBtYXRocyIsInZlcmlmaWNhdGlvbiI6ImxvY2FsX2RldGVybWluaXN0aWMifSwiZGVmaW5pdGlvbklkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwicmV2aXNpb24iOjMsInJldmlzaW9uSWQiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEifQ==",
+        "signature": "MEUCIQDCCcWFED2N0W7Z272DgXDnA9BO2Uow+2fqHT9RQzrx+gIgEjsAK9TsuARKRAU3STBsLgt4S4QAipmKxFdo2puTv40=",
+        "keyId": "fixture-key-1",
+        "digest": "4a312022ee9c831eac1245eb7b8399e9692f05f70499244fa26a33a0ec94a1e6",
+        "alg": "ES256"
+      },
+      "expected": {
+        "ok": true,
+        "revision": 3,
+        "steps": 2
+      }
+    },
+    {
+      "name": "payload byte flipped (digest no longer matches)",
+      "envelope": {
+        "revisionId": "11111111-1111-4111-8111-111111111111",
+        "payload": "eyJkZWZpbml0aW9uIjp7ImRpZmZpY3VsdHkiOiJlYXN5IiwiZmFsbGJhY2siOnsicHJvbXB0IjoiVGFwIFwiSSdtIHVwXCIgd2hlbiB5b3UncmUgcmVhZHkgdG8gc3RhcnQgeW91ciBkYXkuIiwidHlwZSI6ImFjY2Vzc2libGVfY2hlY2tpbiJ9LCJraW5kIjoic2VxdWVuY2UiLCJtYXhEdXJhdGlvblNlY29uZHMiOjYwLCJwZXJtaXNzaW9uc1JlcXVpcmVkIjpbXSwic2NoZW1hVmVyc2lvbiI6MSwic3RlcHMiOlt7ImFuc3dlciI6MjMsImlkIjoibTEiLCJvcGVyYW5kcyI6WzIwLDNdLCJvcGVyYXRvciI6IisiLCJ0eXBlIjoibWF0aCJ9LHsiYW5zd2VyIjoyLCJpZCI6Im0yIiwib3BlcmFuZHMiOlsxMSw5XSwib3BlcmF0b3IiOiItIiwidHlwZSI6Im1hdGgifV0sInRpdGxlIjoiTW9ybmluZyBtYXRocyIsInZlcmlmaWNhdGlvbiI6ImxvY2FsX2RldGVybWluaXN0aWMifSwiZGVmaW5pdGlvbklkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwicmV2aXNpb24iOjMsInJldmlzaW9uSWQiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEjfQ==",
+        "signature": "MEUCIQDCCcWFED2N0W7Z272DgXDnA9BO2Uow+2fqHT9RQzrx+gIgEjsAK9TsuARKRAU3STBsLgt4S4QAipmKxFdo2puTv40=",
+        "keyId": "fixture-key-1",
+        "digest": "4a312022ee9c831eac1245eb7b8399e9692f05f70499244fa26a33a0ec94a1e6",
+        "alg": "ES256"
+      },
+      "expected": {
+        "ok": false,
+        "error": "digest_mismatch"
+      }
+    },
+    {
+      "name": "payload edited and digest recomputed (signature no longer matches)",
+      "envelope": {
+        "revisionId": "11111111-1111-4111-8111-111111111111",
+        "payload": "eyJkZWZpbml0aW9uIjp7ImRpZmZpY3VsdHkiOiJlYXN5IiwiZmFsbGJhY2siOnsicHJvbXB0IjoiVGFwIFwiSSdtIHVwXCIgd2hlbiB5b3UncmUgcmVhZHkgdG8gc3RhcnQgeW91ciBkYXkuIiwidHlwZSI6ImFjY2Vzc2libGVfY2hlY2tpbiJ9LCJraW5kIjoic2VxdWVuY2UiLCJtYXhEdXJhdGlvblNlY29uZHMiOjYwLCJwZXJtaXNzaW9uc1JlcXVpcmVkIjpbXSwic2NoZW1hVmVyc2lvbiI6MSwic3RlcHMiOlt7ImFuc3dlciI6MjMsImlkIjoibTEiLCJvcGVyYW5kcyI6WzIwLDNdLCJvcGVyYXRvciI6IisiLCJ0eXBlIjoibWF0aCJ9LHsiYW5zd2VyIjoyLCJpZCI6Im0yIiwib3BlcmFuZHMiOlsxMSw5XSwib3BlcmF0b3IiOiItIiwidHlwZSI6Im1hdGgifV0sInRpdGxlIjoiTW9ybmluZyBtYXRocyIsInZlcmlmaWNhdGlvbiI6ImxvY2FsX2RldGVybWluaXN0aWMifSwiZGVmaW5pdGlvbklkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwicmV2aXNpb24iOjQsInJldmlzaW9uSWQiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEifQ==",
+        "signature": "MEUCIQDCCcWFED2N0W7Z272DgXDnA9BO2Uow+2fqHT9RQzrx+gIgEjsAK9TsuARKRAU3STBsLgt4S4QAipmKxFdo2puTv40=",
+        "keyId": "fixture-key-1",
+        "digest": "21eb1119844b7aa64c47c377d9130d2ae2ae778499b5250cbfe31f88f1b34198",
+        "alg": "ES256"
+      },
+      "expected": {
+        "ok": false,
+        "error": "bad_signature"
+      }
+    },
+    {
+      "name": "signed by an untrusted key under a trusted key id",
+      "envelope": {
+        "revisionId": "11111111-1111-4111-8111-111111111111",
+        "payload": "eyJkZWZpbml0aW9uIjp7ImRpZmZpY3VsdHkiOiJlYXN5IiwiZmFsbGJhY2siOnsicHJvbXB0IjoiVGFwIFwiSSdtIHVwXCIgd2hlbiB5b3UncmUgcmVhZHkgdG8gc3RhcnQgeW91ciBkYXkuIiwidHlwZSI6ImFjY2Vzc2libGVfY2hlY2tpbiJ9LCJraW5kIjoic2VxdWVuY2UiLCJtYXhEdXJhdGlvblNlY29uZHMiOjYwLCJwZXJtaXNzaW9uc1JlcXVpcmVkIjpbXSwic2NoZW1hVmVyc2lvbiI6MSwic3RlcHMiOlt7ImFuc3dlciI6MjMsImlkIjoibTEiLCJvcGVyYW5kcyI6WzIwLDNdLCJvcGVyYXRvciI6IisiLCJ0eXBlIjoibWF0aCJ9LHsiYW5zd2VyIjoyLCJpZCI6Im0yIiwib3BlcmFuZHMiOlsxMSw5XSwib3BlcmF0b3IiOiItIiwidHlwZSI6Im1hdGgifV0sInRpdGxlIjoiTW9ybmluZyBtYXRocyIsInZlcmlmaWNhdGlvbiI6ImxvY2FsX2RldGVybWluaXN0aWMifSwiZGVmaW5pdGlvbklkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwicmV2aXNpb24iOjMsInJldmlzaW9uSWQiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEifQ==",
+        "signature": "MEUCIFctu9nEEr1pKa8i9WLY5pumid1XfeW/P5hr2wCxlO6yAiEAgM0MWEWCKPUzKBWSTKc9+a5JBN0pHnsIpFcmQ69JMw0=",
+        "keyId": "fixture-key-1",
+        "digest": "4a312022ee9c831eac1245eb7b8399e9692f05f70499244fa26a33a0ec94a1e6",
+        "alg": "ES256"
+      },
+      "expected": {
+        "ok": false,
+        "error": "bad_signature"
+      }
+    },
+    {
+      "name": "unknown key id",
+      "envelope": {
+        "revisionId": "11111111-1111-4111-8111-111111111111",
+        "payload": "eyJkZWZpbml0aW9uIjp7ImRpZmZpY3VsdHkiOiJlYXN5IiwiZmFsbGJhY2siOnsicHJvbXB0IjoiVGFwIFwiSSdtIHVwXCIgd2hlbiB5b3UncmUgcmVhZHkgdG8gc3RhcnQgeW91ciBkYXkuIiwidHlwZSI6ImFjY2Vzc2libGVfY2hlY2tpbiJ9LCJraW5kIjoic2VxdWVuY2UiLCJtYXhEdXJhdGlvblNlY29uZHMiOjYwLCJwZXJtaXNzaW9uc1JlcXVpcmVkIjpbXSwic2NoZW1hVmVyc2lvbiI6MSwic3RlcHMiOlt7ImFuc3dlciI6MjMsImlkIjoibTEiLCJvcGVyYW5kcyI6WzIwLDNdLCJvcGVyYXRvciI6IisiLCJ0eXBlIjoibWF0aCJ9LHsiYW5zd2VyIjoyLCJpZCI6Im0yIiwib3BlcmFuZHMiOlsxMSw5XSwib3BlcmF0b3IiOiItIiwidHlwZSI6Im1hdGgifV0sInRpdGxlIjoiTW9ybmluZyBtYXRocyIsInZlcmlmaWNhdGlvbiI6ImxvY2FsX2RldGVybWluaXN0aWMifSwiZGVmaW5pdGlvbklkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwicmV2aXNpb24iOjMsInJldmlzaW9uSWQiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEifQ==",
+        "signature": "MEUCIQDCCcWFED2N0W7Z272DgXDnA9BO2Uow+2fqHT9RQzrx+gIgEjsAK9TsuARKRAU3STBsLgt4S4QAipmKxFdo2puTv40=",
+        "keyId": "retired-key",
+        "digest": "4a312022ee9c831eac1245eb7b8399e9692f05f70499244fa26a33a0ec94a1e6",
+        "alg": "ES256"
+      },
+      "expected": {
+        "ok": false,
+        "error": "unknown_key"
+      }
+    },
+    {
+      "name": "unsupported algorithm",
+      "envelope": {
+        "revisionId": "11111111-1111-4111-8111-111111111111",
+        "payload": "eyJkZWZpbml0aW9uIjp7ImRpZmZpY3VsdHkiOiJlYXN5IiwiZmFsbGJhY2siOnsicHJvbXB0IjoiVGFwIFwiSSdtIHVwXCIgd2hlbiB5b3UncmUgcmVhZHkgdG8gc3RhcnQgeW91ciBkYXkuIiwidHlwZSI6ImFjY2Vzc2libGVfY2hlY2tpbiJ9LCJraW5kIjoic2VxdWVuY2UiLCJtYXhEdXJhdGlvblNlY29uZHMiOjYwLCJwZXJtaXNzaW9uc1JlcXVpcmVkIjpbXSwic2NoZW1hVmVyc2lvbiI6MSwic3RlcHMiOlt7ImFuc3dlciI6MjMsImlkIjoibTEiLCJvcGVyYW5kcyI6WzIwLDNdLCJvcGVyYXRvciI6IisiLCJ0eXBlIjoibWF0aCJ9LHsiYW5zd2VyIjoyLCJpZCI6Im0yIiwib3BlcmFuZHMiOlsxMSw5XSwib3BlcmF0b3IiOiItIiwidHlwZSI6Im1hdGgifV0sInRpdGxlIjoiTW9ybmluZyBtYXRocyIsInZlcmlmaWNhdGlvbiI6ImxvY2FsX2RldGVybWluaXN0aWMifSwiZGVmaW5pdGlvbklkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwicmV2aXNpb24iOjMsInJldmlzaW9uSWQiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEifQ==",
+        "signature": "MEUCIQDCCcWFED2N0W7Z272DgXDnA9BO2Uow+2fqHT9RQzrx+gIgEjsAK9TsuARKRAU3STBsLgt4S4QAipmKxFdo2puTv40=",
+        "keyId": "fixture-key-1",
+        "digest": "4a312022ee9c831eac1245eb7b8399e9692f05f70499244fa26a33a0ec94a1e6",
+        "alg": "none"
+      },
+      "expected": {
+        "ok": false,
+        "error": "unsupported_algorithm"
+      }
+    },
+    {
+      "name": "envelope revision id differs from the signed payload",
+      "envelope": {
+        "revisionId": "33333333-3333-4333-8333-333333333333",
+        "payload": "eyJkZWZpbml0aW9uIjp7ImRpZmZpY3VsdHkiOiJlYXN5IiwiZmFsbGJhY2siOnsicHJvbXB0IjoiVGFwIFwiSSdtIHVwXCIgd2hlbiB5b3UncmUgcmVhZHkgdG8gc3RhcnQgeW91ciBkYXkuIiwidHlwZSI6ImFjY2Vzc2libGVfY2hlY2tpbiJ9LCJraW5kIjoic2VxdWVuY2UiLCJtYXhEdXJhdGlvblNlY29uZHMiOjYwLCJwZXJtaXNzaW9uc1JlcXVpcmVkIjpbXSwic2NoZW1hVmVyc2lvbiI6MSwic3RlcHMiOlt7ImFuc3dlciI6MjMsImlkIjoibTEiLCJvcGVyYW5kcyI6WzIwLDNdLCJvcGVyYXRvciI6IisiLCJ0eXBlIjoibWF0aCJ9LHsiYW5zd2VyIjoyLCJpZCI6Im0yIiwib3BlcmFuZHMiOlsxMSw5XSwib3BlcmF0b3IiOiItIiwidHlwZSI6Im1hdGgifV0sInRpdGxlIjoiTW9ybmluZyBtYXRocyIsInZlcmlmaWNhdGlvbiI6ImxvY2FsX2RldGVybWluaXN0aWMifSwiZGVmaW5pdGlvbklkIjoiMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyIiwicmV2aXNpb24iOjMsInJldmlzaW9uSWQiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEifQ==",
+        "signature": "MEUCIQDCCcWFED2N0W7Z272DgXDnA9BO2Uow+2fqHT9RQzrx+gIgEjsAK9TsuARKRAU3STBsLgt4S4QAipmKxFdo2puTv40=",
+        "keyId": "fixture-key-1",
+        "digest": "4a312022ee9c831eac1245eb7b8399e9692f05f70499244fa26a33a0ec94a1e6",
+        "alg": "ES256"
+      },
+      "expected": {
+        "ok": false,
+        "error": "revision_mismatch"
+      }
+    }
+  ]
+}
