@@ -13,19 +13,23 @@ val LocalWakeMeColors = staticCompositionLocalOf { WakeMeTokens.Light }
 
 // Material uses `primary` as the text colour of text buttons, focused field labels and the
 // checked switch track, so it maps to accentText (contrast-checked on both surfaces), not to
-// the accent fill; PrimaryButton sets the accent fill itself.
+// the accent fill; PrimaryButton sets the accent fill itself. Selected chips and the navigation
+// indicator use secondaryContainer: the accent fill with its own text colour, instead of
+// Material's default lavender, which isn't part of the design system.
 private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
     if (dark) {
         darkColorScheme(
             primary = c.accentText, onPrimary = c.surfaceRaised, background = c.surface, onBackground = c.textPrimary,
             surface = c.surface, onSurface = c.textPrimary, surfaceVariant = c.surfaceSunken, onSurfaceVariant = c.textSecondary,
             surfaceContainer = c.surfaceRaised, error = c.danger, onError = c.textOnDanger, outline = c.border, secondary = c.info,
+            secondaryContainer = c.accent, onSecondaryContainer = c.textOnAccent,
         )
     } else {
         lightColorScheme(
             primary = c.accentText, onPrimary = c.surfaceRaised, background = c.surface, onBackground = c.textPrimary,
             surface = c.surface, onSurface = c.textPrimary, surfaceVariant = c.surfaceSunken, onSurfaceVariant = c.textSecondary,
             surfaceContainer = c.surfaceRaised, error = c.dangerFill, onError = c.textOnDanger, outline = c.border, secondary = c.info,
+            secondaryContainer = c.accent, onSecondaryContainer = c.textOnAccent,
         )
     }
 
