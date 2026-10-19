@@ -130,8 +130,7 @@ final class AppModel {
     /// Wake alarms ring only on the owner's primary phone; no primary yet counts as primary,
     /// so a single phone never silently skips its alarms.
     func isPrimaryPhone() async -> Bool {
-        guard let primary = me?.primaryDeviceId else { return true }
-        return await DeviceKey.shared.deviceId() == primary
+        installsRoutines(primaryDeviceId: me?.primaryDeviceId, thisDeviceId: await DeviceKey.shared.deviceId())
     }
 
     func capabilities() async -> WakeMeAPI.DeviceCapabilities {

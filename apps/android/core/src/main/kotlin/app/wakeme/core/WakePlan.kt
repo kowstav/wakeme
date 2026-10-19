@@ -25,6 +25,14 @@ data class InstalledRoutine(
 
 enum class AlarmRole { MAIN, FOLLOW_UP }
 
+/**
+ * ADR 0007: only the primary phone installs and rings routines. With no primary
+ * recorded yet, the registering phone counts as primary so a lone phone never
+ * skips its alarms. Same rule as iOS `installsRoutines`.
+ */
+fun installsRoutines(primaryDeviceId: String?, thisDeviceId: String?): Boolean =
+    primaryDeviceId == null || (thisDeviceId != null && primaryDeviceId == thisDeviceId)
+
 data class ScheduledAlarm(val planId: String, val version: Int, val occurrenceKey: String, val role: AlarmRole, val fireAt: Instant) {
     /** Stable PendingIntent request code so re-scheduling replaces instead of duplicating. */
     val requestCode: Int get() = (planId + occurrenceKey + role.name).hashCode()

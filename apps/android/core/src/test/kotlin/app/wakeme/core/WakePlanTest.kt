@@ -43,4 +43,13 @@ class WakePlanTest {
         assertTrue(s.onEscape().cancelsFollowUp)
         assertEquals(WakeSessionState.COMPLETED, s.onChallengeCompleted().onEscape().state)
     }
+
+    @Test
+    fun onlyThePrimaryPhoneInstallsRoutines() {
+        assertTrue(installsRoutines(primaryDeviceId = null, thisDeviceId = null))
+        assertTrue(installsRoutines(primaryDeviceId = null, thisDeviceId = "d1"))
+        assertTrue(installsRoutines(primaryDeviceId = "d1", thisDeviceId = "d1"))
+        assertFalse(installsRoutines(primaryDeviceId = "d1", thisDeviceId = "d2"))
+        assertFalse(installsRoutines(primaryDeviceId = "d1", thisDeviceId = null))
+    }
 }

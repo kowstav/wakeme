@@ -65,6 +65,14 @@ final class WakePlanTests: XCTestCase {
         XCTAssertEqual(a[0].alarmUUID.uuidString.dropFirst(14).first, "5") // version 5 layout
     }
 
+    func testOnlyThePrimaryPhoneInstallsRoutines() {
+        XCTAssertTrue(installsRoutines(primaryDeviceId: nil, thisDeviceId: nil))
+        XCTAssertTrue(installsRoutines(primaryDeviceId: nil, thisDeviceId: "d1"))
+        XCTAssertTrue(installsRoutines(primaryDeviceId: "d1", thisDeviceId: "d1"))
+        XCTAssertFalse(installsRoutines(primaryDeviceId: "d1", thisDeviceId: "d2"))
+        XCTAssertFalse(installsRoutines(primaryDeviceId: "d1", thisDeviceId: nil))
+    }
+
     func testMathOverflowIsRejectedNotWrapped() {
         XCTAssertNil(evaluateMath([Int64.max, 1], "+"))
         XCTAssertEqual(evaluateMath([12, 4, 3], "/"), 1)

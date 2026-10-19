@@ -18,6 +18,7 @@ import app.wakeme.core.ChallengeEnvelopes
 import app.wakeme.core.InstalledRoutine
 import app.wakeme.core.SignedEnvelope
 import app.wakeme.core.WakeMeJson
+import app.wakeme.core.installsRoutines
 import app.wakeme.data.device.DeviceIdentity
 import app.wakeme.data.local.GrantEntity
 import app.wakeme.data.local.LocalDb
@@ -149,7 +150,7 @@ class SyncEngine @Inject constructor(
      * get passive updates. No primary yet (first registration in progress) counts
      * as primary, so a single phone never silently skips its alarms.
      */
-    private suspend fun isPrimary(me: MeDto): Boolean = me.primaryDeviceId == null || me.primaryDeviceId == device.deviceId()
+    private suspend fun isPrimary(me: MeDto): Boolean = installsRoutines(me.primaryDeviceId, device.deviceId())
 
     private suspend fun reinstallAll(me: MeDto) {
         val plans = api.get("/v1/alarm-plans?includeEnded=true", PlansDto.serializer())

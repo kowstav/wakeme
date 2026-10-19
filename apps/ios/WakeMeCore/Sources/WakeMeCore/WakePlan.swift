@@ -39,6 +39,14 @@ public struct InstalledRoutine: Codable, Equatable, Sendable {
 
 public enum AlarmRole: String, Codable, Sendable { case main = "MAIN", followUp = "FOLLOW_UP" }
 
+/// ADR 0007: only the primary phone installs and rings routines. With no primary
+/// recorded yet, the registering phone counts as primary so a lone phone never
+/// skips its alarms. Same rule as Android `installsRoutines`.
+public func installsRoutines(primaryDeviceId: String?, thisDeviceId: String?) -> Bool {
+    guard let primaryDeviceId else { return true }
+    return thisDeviceId == primaryDeviceId
+}
+
 public struct ScheduledAlarm: Equatable, Sendable {
     public let planId: String
     public let version: Int
