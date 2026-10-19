@@ -203,9 +203,14 @@ jobs:
           adb shell pm clear "$APP_ID"
           adb shell pm grant "$APP_ID" android.permission.POST_NOTIFICATIONS
           adb shell appops set "$APP_ID" SCHEDULE_EXACT_ALARM allow
+          # Android 17: reaching the dev backend at 10.0.2.2 (local network) needs this
+          # debug-only permission. Older images don't define it.
+          adb shell pm grant "$APP_ID" android.permission.ACCESS_LOCAL_NETWORK || echo "ACCESS_LOCAL_NETWORK not grantable on this image"
           adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null || true
           adb shell am instrument -w -r -e class app.wakeme.JourneyTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/journey.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/journey.txt"
+          # JUnit reports a skipped test as OK; a journey that didn't run is a failure here.
+          if grep -q "AssumptionViolatedException" "$RUNNER_TEMP/evidence/journey.txt"; then echo "::error::journey skipped"; exit 1; fi
       - name: Collect evidence
         if: always()
         run: |

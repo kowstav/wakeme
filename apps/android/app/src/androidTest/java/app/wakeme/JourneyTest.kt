@@ -35,7 +35,8 @@ class JourneyTest {
 
     @Test
     fun selfSetupInviteGrantAndWakeUp() {
-        assumeTrue("dev backend not reachable", backendUp())
+        val unreachable = backendProblem()
+        assumeTrue("dev backend not reachable: $unreachable", unreachable == null)
 
         tap("Set up my own wake-up")
         tap("Use a local test account (debug build)")
@@ -92,13 +93,14 @@ class JourneyTest {
         compose.waitForIdle()
     }
 
-    private fun backendUp(): Boolean = runCatching {
+    /** Null when the dev backend answers; otherwise what went wrong, so a skip says why. */
+    private fun backendProblem(): String? = runCatching {
         (URL("$backend/healthz").openConnection() as HttpURLConnection).run {
             connectTimeout = 3_000
             readTimeout = 3_000
-            responseCode == 200
+            if (responseCode == 200) null else "HTTP $responseCode"
         }
-    }.getOrDefault(false)
+    }.getOrElse { it.toString() }
 
     /** A second account on the dev backend, made over HTTP, that redeems the invite code. */
     private fun friendRedeems(code: String, name: String) {
