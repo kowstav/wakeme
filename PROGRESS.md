@@ -53,6 +53,8 @@ Recorded in `docs/adr` (0001–0011); threat model with control-to-test mapping 
 - Routines are armed 8 days ahead (at most 8 occurrences). A phone that never runs Wake Me for 8 days stops ringing them, and friends see "not yet confirmed". On iPhone, a routine without a challenge has no follow-up (nothing on the alarm could cancel it).
 - Retention values (30 days request metadata and AI prompts, 45 days sync feed, 365 days audit) are proposals pending legal review.
 - Location shares send a fix only when the OS delivers one (Android: every 60 s or 25 m; iOS: live updates, which pause while the phone is still). A phone left still may send nothing new, so friends see the true capture time and, after 10 minutes, a warning. Whether to resend an unchanged position with a fresh time needs real-device observation first.
+- **Doc 05 skills are not installed or pinned** (android/skills, SwiftUI and Swift Concurrency skills, HIG, Trail of Bits, etc.). Installing them needs `/plugin` commands run by the owner in Claude Code, then a review record (URL, licence, commit, scripts, permissions) per doc 05 §3. Work so far used official docs and SDK declarations instead.
+- Full apps were built before the Stage 0 device experiments (doc 04 §2) could run, because no physical devices are available to this work; the Stage 0 exit gate is still open and its results may change promises.
 - Android instrumented tests use Espresso 3.8.0-alpha01 (test-only, never shipped): the first release that injects input on Android 17. Move to the stable release when it ships.
 
 ## Remaining launch gates (doc 04 §10), none met yet
@@ -61,7 +63,7 @@ Physical-device soak matrix (iOS 26/27, Android 17 on Pixel/Samsung/one aggressi
 
 ## Next step
 
-1. Next Android run: dialogs on the raised surface (were Material lavender) and the safety start dialog's summary under the friend chips (it was cut off at the bottom).
+1. Android run 20 (dialogs on the raised surface, summary under the friend chips) passed on 16 and 17; its screenshots are not yet reviewed.
 2. Install the APK on a real Android 17 phone and run the Stage 0 alarm experiment (exact alarm + systemExempted service + USAGE_ALARM, locked and idle, with and without earbuds; a routine left for several days), recording device/OS/build/settings.
 3. iOS on a real phone (needs the owner's Apple developer account): AlarmKit with a full window, `stopIntent` after Stop, background refresh frequency; then APNs.
 4. Legal review of the privacy policy and terms drafts; store listings.
