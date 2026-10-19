@@ -22,8 +22,8 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <!-- Recording a voice for a friend's alarm, requested just in time. -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- No microphone permission: voice recording for alarms isn't built yet. Add
+         RECORD_AUDIO (requested just in time) only together with that feature. -->
 
     <application
         android:name=".WakeMeApp"

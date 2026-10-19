@@ -128,7 +128,9 @@ fun SignInScreen(app: AppViewModel) {
                 }
             })
         }
-        WMCard {
+        if (!AppConfig.supabaseConfigured) {
+            Body("Email sign-in isn't configured for this build.")
+        } else WMCard {
             Text("Email me a code", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
             OutlinedTextField(email, { email = it.trim() }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
             if (!sent) {

@@ -38,7 +38,7 @@ class JourneyTest {
         assumeTrue("dev backend not reachable", backendUp())
 
         tap("Set up my own wake-up")
-        tap("Use a local test account (debug build)", scroll = true)
+        tap("Use a local test account (debug build)")
         waitFor("Display name")
         compose.onNodeWithText("Display name").performTextInput("Sam")
         compose.onNode(isToggleable()).performClick()
@@ -47,7 +47,7 @@ class JourneyTest {
 
         waitFor("Let's make sure your alarm rings")
         DeviceEvidence.screenshot("21-ready")
-        tap("Do this later", scroll = true)
+        tap("Do this later")
 
         tap("Invite a friend", timeout = 30_000)
         waitFor("Share your invite")
@@ -61,18 +61,18 @@ class JourneyTest {
         friendRedeems(code, "Alex")
         SyncWorker.runNow(InstrumentationRegistry.getInstrumentation().targetContext)
         tap("Alex", timeout = 30_000)
-        tap("Choose what Alex can do", scroll = true)
-        tap("Gentle nudges", scroll = true)
+        tap("Choose what Alex can do")
+        tap("Gentle nudges")
         DeviceEvidence.screenshot("23-permissions")
-        tap("Save my rules", scroll = true)
+        tap("Save my rules")
         waitFor("Change permissions", timeout = 30_000)
         DeviceEvidence.screenshot("24-friend-granted")
 
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         tap("Routines", timeout = 15_000)
-        tap("New wake-up", scroll = true)
+        tap("New wake-up")
         DeviceEvidence.screenshot("25-new-wake-up")
-        tap("Save wake-up", scroll = true)
+        tap("Save wake-up")
         waitFor("07:00", substring = true, timeout = 30_000)
         DeviceEvidence.screenshot("26-routine-saved")
     }
@@ -81,10 +81,11 @@ class JourneyTest {
         compose.waitUntil(timeout) { compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
     }
 
-    private fun tap(text: String, timeout: Long = 20_000, scroll: Boolean = false) {
+    /** Waits for the text, scrolls it into view when it's in a scrolling container, then taps it. */
+    private fun tap(text: String, timeout: Long = 20_000) {
         waitFor(text, timeout)
         val node = compose.onAllNodes(hasText(text))[0]
-        if (scroll) runCatching { node.performScrollTo() }
+        runCatching { node.performScrollTo() }
         node.performClick()
         compose.waitForIdle()
     }
