@@ -80,4 +80,34 @@ final class DevBackendTests: XCTestCase {
         try await api.reportOccurrence(planId: plan.id, occurrenceKey: occurrence, version: version, outcome: "challenge_completed")
         try await api.reportOccurrence(planId: plan.id, occurrenceKey: occurrence, version: version, outcome: "rang") // late, lower rank: ignored, not an error
     }
+
+    func testAQuizAndATemplateBecomeChallengesThisAppCanRun() async throws {
+        guard let raw = ProcessInfo.processInfo.environment["WAKEME_DEV_BACKEND"], let base = URL(string: raw) else {
+            throw XCTSkip("set WAKEME_DEV_BACKEND to run against the dev backend")
+        }
+        let token = Token()
+        let api = WakeMeAPI(client: APIClient(baseURL: base, tokens: token, signer: nil))
+        token.value = try await devToken(base)
+        _ = try await api.createAccount(name: "Sam", timeZone: "UTC", locale: "en-US")
+
+        // The server validates the definition strictly; this is the body the iPhone quiz builder sends.
+        let draft = try await api.createQuiz(title: "Morning warm-up", questions: [
+            .init(question: "What do we call our Thursday dinner?", answer: "Chaos curry", wrongOptions: ["Brunch"]),
+            .init(question: "Which café is headquarters?", answer: "Lark"),
+        ])
+        let revision = try XCTUnwrap(draft.latest)
+        XCTAssertEqual(revision.definition?.steps.count, 2, "the draft runs on this phone")
+        try await api.markPreviewed(challengeId: draft.id, revision: revision.revision)
+        let published = try await api.publishChallenge(draft.id, revision: revision.revision)
+        XCTAssertEqual(published.publishedRevision, revision.revision)
+        let listed = try await api.challenges()
+        XCTAssertNotNil(listed.first { $0.id == draft.id }?.publishedRevisionId, "listed for practice and wake-ups")
+
+        let templates = try await api.challengeTemplates()
+        XCTAssertFalse(templates.isEmpty)
+        for t in templates {
+            let fromTemplate = try await api.challengeFromTemplate(t.id)
+            XCTAssertNotNil(fromTemplate.latest?.definition, "template \(t.id) runs on this phone")
+        }
+    }
 }

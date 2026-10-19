@@ -170,6 +170,26 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(t.requests[2].url?.path, "/v1/friendships/fs1/block")
     }
 
+    func testQuizBodyMatchesTheChallengeSchema() async throws {
+        let t = FakeTransport([(201, #"{"id":"c1","title":"Morning warm-up","publishedRevision":null,"revisions":[{"id":"r1","revision":1,"state":"draft","body":{}}]}"#, [:])])
+        let api = WakeMeAPI(client: client(t))
+        let draft = try await api.createQuiz(title: "Morning warm-up", questions: [
+            .init(question: "What do we call our Thursday dinner?", answer: "Chaos curry", wrongOptions: ["Brunch", "brunch", "Chaos Curry"]),
+            .init(question: "Which café is headquarters?", answer: "Lark"),
+        ])
+        XCTAssertNil(draft.latest?.definition, "a body this app can't run decodes as no definition, not an error")
+        let sent = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(t.requests[0].httpBody)) as? [String: Any])
+        let body = try XCTUnwrap(sent["body"] as? [String: Any])
+        XCTAssertEqual(Set(body.keys), ["schemaVersion", "title", "kind", "difficulty", "maxDurationSeconds", "steps", "verification", "fallback", "permissionsRequired"])
+        let steps = try XCTUnwrap(body["steps"] as? [[String: Any]])
+        XCTAssertEqual(steps[0]["type"] as? String, "multiple_choice")
+        let options = try XCTUnwrap(steps[0]["options"] as? [String])
+        XCTAssertEqual(Set(options), ["Chaos curry", "Brunch"], "duplicates and the answer's look-alikes are dropped")
+        XCTAssertEqual(options[try XCTUnwrap(steps[0]["correctIndex"] as? Int)], "Chaos curry")
+        XCTAssertEqual(Set(steps[1].keys), ["type", "id", "prompt", "acceptedAnswers", "source"], "no null fields")
+        XCTAssertEqual(steps[1]["source"] as? String, "creator_provided")
+    }
+
     func testMessagingAndReportRequests() async throws {
         let t = FakeTransport([(200, #"{"ok":true}"#, [:]), (200, #"{"ok":true}"#, [:]), (200, #"{"ok":true}"#, [:]), (201, #"{"id":"r1"}"#, [:])])
         let api = WakeMeAPI(client: client(t))

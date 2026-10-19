@@ -198,10 +198,33 @@ final class LaunchTests: XCTestCase {
         app.buttons["Send"].tap()
         try must(app.staticTexts["Morning, Alex!"].waitForExistence(timeout: 10), "the message is sent and listed")
         shot(app, "19-messages")
+        app.navigationBars.buttons.element(boundBy: 0).tap() // back; the keyboard covered the tab bar
 
         app.tabBars.buttons["Challenges"].tap()
-        try must(app.staticTexts["No challenges yet. Quizzes and puzzles made on Android, or shared in your circles, appear here."].waitForExistence(timeout: 15), "the Challenges tab lists what can be practised")
+        try must(app.staticTexts["No challenges yet. Make one, or start from a template."].waitForExistence(timeout: 15), "the Challenges tab lists what can be practised")
         shot(app, "22-challenges")
+
+        // Doc 03: write a one-question quiz; every draft is tried before it can be published.
+        app.buttons["Create a challenge"].tap()
+        try must(app.navigationBars["Create a challenge"].waitForExistence(timeout: 10), "step failed")
+        func field(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
+        for (id, text) in [("quizTitle", "Thursday quiz"), ("quizQuestion", "What do we call our Thursday dinner?"), ("quizAnswer", "Chaos curry"), ("quizWrong", "Brunch, Pasta night")] {
+            try must(field(id).waitForExistence(timeout: 5), "field \(id)")
+            field(id).tap()
+            field(id).typeText(text)
+        }
+        shot(app, "23-create-challenge")
+        app.navigationBars["Create a challenge"].buttons["Create"].tap()
+        try must(app.staticTexts["What do we call our Thursday dinner?"].waitForExistence(timeout: 20), "the draft opens to be tried first")
+        app.buttons["Chaos curry"].tap()
+        try must(app.buttons["Publish"].waitForExistence(timeout: 10), "a tried draft can be published")
+        shot(app, "24-try-out-done")
+        app.buttons["Publish"].tap()
+        let published = app.alerts.firstMatch
+        try must(published.waitForExistence(timeout: 15), "publishing is confirmed")
+        published.buttons["OK"].tap()
+        try must(app.buttons["Thursday quiz"].waitForExistence(timeout: 10), "the published quiz can be practised")
+        shot(app, "25-challenge-published")
     }
 
     /// The challenge runner checks answers on the phone: a wrong answer is a calm retry, the

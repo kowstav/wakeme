@@ -274,6 +274,7 @@ public struct WakeMeAPI: Sendable {
     public struct ChallengeRevisionRef: Codable, Equatable, Sendable { public var id: String; public var revision: Int; public var state: String }
     public struct ChallengeSummary: Codable, Equatable, Sendable, Identifiable {
         public var id: String
+        public var creatorId: String?
         public var title: String
         public var publishedRevision: Int?
         public var revisions: [ChallengeRevisionRef]
@@ -281,6 +282,137 @@ public struct WakeMeAPI: Sendable {
         public var publishedRevisionId: String? { revisions.first { $0.revision == publishedRevision && $0.state == "published" }?.id }
     }
     struct ChallengesList: Codable { let challenges: [ChallengeSummary] }
+
+    // MARK: making challenges (same flows as Android: template, your own quiz, or an AI draft)
+    public struct ChallengeTemplate: Codable, Equatable, Sendable, Identifiable {
+        public var id: String
+        public var title: String
+        public var description: String
+    }
+    struct TemplatesList: Codable { let templates: [ChallengeTemplate] }
+    public func challengeTemplates() async throws -> [ChallengeTemplate] { try await client.get("/v1/challenges/templates", as: TemplatesList.self).templates }
+
+    /// A challenge with every revision, drafts included (creator and circle members).
+    public struct ChallengeDetail: Decodable, Sendable, Identifiable {
+        public struct Revision: Decodable, Sendable {
+            public var id: String
+            public var revision: Int
+            public var state: String
+            /// Nil when this app can't run one of its steps.
+            public var definition: ChallengeDefinition?
+            enum CodingKeys: String, CodingKey { case id, revision, state, body }
+            public init(from decoder: Decoder) throws {
+                let c = try decoder.container(keyedBy: CodingKeys.self)
+                id = try c.decode(String.self, forKey: .id)
+                revision = try c.decode(Int.self, forKey: .revision)
+                state = try c.decode(String.self, forKey: .state)
+                definition = try? c.decode(ChallengeDefinition.self, forKey: .body)
+            }
+        }
+        public var id: String
+        public var title: String
+        public var publishedRevision: Int?
+        public var revisions: [Revision]
+        public var latest: Revision? { revisions.max { $0.revision < $1.revision } }
+    }
+    public func challenge(_ id: String) async throws -> ChallengeDetail { try await client.get("/v1/challenges/\(id)") }
+
+    struct FromTemplate: Encodable { let templateId: String; let difficulty: String }
+    /// A draft from a built-in template. Not retried automatically: a lost response must not make a second draft.
+    public func challengeFromTemplate(_ templateId: String, difficulty: String = "easy") async throws -> ChallengeDetail {
+        try await client.post("/v1/challenges/from-template", body: FromTemplate(templateId: templateId, difficulty: difficulty))
+    }
+
+    /// One question of a quiz you write: with wrong options it is multiple choice, without them the answer is typed.
+    public struct QuizQuestion: Equatable, Sendable {
+        public var question: String
+        public var answer: String
+        public var wrongOptions: [String]
+        public init(question: String, answer: String, wrongOptions: [String] = []) {
+            self.question = question
+            self.answer = answer
+            self.wrongOptions = wrongOptions
+        }
+    }
+    /// The declarative definition the server validates (same shape the Android builder sends).
+    struct QuizBody: Encodable {
+        struct Step: Encodable {
+            let type: String
+            let id: String
+            let prompt: String
+            let options: [String]?
+            let correctIndex: Int?
+            let acceptedAnswers: [String]?
+            let source = "creator_provided"
+        }
+        struct Fallback: Encodable { let type = "accessible_checkin" }
+        let schemaVersion = 1
+        let title: String
+        let kind = "sequence"
+        let difficulty = "easy"
+        let maxDurationSeconds: Int
+        let steps: [Step]
+        let verification = "local_deterministic"
+        let fallback = Fallback()
+        let permissionsRequired: [String] = []
+
+        init(title: String, questions: [QuizQuestion]) {
+            self.title = title
+            maxDurationSeconds = min(questions.count * 25 + 30, 600)
+            steps = questions.enumerated().map { i, q in
+                // Options must differ from each other and from the answer (the server checks).
+                var seen: Set<String> = [q.answer.lowercased()]
+                let wrong = q.wrongOptions.filter { seen.insert($0.lowercased()).inserted }
+                guard !wrong.isEmpty else {
+                    return Step(type: "short_answer", id: "q\(i + 1)", prompt: q.question, options: nil, correctIndex: nil, acceptedAnswers: [q.answer])
+                }
+                let options = (wrong + [q.answer]).shuffled()
+                return Step(type: "multiple_choice", id: "q\(i + 1)", prompt: q.question, options: options, correctIndex: options.firstIndex(of: q.answer), acceptedAnswers: nil)
+            }
+        }
+    }
+    struct NewChallenge: Encodable { let body: QuizBody }
+    /// Not retried automatically: a lost response must not make a second draft.
+    public func createQuiz(title: String, questions: [QuizQuestion]) async throws -> ChallengeDetail {
+        try await client.post("/v1/challenges", body: NewChallenge(body: QuizBody(title: title, questions: questions)))
+    }
+
+    public struct ChallengeGeneration: Decodable, Sendable {
+        public struct Rejection: Decodable, Sendable { public var message: String?; public var notes: String? }
+        public var id: String
+        public var status: String
+        public var definitionId: String?
+        public var creditsRemaining: Int
+        public var rejection: Rejection?
+        enum CodingKeys: String, CodingKey { case id, status, definitionId, creditsRemaining, rejection }
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(String.self, forKey: .id)
+            status = try c.decode(String.self, forKey: .status)
+            definitionId = try c.decodeIfPresent(String.self, forKey: .definitionId)
+            creditsRemaining = try c.decode(Int.self, forKey: .creditsRemaining)
+            rejection = try? c.decodeIfPresent(Rejection.self, forKey: .rejection)
+        }
+    }
+    struct Fact: Encodable { let question: String; let answer: String; let distractors: [String]? }
+    struct GenerationRequest: Encodable { let prompt: String; let facts: [Fact]; let difficulty: String }
+    /// Asks the AI author for a draft from your description and facts (one credit). Quiz answers
+    /// come only from the facts you give; the result is an editable draft, never active.
+    public func generateChallenge(prompt: String, facts: [QuizQuestion], difficulty: String) async throws -> ChallengeGeneration {
+        let body = GenerationRequest(prompt: prompt, facts: facts.map { Fact(question: $0.question, answer: $0.answer, distractors: $0.wrongOptions.isEmpty ? nil : Array($0.wrongOptions.prefix(3))) }, difficulty: difficulty)
+        return try await client.post("/v1/challenges/generations", body: body)
+    }
+    public func challengeGeneration(_ id: String) async throws -> ChallengeGeneration { try await client.get("/v1/challenges/generations/\(id)") }
+
+    /// Trying a draft is required before it can be published.
+    public func markPreviewed(challengeId: String, revision: Int) async throws {
+        let _: OkDTO = try await client.post("/v1/challenges/\(challengeId)/revisions/\(revision)/previewed", body: Optional<Empty>.none)
+    }
+    struct PublishBody: Encodable { let revision: Int }
+    /// Freezes the tried draft as a signed revision that can be used in wake-ups.
+    public func publishChallenge(_ id: String, revision: Int) async throws -> ChallengeDetail {
+        try await client.post("/v1/challenges/\(id)/publish", body: PublishBody(revision: revision))
+    }
     /// Your challenges and those shared in your circles.
     public func challenges() async throws -> [ChallengeSummary] { try await client.get("/v1/challenges", as: ChallengesList.self).challenges }
 
