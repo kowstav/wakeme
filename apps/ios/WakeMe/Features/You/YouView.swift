@@ -57,8 +57,9 @@ struct YouView: View {
         } message: {
             Text("Alarms installed on this phone are removed when you sign out.")
         }
-        .confirmationDialog("Delete your account?", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("Delete your account?", isPresented: $confirmDelete) {
             Button("Delete account", role: .destructive) { Task { await delete() } }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("Your account is deactivated now and permanently deleted after 7 days. Every permission you gave friends is revoked straight away, and alarms on this phone are removed. You can change your mind by signing in within 7 days. Cancel a subscription separately in the App Store.")
         }

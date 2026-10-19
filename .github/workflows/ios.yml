@@ -57,6 +57,9 @@ jobs:
           (cd services/api && nohup npm run dev > "$RUNNER_TEMP/dev-backend.log" 2>&1 &)
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/healthz > /dev/null && break; sleep 1; done
           curl -sf http://127.0.0.1:8787/healthz || { tail -n 40 "$RUNNER_TEMP/dev-backend.log"; exit 1; }
+      - name: Client-server contract (WakeMeAPI against the dev backend)
+        working-directory: apps/ios/WakeMeCore
+        run: WAKEME_DEV_BACKEND=http://127.0.0.1:8787 swift test --filter DevBackendTests 2>&1 | grep -E "error|passed|failed|skipped|Executed"
       - name: Generate project
         run: brew install xcodegen && xcodegen generate
       - name: Build and UI-test on a simulator
@@ -91,11 +94,14 @@ jobs:
           xcrun xcresulttool export attachments --path "$RUNNER_TEMP/WakeMe.xcresult" --output-path "$RUNNER_TEMP/attachments" > /dev/null 2>&1 || true
           if [ -f "$RUNNER_TEMP/attachments/manifest.json" ]; then
             python3 - "$RUNNER_TEMP/attachments" "$RUNNER_TEMP/evidence" <<'PY'
-          import json, os, shutil, sys
+          import json, os, re, shutil, sys
           src, dst = sys.argv[1], sys.argv[2]
           for test in json.load(open(os.path.join(src, "manifest.json"))):
               for a in test.get("attachments", []):
+                  if not a["exportedFileName"].lower().endswith(".png"):
+                      continue  # debug descriptions and other text attachments
                   name = a.get("suggestedHumanReadableName", a["exportedFileName"]).split("_")[0]
+                  name = re.sub(r"[^A-Za-z0-9.-]+", "-", name)
                   shutil.copy(os.path.join(src, a["exportedFileName"]), os.path.join(dst, "ui-" + name + ".png"))
           PY
           fi
