@@ -35,6 +35,12 @@ jobs:
         working-directory: apps/android
     steps:
       - uses: actions/checkout@v4
+      - name: Free runner disk for the emulator's data partition
+        run: |
+          df -h / "$RUNNER_TEMP"
+          # Preinstalled toolchains this job never uses (the Android NDK included).
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$ANDROID_HOME/ndk" || true
+          df -h / "$RUNNER_TEMP"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -68,9 +74,11 @@ jobs:
           echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" --force
           "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list avd
-          # The default data partition is too small for the debug APK ("not enough space").
-          echo "disk.dataPartition.size=6G" >> "$ANDROID_AVD_HOME/wakeme.avd/config.ini"
-          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none -memory 4096 -partition-size 6144 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          # The default data partition is too small for the debug APK ("not enough space");
+          # the emulator wants 1.2x the partition size free on the host disk.
+          echo "disk.dataPartition.size=4G" >> "$ANDROID_AVD_HOME/wakeme.avd/config.ini"
+          df -h "$ANDROID_AVD_HOME"
+          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none -memory 4096 -partition-size 4096 > "$RUNNER_TEMP/emulator.log" 2>&1 &
           sleep 20 # let QEMU start before checking that its process is alive
           booted=0
           for i in $(seq 1 120); do
