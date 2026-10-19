@@ -71,8 +71,29 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No alarms yet. Set one for yourself, or let a friend suggest one."].waitForExistence(timeout: 15))
         shot(app, "07-routines")
 
+        // Doc 03 §5 step 7: set your own wake-up; alarm access is asked for when it's saved.
+        app.buttons["Set a wake-up"].tap()
+        XCTAssertTrue(app.navigationBars["New wake-up"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Weekdays"].exists)
+        shot(app, "08-new-wake-up")
+        app.navigationBars["New wake-up"].buttons["Save"].tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        if springboard.buttons["Allow"].waitForExistence(timeout: 8) { springboard.buttons["Allow"].tap() }
+        XCTAssertTrue(app.staticTexts["07:00 · Weekdays"].waitForExistence(timeout: 20), "the saved routine is listed")
+        sleep(3) // let the installation receipt update the readiness line
+        shot(app, "09-routine-saved")
+
         app.tabBars.buttons["You"].tap()
         XCTAssertTrue(app.staticTexts["Sam"].waitForExistence(timeout: 15))
-        shot(app, "08-you")
+        shot(app, "10-you")
+        let delete = app.buttons["Delete account"]
+        for _ in 0..<4 where !delete.isHittable { app.swipeUp() }
+        XCTAssertTrue(delete.exists, "account deletion is in the app (App Store 5.1.1(v))")
+        XCTAssertTrue(app.buttons["Export my data"].exists)
+        shot(app, "11-you-data")
+        delete.tap()
+        XCTAssertTrue(app.staticTexts["Delete your account?"].waitForExistence(timeout: 5))
+        shot(app, "12-delete-confirm")
+        if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
     }
 }

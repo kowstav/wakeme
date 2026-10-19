@@ -46,6 +46,8 @@ struct FriendsView: View {
             }
             if app.offline { Section { StatusPill(text: "Offline · showing nothing new. Your alarms still work.", tone: .warning) } }
         }
+        .scrollContentBackground(.hidden)
+        .background(WMColor.surface)
         .navigationTitle("Friends")
         .navigationDestination(for: String.self) { id in FriendDetailView(friendshipId: id) }
         .refreshable { await load() }

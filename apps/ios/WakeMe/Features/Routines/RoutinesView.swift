@@ -34,6 +34,8 @@ struct RoutinesView: View {
     @Environment(AppModel.self) private var app
     @State private var plans: PlansDTO?
     @State private var message: String?
+    @State private var editing = false
+    @State private var ending: PlanDTO?
 
     var body: some View {
         List {
@@ -49,22 +51,47 @@ struct RoutinesView: View {
                 Section("Waiting for you") { ForEach(proposals) { p in PlanRow(plan: p, mine: true, onAccept: { await act { try await app.api.acceptPlan(p.id, version: p.pending!.version) } }, onDecline: { await act { try await app.api.declinePlan(p.id, version: p.pending!.version) } }) } }
             }
             Section("On this phone") {
-                let active = mine.filter { $0.accepted != nil }
+                let active = mine.filter { $0.accepted != nil && !["cancelled", "declined"].contains($0.state) }
                 if active.isEmpty { Text("No alarms yet. Set one for yourself, or let a friend suggest one.").foregroundStyle(WMColor.textSecondary) }
-                ForEach(active) { p in PlanRow(plan: p, mine: true, onAccept: nil, onDecline: nil) }
+                ForEach(active) { p in
+                    PlanRow(plan: p, mine: true, onAccept: nil, onDecline: nil)
+                        .swipeActions {
+                            Button("End", role: .destructive) { ending = p }
+                            Button(p.state == "paused" ? "Resume" : "Pause") { Task { await act { try await app.api.pausePlan(p.id, paused: p.state != "paused") } } }
+                        }
+                        .contextMenu {
+                            Button(p.state == "paused" ? "Resume" : "Pause") { Task { await act { try await app.api.pausePlan(p.id, paused: p.state != "paused") } } }
+                            Button("End this routine", role: .destructive) { ending = p }
+                        }
+                }
+                Button("Set a wake-up") { editing = true }
             }
             if let helping = plans?.helping, !helping.isEmpty {
                 Section("Helping friends") { ForEach(helping) { p in PlanRow(plan: p, mine: false, onAccept: nil, onDecline: nil) } }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(WMColor.surface)
         .navigationTitle("Routines")
         .refreshable { await load() }
         .task { await load() }
+        .sheet(isPresented: $editing) { RoutineEditorView(onSaved: { await load() }) }
+        .confirmationDialog("End this routine?", isPresented: Binding(get: { ending != nil }, set: { if !$0 { ending = nil } }), presenting: ending) { p in
+            Button("End routine", role: .destructive) { Task { await act { try await app.api.cancelPlan(p.id) } } }
+        } message: { _ in
+            Text("It stops ringing on this phone straight away. You can set a new one any time.")
+        }
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
     }
 
     private func act(_ block: () async throws -> PlanDTO) async {
-        do { _ = try await block() } catch { message = (error as? APIError)?.message ?? "That didn't go through." }
+        do {
+            let plan = try await block()
+            // Ending or pausing stops the local alarms at once, even before the list reloads.
+            if plan.state != "active" { WakeAlarms.shared.cancel(planId: plan.id) }
+        } catch {
+            message = (error as? APIError)?.message ?? "That didn't go through."
+        }
         await load()
     }
 
@@ -78,6 +105,10 @@ struct RoutinesView: View {
     /// what the OS accepted; ended or paused routines are cancelled locally first.
     private func install(_ mine: [PlanDTO]) async {
         let primary = await app.isPrimaryPhone()
+        // Alarms are installed only from server data, so a routine the server no longer
+        // lists (possible only after a server restore) stops ringing here.
+        let listed = Set(mine.map(\.id))
+        for id in WakeAlarms.shared.installedPlanIds() where !listed.contains(id) { WakeAlarms.shared.cancel(planId: id) }
         for plan in mine {
             guard let v = plan.accepted, plan.state == "active", primary else {
                 WakeAlarms.shared.cancel(planId: plan.id)

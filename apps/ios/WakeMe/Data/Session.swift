@@ -51,6 +51,17 @@ actor Session: TokenProvider {
         try await save(gotrue("/auth/v1/verify", ["type": "email", "email": email.trimmingCharacters(in: .whitespaces), "token": code.trimmingCharacters(in: .whitespaces)]))
     }
 
+    /// Re-authentication for a high-impact action: the new tokens are kept only if the code
+    /// belongs to the account already signed in, so a different email can't switch accounts.
+    func confirmEmailCode(_ email: String, code: String) async throws {
+        let t = try await gotrue("/auth/v1/verify", ["type": "email", "email": email.trimmingCharacters(in: .whitespaces), "token": code.trimmingCharacters(in: .whitespaces)])
+        guard let current = subject, t.user?.id == current else {
+            await logout(t.access_token) // end the other account's new session; keep this one
+            throw AuthError.rejected("That code is for a different account. Use the email you signed in with.")
+        }
+        save(t)
+    }
+
     /// Debug builds without Supabase: a local test identity from the dev backend.
     func devSignIn() async throws {
         struct DevToken: Decodable { let subject: String; let accessToken: String; let expiresIn: Double }
@@ -68,18 +79,22 @@ actor Session: TokenProvider {
     }
 
     func signOut() async {
-        if AppConfig.supabaseConfigured, let token = access {
-            var req = URLRequest(url: URL(string: AppConfig.supabaseURL + "/auth/v1/logout")!)
-            req.httpMethod = "POST"
-            req.setValue(AppConfig.supabaseAnonKey, forHTTPHeaderField: "apikey")
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "authorization")
-            _ = try? await URLSession.shared.data(for: req)
-        }
+        if let token = access { await logout(token) }
         access = nil
         accessExpiresAt = .distantPast
         subject = nil
         Keychain.delete("auth.refresh")
         Keychain.delete("auth.subject")
+    }
+
+    /// Ends one session (`scope=local`); the default scope would sign out every device.
+    private func logout(_ token: String) async {
+        guard AppConfig.supabaseConfigured, let url = URL(string: AppConfig.supabaseURL + "/auth/v1/logout?scope=local") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(AppConfig.supabaseAnonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "authorization")
+        _ = try? await URLSession.shared.data(for: req)
     }
 
     private struct TokenResponse: Decodable {

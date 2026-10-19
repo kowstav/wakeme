@@ -103,7 +103,7 @@ jobs:
             [ -f "$f" ] || continue
             n=$(basename "$f" .png)
             sips -Z 640 "$f" --out "$RUNNER_TEMP/$n.small.png" > /dev/null
-            echo "=====BEGIN SCREENSHOT $n====="; base64 -b 100 -i "$RUNNER_TEMP/$n.small.png"; echo; echo "=====END SCREENSHOT $n====="
+            echo "=====BEGIN SCREENSHOT $n====="; base64 -i "$RUNNER_TEMP/$n.small.png"; echo; echo "=====END SCREENSHOT $n====="
           done
       - uses: actions/upload-artifact@v4
         if: always()

@@ -121,7 +121,17 @@ public struct APIClient: Sendable {
         try await call(.delete, path, body: Optional<Data>.none, signed: false, idempotent: true)
     }
 
+    /// The response body as sent (for example a data export saved to a file).
+    public func getData(_ path: String) async throws -> Data {
+        try await callData(.get, path, body: nil, signed: false, idempotent: true)
+    }
+
     func call<T: Decodable>(_ method: HTTPMethod, _ path: String, body: Data?, signed: Bool, idempotent: Bool) async throws -> T {
+        let data = try await callData(method, path, body: body, signed: signed, idempotent: idempotent)
+        return try Self.decoder.decode(T.self, from: data.isEmpty ? Data("{}".utf8) : data)
+    }
+
+    func callData(_ method: HTTPMethod, _ path: String, body: Data?, signed: Bool, idempotent: Bool) async throws -> Data {
         var attempt = 0
         var refreshed = false
         while true {
@@ -138,9 +148,7 @@ public struct APIClient: Sendable {
                 }
                 throw OfflineError()
             }
-            if (200..<300).contains(response.statusCode) {
-                return try Self.decoder.decode(T.self, from: data.isEmpty ? Data("{}".utf8) : data)
-            }
+            if (200..<300).contains(response.statusCode) { return data }
             let err = try? Self.decoder.decode(ErrorBody.self, from: data).error
             let retryAfter = response.value(forHTTPHeaderField: "retry-after").flatMap(Int.init) ?? err?.retryAfterSeconds
             if response.statusCode == 401, !refreshed, let code = err?.code, code == "invalid_token" || code == "missing_token" {

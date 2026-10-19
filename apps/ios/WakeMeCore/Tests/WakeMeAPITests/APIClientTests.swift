@@ -109,4 +109,43 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(decoded.displayName, "A")
         XCTAssertEqual(String(data: try XCTUnwrap(t.requests.first?.httpBody), encoding: .utf8), #"{"pausedUntil":null}"#)
     }
+
+    func testOwnRoutineTermsOmitTheOwnerAndAreNotRetried() async throws {
+        let t = FakeTransport([(503, #"{"error":{"code":"unavailable","message":"Try later."}}"#, [:])])
+        let api = WakeMeAPI(client: client(t))
+        let terms = WakeMeAPI.PlanTerms(label: "Class", localTime: "07:00", timeZone: "Europe/London", timeZonePolicy: "fixed", recurrence: .weekly([1, 2, 3, 4, 5]), soundId: "bundled:rise.gentle", ringSeconds: 90)
+        do {
+            _ = try await api.createPlan(terms)
+            XCTFail("expected an error")
+        } catch let e as APIError {
+            XCTAssertEqual(e.code, "unavailable")
+        }
+        XCTAssertEqual(t.requests.count, 1, "a lost response must not create a second routine")
+        let r = t.requests[0]
+        XCTAssertEqual(r.httpMethod, "POST")
+        XCTAssertEqual(r.url?.path, "/v1/alarm-plans")
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(r.httpBody)) as? [String: Any])
+        XCTAssertNil(json["ownerId"], "own routine: no owner key at all (the server rejects null)")
+        XCTAssertNil(json["followUpDelaySeconds"])
+        XCTAssertEqual(json["localTime"] as? String, "07:00")
+        XCTAssertEqual((json["recurrence"] as? [String: Any])?["kind"] as? String, "weekly")
+        XCTAssertEqual(Set(json.keys), ["label", "localTime", "timeZone", "timeZonePolicy", "recurrence", "soundId", "ringSeconds"])
+    }
+
+    func testExportReturnsTheBodyAsSentAndDeletionSurfacesReauth() async throws {
+        let export = #"{"format":"wakeme-export-v1","profile":{"displayName":"Sam"}}"#
+        let t = FakeTransport([(200, export, [:]), (401, #"{"error":{"code":"reauth_required","message":"For your safety, sign in again to confirm this change."}}"#, [:])])
+        let api = WakeMeAPI(client: client(t))
+        let data = try await api.exportAccount()
+        XCTAssertEqual(String(decoding: data, as: UTF8.self), export)
+        do {
+            _ = try await api.deleteAccount()
+            XCTFail("expected reauth_required")
+        } catch let e as APIError {
+            XCTAssertEqual(e.code, "reauth_required")
+        }
+        XCTAssertEqual(t.requests.last?.httpMethod, "DELETE")
+        XCTAssertEqual(t.requests.last?.url?.path, "/v1/account")
+        XCTAssertEqual(t.requests.count, 2, "reauth_required is not a token refresh")
+    }
 }

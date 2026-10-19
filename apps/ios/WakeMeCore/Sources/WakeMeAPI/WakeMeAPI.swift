@@ -40,6 +40,14 @@ public struct WakeMeAPI: Sendable {
         return try await client.patch("/v1/me", body: Pause(until: until.map(Instant.format)))
     }
 
+    public struct DeletionDTO: Decodable, Sendable { public var deletionScheduledFor: String }
+    /// Deactivates now and deletes after the grace period. Needs a sign-in within the last
+    /// 15 minutes (error code `reauth_required` otherwise).
+    public func deleteAccount() async throws -> DeletionDTO { try await client.delete("/v1/account") }
+    public func cancelDeletion() async throws -> MeDTO { try await client.post("/v1/account/deletion/cancel", body: Optional<Empty>.none) }
+    /// The person's own data as JSON, exactly as the server sent it.
+    public func exportAccount() async throws -> Data { try await client.getData("/v1/account/export") }
+
     public func devices() async throws -> [DeviceDTO] { try await client.get("/v1/devices", as: DevicesDTO.self).devices }
 
     public struct DeviceCapabilities: Encodable, Sendable {
@@ -136,6 +144,35 @@ public struct WakeMeAPI: Sendable {
     struct Paused: Encodable { let paused: Bool }
     public func pausePlan(_ id: String, paused: Bool) async throws -> PlanDTO { try await client.post("/v1/alarm-plans/\(id)/pause", body: Paused(paused: paused)) }
     public func cancelPlan(_ id: String) async throws -> PlanDTO { try await client.delete("/v1/alarm-plans/\(id)") }
+
+    /// Terms of a routine. Without `ownerId` it is the caller's own routine and is active at once;
+    /// with a friend's `ownerId` it is a suggestion they accept or decline.
+    public struct PlanTerms: Encodable, Sendable, Equatable {
+        public var ownerId: String?
+        public var label: String
+        public var localTime: String
+        public var timeZone: String
+        public var timeZonePolicy: String
+        public var recurrence: Recurrence
+        public var soundId: String
+        public var ringSeconds: Int
+        public var challengeRevisionId: String?
+        public var followUpDelaySeconds: Int?
+        public init(ownerId: String? = nil, label: String, localTime: String, timeZone: String, timeZonePolicy: String, recurrence: Recurrence, soundId: String, ringSeconds: Int, challengeRevisionId: String? = nil, followUpDelaySeconds: Int? = nil) {
+            self.ownerId = ownerId
+            self.label = label
+            self.localTime = localTime
+            self.timeZone = timeZone
+            self.timeZonePolicy = timeZonePolicy
+            self.recurrence = recurrence
+            self.soundId = soundId
+            self.ringSeconds = ringSeconds
+            self.challengeRevisionId = challengeRevisionId
+            self.followUpDelaySeconds = followUpDelaySeconds
+        }
+    }
+    /// Not retried automatically: a lost response must not create a second routine.
+    public func createPlan(_ terms: PlanTerms) async throws -> PlanDTO { try await client.post("/v1/alarm-plans", body: terms) }
 
     public struct InstallationReceipt: Encodable, Sendable {
         public var version: Int
