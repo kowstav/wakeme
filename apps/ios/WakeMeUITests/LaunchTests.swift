@@ -230,7 +230,9 @@ final class LaunchTests: XCTestCase {
         // tried and published like any draft.
         app.buttons["Edit Thursday quiz"].tap()
         try must(app.navigationBars["Edit challenge"].waitForExistence(timeout: 15), "the editor opens")
-        try must((quizField("quizWrong").value as? String) == "Brunch, Pasta night", "the form starts from version 1")
+        // Choices were shuffled when published, so the wrong options may come back in either order.
+        let wrongBack = Set(((quizField("quizWrong").value as? String) ?? "").components(separatedBy: ", "))
+        try must(wrongBack == ["Brunch", "Pasta night"], "the form starts from version 1 (got \(wrongBack))")
         app.buttons["Add another"].tap()
         for (id, text) in [("quizQuestion", "Who forgets the keys?"), ("quizAnswer", "Sam")] {
             let field = app.descendants(matching: .any).matching(identifier: id).element(boundBy: 1)

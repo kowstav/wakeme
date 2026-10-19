@@ -124,7 +124,8 @@ class JourneyTest {
         waitInList("Ready to use · version 1")
         tap("Edit")
         waitFor("Edit challenge", timeout = 30_000)
-        waitFor("Blue door, Bean there") // the form starts from version 1
+        // The form starts from version 1; choices were shuffled when published, so either order.
+        compose.waitUntil(20_000) { found("Blue door, Bean there") || found("Bean there, Blue door") }
         tap("Add another question")
         type("Question 2", "Who forgets the keys?")
         compose.onAllNodes(hasText("Your answer"))[1].run { runCatching { performScrollTo() }; performTextInput("Sam") }
