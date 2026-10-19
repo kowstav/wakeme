@@ -109,7 +109,7 @@ fun FriendsScreen(onOpen: (String) -> Unit, vm: FriendsViewModel = hiltViewModel
         AlertDialog(
             onDismissRequest = vm::dismissMessage,
             title = { Text("Share your invite") },
-            text = { Text("Link: ${inv.url}\n\nIf the link doesn't open the app, they can type this code: ${inv.code}\n\nIt works once and expires soon. Opening it gives you no permissions.") },
+            text = { Text("Link: ${inv.url}\n\nIf the link doesn't open the app, they can type this code: ${inv.code}\n\nIt works once and expires soon. Accepting makes you friends and nothing more: each of you chooses what the other can do.") },
             confirmButton = {
                 TextButton(onClick = {
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "Let's wake each other up on Wake Me: ${inv.url} (code ${inv.code})"), "Share invite"))

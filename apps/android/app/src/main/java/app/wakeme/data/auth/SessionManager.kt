@@ -109,12 +109,13 @@ class SessionManager @Inject constructor(private val http: OkHttpClient, private
         }
     }
 
+    /** Signs out this phone only (`scope=local`); the person's other phones stay signed in. */
     suspend fun signOut() {
         val token = access
         if (token != null && AppConfig.supabaseConfigured) {
             runCatching {
                 http.newCall(
-                    Request.Builder().url(AppConfig.supabaseUrl + "/auth/v1/logout").header("apikey", AppConfig.supabaseAnonKey)
+                    Request.Builder().url(AppConfig.supabaseUrl + "/auth/v1/logout?scope=local").header("apikey", AppConfig.supabaseAnonKey)
                         .header("authorization", "Bearer $token").post(ByteArray(0).toRequestBody(null)).build(),
                 ).await().close()
             }

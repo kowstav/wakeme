@@ -1,28 +1,35 @@
 package app.wakeme
 
-import android.graphics.Bitmap
 import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
-import java.io.File
+import java.io.FileInputStream
 
 /**
- * Writes screenshots and observations to the app's external files dir, which
- * CI pulls as evidence (`/sdcard/Android/data/<pkg>/files/evidence`). Results
- * from an emulator are not device evidence; they show the code path runs.
+ * Screenshots and observations that CI collects as evidence. Screenshots are taken by the
+ * shell user into /data/local/tmp (adb cannot read app storage on Android 11+); observations
+ * go to logcat under the WakeMeEvidence tag. Results from an emulator are not device evidence;
+ * they show the code path runs.
  */
 object DeviceEvidence {
-    private val dir: File by lazy {
-        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        File(ctx.getExternalFilesDir(null), "evidence").apply { mkdirs() }
-    }
+    private const val DIR = "/data/local/tmp/wakeme-evidence"
+    private var dirReady = false
 
     fun screenshot(name: String) {
-        val bmp = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot() ?: return
-        File(dir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        if (!dirReady) {
+            shell("mkdir -p $DIR")
+            dirReady = true
+        }
+        shell("screencap -p $DIR/$name.png")
     }
 
     fun note(name: String, text: String) {
         Log.i("WakeMeEvidence", "$name: $text")
-        File(dir, "$name.txt").writeText(text + "\n")
+    }
+
+    /** Runs as the shell user; reading the output to the end waits for the command to finish. */
+    private fun shell(command: String) {
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command).use { pfd ->
+            FileInputStream(pfd.fileDescriptor).use { it.readBytes() }
+        }
     }
 }

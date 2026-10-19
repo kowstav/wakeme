@@ -1,8 +1,8 @@
-# Runs the Android app on an Android 17 (API 37) emulator on a KVM-enabled
-# GitHub-hosted Linux runner: installs the debug APK, runs the instrumented
-# tests, cold-launches the app, and keeps screenshots, logcat and the alarm
-# audio observations as an artifact. Emulator results are not device
-# evidence (doc 04 Stage 0 still needs real phones).
+# Runs the Android app on Android 17 (API 37) and Android 16 (API 36) emulators
+# on KVM-enabled GitHub-hosted Linux runners: installs the debug APK, runs the
+# instrumented tests and a journey against the local dev backend, cold-launches
+# the app, and keeps screenshots, logcat and the alarm audio observations.
+# Emulator results are not device evidence (doc 04 Stage 0 needs real phones).
 name: android-device
 
 on:
@@ -12,6 +12,7 @@ on:
     paths:
       - apps/android/**
       - packages/policy-fixtures/**
+      - services/api/src/entrypoints/dev.ts
       - .github/workflows/android-device.yml
 
 permissions:
@@ -22,14 +23,27 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SYSTEM_IMAGE: system-images;android-37.0;google_apis;x86_64
   APP_ID: app.wakeme.android.debug
 
 jobs:
   emulator:
-    name: Android 17 emulator (instrumented tests, launch, screenshots)
+    name: Android ${{ matrix.release }} emulator (API ${{ matrix.api }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Android 17 is the target; its CI image crash-looped system_server in earlier runs,
+          # so Android 16 also runs to verify the app itself on a stable image.
+          - api: 37
+            release: 17
+            image: system-images;android-37.0;google_apis;x86_64
+          - api: 36
+            release: 16
+            image: system-images;android-36;google_apis;x86_64
+    env:
+      SYSTEM_IMAGE: ${{ matrix.image }}
     defaults:
       run:
         working-directory: apps/android
@@ -62,6 +76,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build app and test APKs
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+      - name: Start the local dev backend (embedded database) for the journey test
+        working-directory: .
+        run: |
+          npm ci --no-audit --no-fund
+          (cd services/api && nohup npm run dev > "$RUNNER_TEMP/dev-backend.log" 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/healthz > /dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:8787/healthz || { tail -n 40 "$RUNNER_TEMP/dev-backend.log"; exit 1; }
       - name: Start emulator
         id: boot
         timeout-minutes: 15
@@ -82,7 +106,7 @@ jobs:
           sleep 20 # let QEMU start before checking that its process is alive
           booted=0
           for i in $(seq 1 120); do
-            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then booted=1; break; fi
+            if [ "$(timeout 10 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then booted=1; break; fi
             if ! pgrep -f "qemu-system" > /dev/null; then echo "emulator process exited"; break; fi
             sleep 5
           done
@@ -91,13 +115,14 @@ jobs:
           fi
           adb shell getprop ro.build.version.release
           adb shell getprop ro.build.version.sdk
+          echo "--- crash buffer after boot ---"; timeout 20 adb logcat -b crash -d | head -120 || true
           # boot_completed comes before the package and activity services answer reliably
           # (the last run's install hit "Can't find service: activity").
           ready=0
           for i in $(seq 1 60); do
-            if adb shell service check package 2>/dev/null | grep -q ": found" \
-              && adb shell service check activity 2>/dev/null | grep -q ": found" \
-              && adb shell pm path android > /dev/null 2>&1; then ready=1; echo "system services answer after $((i * 5))s"; break; fi
+            if timeout 10 adb shell service check package 2>/dev/null | grep -q ": found" \
+              && timeout 10 adb shell service check activity 2>/dev/null | grep -q ": found" \
+              && timeout 10 adb shell pm path android > /dev/null 2>&1; then ready=1; echo "system services answer after $((i * 5))s"; break; fi
             sleep 5
           done
           [ "$ready" = 1 ] || { echo "system services never answered"; exit 1; }
@@ -120,7 +145,7 @@ jobs:
           adb logcat -c
       - name: Instrumented tests
         run: |
-          adb shell am instrument -w -r "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
+          adb shell am instrument -w -r -e notClass app.wakeme.JourneyTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
       - name: Cold launch and screenshot
         if: always() && steps.boot.outcome == 'success'
@@ -136,19 +161,32 @@ jobs:
           adb exec-out screencap -p > "$RUNNER_TEMP/evidence/12-large-font.png"
           adb shell settings put system font_scale 1.0
           adb shell pidof "$APP_ID" && echo "process alive after launch"
+      - name: Journey on the dev backend (self-setup, invite, permissions, wake-up)
+        if: always() && steps.boot.outcome == 'success'
+        run: |
+          # A fresh install state, with the permissions a person grants during onboarding.
+          adb shell pm clear "$APP_ID"
+          adb shell pm grant "$APP_ID" android.permission.POST_NOTIFICATIONS
+          adb shell appops set "$APP_ID" SCHEDULE_EXACT_ALARM allow
+          adb shell am instrument -w -r -e class app.wakeme.JourneyTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/journey.txt"
+          grep -q "^OK (" "$RUNNER_TEMP/evidence/journey.txt"
       - name: Collect evidence
         if: always()
         run: |
           mkdir -p "$RUNNER_TEMP/evidence"
-          cp "$RUNNER_TEMP/emulator.log" "$RUNNER_TEMP/evidence/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/emulator.log" "$RUNNER_TEMP/dev-backend.log" "$RUNNER_TEMP/evidence/" 2>/dev/null || true
           # adb waits forever for a device; only talk to it when one is attached.
           if timeout 10 adb get-state 2>/dev/null | grep -q device; then
-            timeout 60 adb pull "/sdcard/Android/data/$APP_ID/files/evidence/." "$RUNNER_TEMP/evidence/" || true
+            timeout 60 adb pull /data/local/tmp/wakeme-evidence/. "$RUNNER_TEMP/evidence/" || true
             timeout 60 adb logcat -d > "$RUNNER_TEMP/evidence/logcat.txt" || true
           else
             echo "no emulator attached"; touch "$RUNNER_TEMP/evidence/logcat.txt"
           fi
-          echo "--- observations ---"; cat "$RUNNER_TEMP"/evidence/*.txt 2>/dev/null | grep -E "started=|TotalTime|^OK|FAILURES|Tests run" || true
+          echo "--- observations ---"
+          grep -h "WakeMeEvidence" "$RUNNER_TEMP/evidence/logcat.txt" || true
+          cat "$RUNNER_TEMP"/evidence/instrumentation.txt "$RUNNER_TEMP"/evidence/journey.txt "$RUNNER_TEMP"/evidence/cold-start.txt 2>/dev/null | grep -E "TotalTime|^OK|FAILURES|Tests run|INSTRUMENTATION_STATUS: test=|INSTRUMENTATION_STATUS_CODE" || true
+          echo "--- test failures ---"; grep -h -A20 "stack=" "$RUNNER_TEMP"/evidence/instrumentation.txt "$RUNNER_TEMP"/evidence/journey.txt 2>/dev/null | head -80 || true
+          echo "--- crash buffer ---"; timeout 20 adb logcat -b crash -d 2>/dev/null | head -150 || true
           echo "--- crashes ---"; grep -E "FATAL EXCEPTION|AndroidRuntime: Process: $APP_ID" -A12 "$RUNNER_TEMP/evidence/logcat.txt" || echo "no app crash in logcat"
           echo "--- system process ---"; grep -E "FATAL EXCEPTION IN SYSTEM PROCESS|WATCHDOG|Watchdog: |system_server.*(died|crash)|lowmemorykiller|Low on memory" -A6 "$RUNNER_TEMP/evidence/logcat.txt" | head -80 || true
           ls -la "$RUNNER_TEMP/evidence"
@@ -159,7 +197,7 @@ jobs:
             [ -f "$f" ] || continue
             n=$(basename "$f" .png)
             convert "$f" -resize 360x "$RUNNER_TEMP/$n.small.png" 2>/dev/null || cp "$f" "$RUNNER_TEMP/$n.small.png"
-            echo "=====BEGIN SCREENSHOT $n====="; base64 -w 100 "$RUNNER_TEMP/$n.small.png"; echo "=====END SCREENSHOT $n====="
+            echo "=====BEGIN SCREENSHOT $n====="; base64 -w 0 "$RUNNER_TEMP/$n.small.png"; echo; echo "=====END SCREENSHOT $n====="
           done
       - name: Fail on a Wake Me crash (system-app crashes on the emulator are reported, not failed on)
         run: '! grep -A1 "FATAL EXCEPTION" "$RUNNER_TEMP/evidence/logcat.txt" | grep -q "Process: $APP_ID"'
@@ -167,5 +205,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: android-emulator-evidence
+          name: android-emulator-evidence-api${{ matrix.api }}
           path: ${{ runner.temp }}/evidence
