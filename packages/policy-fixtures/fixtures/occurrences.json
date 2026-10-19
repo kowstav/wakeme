@@ -1,0 +1,80 @@
+{
+  "suite": "occurrences",
+  "schemaVersion": 1,
+  "description": "Next alarm occurrences strictly after `after`. DST gap: shift later by the gap length. DST fold: earlier instant. Matches java.time ZonedDateTime.of and Foundation Calendar(.nextTimePreservingSmallerComponents, .first). Hand-computed.",
+  "cases": [
+    {
+      "name": "weekday alarm in EDT",
+      "rule": { "localTime": "07:00", "timeZone": "America/New_York", "recurrence": { "kind": "weekly", "days": [1, 2, 3, 4, 5] } },
+      "after": "2026-10-18T12:00:00Z",
+      "count": 3,
+      "expected": [
+        { "localDate": "2026-10-19", "instant": "2026-10-19T11:00:00Z" },
+        { "localDate": "2026-10-20", "instant": "2026-10-20T11:00:00Z" },
+        { "localDate": "2026-10-21", "instant": "2026-10-21T11:00:00Z" }
+      ]
+    },
+    {
+      "name": "daily alarm across fall-back keeps wall time",
+      "rule": { "localTime": "07:00", "timeZone": "America/New_York", "recurrence": { "kind": "weekly", "days": [1, 2, 3, 4, 5, 6, 7] } },
+      "after": "2026-10-31T12:00:00Z",
+      "count": 2,
+      "expected": [
+        { "localDate": "2026-11-01", "instant": "2026-11-01T12:00:00Z" },
+        { "localDate": "2026-11-02", "instant": "2026-11-02T12:00:00Z" }
+      ]
+    },
+    {
+      "name": "fold uses earlier instant",
+      "rule": { "localTime": "01:30", "timeZone": "America/New_York", "recurrence": { "kind": "once", "date": "2026-11-01" } },
+      "after": "2026-10-31T00:00:00Z",
+      "count": 1,
+      "expected": [{ "localDate": "2026-11-01", "instant": "2026-11-01T05:30:00Z" }]
+    },
+    {
+      "name": "gap shifts later by gap length (US)",
+      "rule": { "localTime": "02:30", "timeZone": "America/New_York", "recurrence": { "kind": "once", "date": "2027-03-14" } },
+      "after": "2027-03-01T00:00:00Z",
+      "count": 1,
+      "expected": [{ "localDate": "2027-03-14", "instant": "2027-03-14T07:30:00Z" }]
+    },
+    {
+      "name": "gap shifts later by gap length (UK)",
+      "rule": { "localTime": "01:15", "timeZone": "Europe/London", "recurrence": { "kind": "once", "date": "2027-03-28" } },
+      "after": "2027-03-01T00:00:00Z",
+      "count": 1,
+      "expected": [{ "localDate": "2027-03-28", "instant": "2027-03-28T01:15:00Z" }]
+    },
+    {
+      "name": "strictly after an occurrence instant",
+      "rule": { "localTime": "07:00", "timeZone": "America/New_York", "recurrence": { "kind": "weekly", "days": [1] } },
+      "after": "2026-10-19T11:00:00Z",
+      "count": 1,
+      "expected": [{ "localDate": "2026-10-26", "instant": "2026-10-26T11:00:00Z" }]
+    },
+    {
+      "name": "one-off alarm in the past yields nothing",
+      "rule": { "localTime": "07:00", "timeZone": "America/New_York", "recurrence": { "kind": "once", "date": "2026-10-01" } },
+      "after": "2026-10-18T12:00:00Z",
+      "count": 1,
+      "expected": []
+    },
+    {
+      "name": "weekend alarm in a half-hour zone",
+      "rule": { "localTime": "09:30", "timeZone": "Asia/Kolkata", "recurrence": { "kind": "weekly", "days": [6, 7] } },
+      "after": "2026-10-19T00:00:00Z",
+      "count": 2,
+      "expected": [
+        { "localDate": "2026-10-24", "instant": "2026-10-24T04:00:00Z" },
+        { "localDate": "2026-10-25", "instant": "2026-10-25T04:00:00Z" }
+      ]
+    },
+    {
+      "name": "southern hemisphere daylight time",
+      "rule": { "localTime": "06:00", "timeZone": "Australia/Sydney", "recurrence": { "kind": "weekly", "days": [1] } },
+      "after": "2026-10-18T00:00:00Z",
+      "count": 1,
+      "expected": [{ "localDate": "2026-10-19", "instant": "2026-10-18T19:00:00Z" }]
+    }
+  ]
+}

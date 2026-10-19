@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release: HTTPS only with system trust. No user-added CAs, no custom trust
+     managers, no certificate pinning until a pin-rotation plan exists. The
+     debug build overrides this file to reach the local dev backend. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

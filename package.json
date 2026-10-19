@@ -1,0 +1,26 @@
+{
+  "name": "wakeme",
+  "private": true,
+  "type": "module",
+  "description": "Wake Me monorepo: shared contracts, policy engine, challenge engine and backend services.",
+  "workspaces": [
+    "packages/policy",
+    "packages/challenges",
+    "services/api"
+  ],
+  "engines": {
+    "node": ">=24.11.0 <25"
+  },
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "generate:openapi": "npm run openapi --workspace @wakeme/api",
+    "generate:tokens": "node packages/design-tokens/generate.ts",
+    "generate:sounds": "node packages/sounds/generate.ts",
+    "check:generated": "node packages/design-tokens/generate.ts --check && node services/api/src/entrypoints/openapi.ts --check"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2"
+  }
+}

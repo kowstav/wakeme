@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="wm_surface">#FBF8F1</color>
+    <color name="wm_accent">#F2B705</color>
+    <color name="ic_launcher_background">#F2B705</color>
+    <style name="Theme.WakeMe" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/wm_surface</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

@@ -1,0 +1,48 @@
+{
+  "sampleRate": 22050,
+  "format": "wav-pcm16-mono",
+  "sounds": [
+    {
+      "id": "bundled:quack.classic",
+      "file": "quack_classic.wav",
+      "bytes": 35324,
+      "durationMs": 800,
+      "sha256": "1ade1749050f11e5e58a585cde6e55674f814763c1d559f211c5af8685e2b609"
+    },
+    {
+      "id": "bundled:quack.double",
+      "file": "quack_double.wav",
+      "bytes": 70604,
+      "durationMs": 1600,
+      "sha256": "9f21f8535e75d2252301217e2d7bf6fdab6a67082738471e82e780c99d1b8b38"
+    },
+    {
+      "id": "bundled:chime.soft",
+      "file": "chime_soft.wav",
+      "bytes": 114704,
+      "durationMs": 2600,
+      "sha256": "09021560329343a6fcfad6f872b98ac93354d66399e9af8b0696cd2228f10c37"
+    },
+    {
+      "id": "bundled:bell.bright",
+      "file": "bell_bright.wav",
+      "bytes": 882044,
+      "durationMs": 20000,
+      "sha256": "f50e5f89e6daf8b98122f08ee0bfe491169a5a30b1d8cc62f361c8648385acfa"
+    },
+    {
+      "id": "bundled:rise.gentle",
+      "file": "rise_gentle.wav",
+      "bytes": 882044,
+      "durationMs": 20000,
+      "sha256": "f8c2dfdfa72704940bcfdf46b992b35cd02179239d8afa4667231a4523979175"
+    },
+    {
+      "id": "bundled:pulse.wake",
+      "file": "pulse_wake.wav",
+      "bytes": 882044,
+      "durationMs": 20000,
+      "sha256": "1341f126c46617bbb836c448794c11a7062b5e85c5eb169f24c8620da0a63a1c"
+    }
+  ]
+}

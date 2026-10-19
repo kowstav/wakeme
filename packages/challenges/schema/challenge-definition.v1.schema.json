@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.wakeme.app/challenge-definition/v1.json",
+  "title": "Wake Me ChallengeDefinition v1",
+  "description": "Declarative, bounded challenge data rendered by native components. Contains no executable code. Every challenge is finite and has an accessible fallback; the safe escape lives in the app and cannot be disabled by this schema. Integers only (no floats) so signed payloads canonicalize identically on every platform.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "title", "kind", "difficulty", "maxDurationSeconds", "steps", "verification", "fallback", "permissionsRequired"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "title": { "$ref": "#/$defs/shortText", "type": "string", "maxLength": 60 },
+    "kind": { "const": "sequence" },
+    "difficulty": { "enum": ["easy", "medium", "hard"] },
+    "maxDurationSeconds": { "type": "integer", "minimum": 10, "maximum": 900 },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "verification": {
+      "description": "Derived: local_deterministic when every step can be checked on the device; self_report when any step relies on the user's own confirmation.",
+      "enum": ["local_deterministic", "self_report"]
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "accessible_checkin" },
+        "prompt": { "$ref": "#/$defs/shortText", "type": "string", "maxLength": 120 }
+      }
+    },
+    "permissionsRequired": {
+      "description": "Derived from the steps; must match exactly. Only the camera is ever needed (QR scanning), and QR steps always accept a typed code instead.",
+      "type": "array",
+      "maxItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["camera"] }
+    }
+  },
+  "$defs": {
+    "shortText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]{1,24}$"
+    },
+    "source": {
+      "enum": ["creator_provided", "template", "generated_deterministic"]
+    },
+    "step": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["multiple_choice", "short_answer", "math", "memory_order", "chess", "timer", "qr_code", "self_attested"] }
+      },
+      "discriminator": { "propertyName": "type" },
+      "oneOf": [
+        { "$ref": "#/$defs/multipleChoice" },
+        { "$ref": "#/$defs/shortAnswer" },
+        { "$ref": "#/$defs/math" },
+        { "$ref": "#/$defs/memoryOrder" },
+        { "$ref": "#/$defs/chess" },
+        { "$ref": "#/$defs/timer" },
+        { "$ref": "#/$defs/qrCode" },
+        { "$ref": "#/$defs/selfAttested" }
+      ]
+    },
+    "multipleChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "prompt", "options", "correctIndex", "source"],
+      "properties": {
+        "type": { "const": "multiple_choice" },
+        "id": { "$ref": "#/$defs/stepId" },
+        "prompt": { "$ref": "#/$defs/shortText" },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/shortText", "type": "string", "maxLength": 80 }
+        },
+        "correctIndex": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "source": { "$ref": "#/$defs/source" },
+        "factId": { "$ref": "#/$defs/stepId" }
+      }
+    },
+    "shortAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "prompt", "acceptedAnswers", "source"],
+      "properties": {
+        "type": { "const": "short_answer" },
+        "id": { "$ref": "#/$defs/stepId" },
+        "prompt": { "$ref": "#/$defs/shortText" },
+        "acceptedAnswers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/shortText", "type": "string", "maxLength": 60 }
+        },
+        "source": { "$ref": "#/$defs/source" },
+        "factId": { "$ref": "#/$defs/stepId" }
+      }
+    },
+    "math": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "operands", "operator", "answer"],
+      "properties": {
+        "type": { "const": "math" },
+        "id": { "$ref": "#/$defs/stepId" },
+        "operands": {
+          "description": "Evaluated left to right with the single operator.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": { "type": "integer", "minimum": -9999, "maximum": 9999 }
+        },
+        "operator": { "enum": ["+", "-", "*", "/"] },
+        "answer": { "type": "integer", "minimum": -99999999, "maximum": 99999999 }
+      }
+    },
+    "memoryOrder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "prompt", "items", "displaySeconds"],
+      "properties": {
+        "type": { "const": "memory_order" },
+        "id": { "$ref": "#/$defs/stepId" },
+        "prompt": { "$ref": "#/$defs/shortText" },
+        "items": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/shortText", "type": "string", "maxLength": 40 }
+        },
+        "displaySeconds": { "type": "integer", "minimum": 3, "maximum": 15 }
+      }
+    },
+    "chess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "prompt", "fen", "solutions", "goal"],
+      "properties": {
+        "type": { "const": "chess" },
+        "id": { "$ref": "#/$defs/stepId" },
+        "prompt": { "$ref": "#/$defs/shortText" },
+        "fen": { "type": "string", "minLength": 15, "maxLength": 100, "pattern": "^[KQRBNPkqrbnp1-8/]+ [wb] (-|[KQkq]{1,4}) (-|[a-h][36]) \\d{1,3} \\d{1,4}$" },
+        "solutions": {
+          "description": "Complete set of accepted UCI moves; verified server-side to be exactly the mating moves.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-h][1-8][a-h][1-8][qrbn]?$" }
+        },
+        "goal": { "const": "mate_in_1" },
+        "puzzleId": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" }
+      }
+    },
+    "timer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "prompt", "seconds", "activity"],
+      "properties": {
+        "type": { "const": "timer" },
+        "id": { "$ref": "#/$defs/stepId" },
+        "prompt": { "$ref": "#/$defs/shortText" },
+        "seconds": { "type": "integer", "minimum": 10, "maximum": 600 },
+        "activity": { "enum": ["practice", "rest", "reading", "stretch", "other"] }
+      }
+    },
+    "qrCode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "prompt", "codeHash"],
+      "properties": {
+        "type": { "const": "qr_code" },
+        "id": { "$ref": "#/$defs/stepId" },
+        "prompt": { "$ref": "#/$defs/shortText" },
+        "codeHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "selfAttested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "prompt", "items", "category"],
+      "properties": {
+        "type": { "const": "self_attested" },
+        "id": { "$ref": "#/$defs/stepId" },
+        "prompt": { "$ref": "#/$defs/shortText" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/shortText", "type": "string", "maxLength": 80 }
+        },
+        "category": { "enum": ["general", "movement", "hygiene", "practice"] },
+        "alternative": {
+          "description": "Required for movement: an equivalent low-demand option (e.g. seated).",
+          "$ref": "#/$defs/shortText",
+          "type": "string",
+          "maxLength": 120
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "suite": "local-execution",
+  "schemaVersion": 1,
+  "description": "Recipient-device re-validation of an incoming remote command against the locally cached grant. Each case deep-merges `override` into `base` (objects merge recursively; arrays and scalars replace; null replaces). Clock-skew tolerance is 30 seconds for expiry and window edges.",
+  "base": {
+    "now": "2026-10-19T14:00:00Z",
+    "timeZone": "America/New_York",
+    "alreadyProcessed": false,
+    "settings": {
+      "quietHours": { "enabled": true, "start": "22:00", "end": "07:00" },
+      "pausedUntil": null,
+      "soundBudgetPerHour": 6
+    },
+    "localGrant": {
+      "id": "grant_1",
+      "grantorId": "u_recipient",
+      "granteeId": "u_friend",
+      "version": 3,
+      "capabilities": ["nudge.send", "alarm.request", "safety.checkin.request"],
+      "limits": {
+        "nudge": {
+          "maxPerHour": 3,
+          "windows": [{ "days": [1, 2, 3, 4, 5, 6, 7], "start": "08:00", "end": "22:00" }],
+          "sounds": ["bundled:quack.classic"],
+          "overridesQuietHours": false
+        },
+        "alarm": {
+          "maxAlarmSeconds": 120,
+          "maxPerDay": 1,
+          "windows": [{ "days": [1, 2, 3, 4, 5], "start": "06:00", "end": "10:00" }],
+          "sounds": ["bundled:rise.gentle"],
+          "followUp": { "allowed": true, "maxDelaySeconds": 300 }
+        },
+        "checkin": { "maxPerDay": 2 }
+      },
+      "validFrom": "2026-10-01T00:00:00Z",
+      "validUntil": "2027-01-01T00:00:00Z",
+      "paused": false,
+      "revokedAt": null
+    },
+    "command": {
+      "id": "cmd_1",
+      "capability": "nudge.send",
+      "actorId": "u_friend",
+      "grantVersion": 3,
+      "expiresAt": "2026-10-19T14:02:00Z",
+      "soundId": "bundled:quack.classic"
+    }
+  },
+  "cases": [
+    { "name": "permitted quack notifies", "override": {}, "expected": { "execute": true, "mode": "notify" } },
+    { "name": "duplicate delivery is ignored", "override": { "alreadyProcessed": true }, "expected": { "execute": false, "reason": "duplicate" } },
+    { "name": "expired nudge is never replayed", "override": { "now": "2026-10-19T14:03:00Z" }, "expected": { "execute": false, "reason": "expired" } },
+    { "name": "expiry within skew tolerance", "override": { "now": "2026-10-19T14:02:20Z" }, "expected": { "execute": true, "mode": "notify" } },
+    { "name": "revoked locally", "override": { "localGrant": { "revokedAt": "2026-10-19T13:59:00Z" } }, "expected": { "execute": false, "reason": "not_authorized_locally" } },
+    { "name": "paused locally", "override": { "localGrant": { "paused": true } }, "expected": { "execute": false, "reason": "not_authorized_locally" } },
+    { "name": "no local grant", "override": { "localGrant": null }, "expected": { "execute": false, "reason": "not_authorized_locally" } },
+    { "name": "local cache older than command grant", "override": { "localGrant": { "version": 2 } }, "expected": { "execute": false, "reason": "needs_sync" } },
+    {
+      "name": "grant edited after dispatch removes the sound",
+      "override": { "localGrant": { "version": 4, "limits": { "nudge": { "sounds": ["bundled:chime.soft"] } } } },
+      "expected": { "execute": false, "reason": "not_authorized_locally" }
+    },
+    { "name": "grant expired", "override": { "localGrant": { "validUntil": "2026-10-19T13:00:00Z" } }, "expected": { "execute": false, "reason": "not_authorized_locally" } },
+    { "name": "different sender", "override": { "command": { "actorId": "u_stranger" } }, "expected": { "execute": false, "reason": "not_authorized_locally" } },
+    { "name": "capability missing", "override": { "command": { "capability": "focus.request" } }, "expected": { "execute": false, "reason": "not_authorized_locally" } },
+    {
+      "name": "outside nudge window",
+      "override": { "now": "2026-10-19T11:00:00Z", "command": { "expiresAt": "2026-10-19T11:02:00Z" } },
+      "expected": { "execute": false, "reason": "outside_allowed_window" }
+    },
+    {
+      "name": "quiet hours block a quack",
+      "override": {
+        "now": "2026-10-20T02:30:00Z",
+        "command": { "expiresAt": "2026-10-20T02:32:00Z" },
+        "localGrant": { "limits": { "nudge": { "windows": [{ "days": [1, 2, 3, 4, 5, 6, 7], "start": "06:00", "end": "23:30" }] } } }
+      },
+      "expected": { "execute": false, "reason": "quiet_hours" }
+    },
+    {
+      "name": "recipient explicitly allows quacks in quiet hours",
+      "override": {
+        "now": "2026-10-20T02:30:00Z",
+        "command": { "expiresAt": "2026-10-20T02:32:00Z" },
+        "localGrant": { "limits": { "nudge": { "overridesQuietHours": true, "windows": [{ "days": [1, 2, 3, 4, 5, 6, 7], "start": "06:00", "end": "23:30" }] } } }
+      },
+      "expected": { "execute": true, "mode": "notify" }
+    },
+    {
+      "name": "wake window overrides quiet hours",
+      "override": {
+        "now": "2026-10-19T10:30:00Z",
+        "command": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 90, "expiresAt": "2026-10-19T10:35:00Z" }
+      },
+      "expected": { "execute": true, "mode": "ring" }
+    },
+    {
+      "name": "ring longer than granted",
+      "override": {
+        "now": "2026-10-19T10:30:00Z",
+        "command": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 200, "expiresAt": "2026-10-19T10:35:00Z" }
+      },
+      "expected": { "execute": false, "reason": "not_authorized_locally" }
+    },
+    {
+      "name": "wake request on Saturday outside window",
+      "override": {
+        "now": "2026-10-24T10:30:00Z",
+        "command": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 90, "expiresAt": "2026-10-24T10:35:00Z" }
+      },
+      "expected": { "execute": false, "reason": "outside_allowed_window" }
+    },
+    {
+      "name": "window end within skew tolerance",
+      "override": {
+        "now": "2026-10-19T14:00:20Z",
+        "command": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 90, "expiresAt": "2026-10-19T14:05:00Z" }
+      },
+      "expected": { "execute": true, "mode": "ring" }
+    },
+    {
+      "name": "window end beyond skew tolerance",
+      "override": {
+        "now": "2026-10-19T14:00:40Z",
+        "command": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 90, "expiresAt": "2026-10-19T14:05:00Z" }
+      },
+      "expected": { "execute": false, "reason": "outside_allowed_window" }
+    },
+    { "name": "recipient paused everything", "override": { "settings": { "pausedUntil": "2026-10-19T18:00:00Z" } }, "expected": { "execute": false, "reason": "recipient_paused" } },
+    {
+      "name": "check-in request during quiet hours is delivered silently",
+      "override": {
+        "now": "2026-10-20T03:00:00Z",
+        "command": { "capability": "safety.checkin.request", "expiresAt": "2026-10-20T04:00:00Z" }
+      },
+      "expected": { "execute": true, "mode": "silent" }
+    }
+  ]
+}

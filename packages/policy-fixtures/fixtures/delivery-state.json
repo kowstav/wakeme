@@ -1,0 +1,115 @@
+{
+  "suite": "delivery-state",
+  "schemaVersion": 1,
+  "description": "Reduce delivery events by precedence (not last-event-wins) and derive the literal sender-facing status. `secondsSinceSent` is now - sentAt; confirmation grace is 60 s.",
+  "cases": [
+    {
+      "name": "provider accepted, recently sent",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_accepted", "seq": 3 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 10, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "unknown", "human": "none", "refusedReason": null }, "display": "sent" }
+    },
+    {
+      "name": "provider accepted is not proof of delivery",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_accepted", "seq": 3 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 120, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "unknown", "human": "none", "refusedReason": null }, "display": "no_confirmation_yet" }
+    },
+    {
+      "name": "opened",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_accepted", "seq": 3 }, { "kind": "received", "seq": 4 }, { "kind": "opened", "seq": 5 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 30, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "received", "human": "opened", "refusedReason": null }, "display": "opened" }
+    },
+    {
+      "name": "device receipt recorded before provider acknowledgement",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "received", "seq": 3 }, { "kind": "provider_accepted", "seq": 4 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 5, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "received", "human": "none", "refusedReason": null }, "display": "phone_received" }
+    },
+    {
+      "name": "provider rejected",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_rejected", "seq": 3 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 5, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_rejected", "device": "unknown", "human": "none", "refusedReason": null }, "display": "not_delivered" }
+    },
+    {
+      "name": "retry after rejection succeeded",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_rejected", "seq": 3 }, { "kind": "provider_accepted", "seq": 4 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 5, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "unknown", "human": "none", "refusedReason": null }, "display": "sent" }
+    },
+    {
+      "name": "no eligible device",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "not_sent", "seq": 3 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 5, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "not_sent", "device": "unknown", "human": "none", "refusedReason": null }, "display": "not_delivered" }
+    },
+    {
+      "name": "expired without evidence",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_accepted", "seq": 3 }, { "kind": "expired", "seq": 4 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 300, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "expired", "transport": "provider_accepted", "device": "unknown", "human": "none", "refusedReason": null }, "display": "expired" }
+    },
+    {
+      "name": "expiry does not erase device evidence",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_accepted", "seq": 3 }, { "kind": "received", "seq": 4 }, { "kind": "expired", "seq": 5 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 300, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "expired", "transport": "provider_accepted", "device": "received", "human": "none", "refusedReason": null }, "display": "phone_received" }
+    },
+    {
+      "name": "alarm started on phone",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_accepted", "seq": 3 }, { "kind": "installed", "seq": 4 }, { "kind": "execution_reported", "seq": 5 }],
+      "options": { "kind": "alarm", "secondsSinceSent": 20, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "execution_reported", "human": "none", "refusedReason": null }, "display": "alarm_started" }
+    },
+    {
+      "name": "alarm scheduled on phone",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_accepted", "seq": 3 }, { "kind": "installed", "seq": 4 }],
+      "options": { "kind": "alarm", "secondsSinceSent": 20, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "installed", "human": "none", "refusedReason": null }, "display": "alarm_scheduled_on_phone" }
+    },
+    {
+      "name": "bypass hidden from helper",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "provider_accepted", "seq": 2 }, { "kind": "execution_reported", "seq": 3 }, { "kind": "bypassed", "seq": 4 }],
+      "options": { "kind": "alarm", "secondsSinceSent": 60, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "execution_reported", "human": "bypassed", "refusedReason": null }, "display": "stopped" }
+    },
+    {
+      "name": "bypass shared with helper",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "provider_accepted", "seq": 2 }, { "kind": "execution_reported", "seq": 3 }, { "kind": "bypassed", "seq": 4 }],
+      "options": { "kind": "alarm", "secondsSinceSent": 60, "shareBypass": true },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "execution_reported", "human": "bypassed", "refusedReason": null }, "display": "ended_without_challenge" }
+    },
+    {
+      "name": "first terminal outcome wins (completed then bypass)",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "provider_accepted", "seq": 2 }, { "kind": "challenge_completed", "seq": 3 }, { "kind": "bypassed", "seq": 4 }],
+      "options": { "kind": "alarm", "secondsSinceSent": 60, "shareBypass": true },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "received", "human": "challenge_completed", "refusedReason": null }, "display": "challenge_completed" }
+    },
+    {
+      "name": "first terminal outcome wins (bypass then completed)",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "provider_accepted", "seq": 2 }, { "kind": "bypassed", "seq": 3 }, { "kind": "challenge_completed", "seq": 4 }],
+      "options": { "kind": "alarm", "secondsSinceSent": 60, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "received", "human": "bypassed", "refusedReason": null }, "display": "stopped" }
+    },
+    {
+      "name": "events out of sequence order are sorted by seq",
+      "events": [{ "kind": "opened", "seq": 5 }, { "kind": "accepted", "seq": 1 }, { "kind": "acknowledged", "seq": 6 }, { "kind": "provider_accepted", "seq": 3 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 60, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "received", "human": "acknowledged", "refusedReason": null }, "display": "acknowledged" }
+    },
+    {
+      "name": "cancelled before dispatch",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "cancelled", "seq": 2 }],
+      "options": { "kind": "nudge", "secondsSinceSent": 5, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "cancelled", "transport": "queued", "device": "unknown", "human": "none", "refusedReason": null }, "display": "cancelled" }
+    },
+    {
+      "name": "refused by recipient phone",
+      "events": [{ "kind": "accepted", "seq": 1 }, { "kind": "queued", "seq": 2 }, { "kind": "provider_accepted", "seq": 3 }, { "kind": "execution_refused", "seq": 4, "reason": "quiet_hours" }],
+      "options": { "kind": "nudge", "secondsSinceSent": 30, "shareBypass": false },
+      "expected": { "state": { "lifecycle": "accepted", "transport": "provider_accepted", "device": "received", "human": "none", "refusedReason": "quiet_hours" }, "display": "not_played" }
+    }
+  ]
+}

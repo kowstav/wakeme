@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wake Me</string>
+    <string name="headline">Alert your friends. Wake each other up.</string>
+    <string name="tagline">From “where are you?” to “we’ve got this.”</string>
+
+    <!-- Tabs -->
+    <string name="tab_friends">Friends</string>
+    <string name="tab_routines">Routines</string>
+    <string name="tab_challenges">Challenges</string>
+    <string name="tab_you">You</string>
+
+    <!-- Notification channels -->
+    <string name="channel_quacks">Quacks from friends</string>
+    <string name="channel_quacks_desc">Short sounds friends you allowed can send.</string>
+    <string name="channel_alarms">Wake-up alarms</string>
+    <string name="channel_alarms_desc">Alarms on this phone, including ones friends help with.</string>
+    <string name="channel_requests">Requests</string>
+    <string name="channel_requests_desc">Focus, check-in and location requests. Nothing is shared unless you choose.</string>
+    <string name="channel_messages">Messages</string>
+    <string name="channel_messages_desc">New messages. The text is never in the notification.</string>
+    <string name="channel_safety">Safety</string>
+    <string name="channel_safety_desc">SOS and missed check-ins from friends.</string>
+    <string name="channel_updates">Routine updates</string>
+    <string name="channel_updates_desc">Proposals, acceptances and outcomes.</string>
+
+    <!-- Push copy (keys match server locKey with dots replaced by underscores). %1$s = friend name, %2$s = minutes, %3$s = circle -->
+    <string name="push_nudge_title">%1$s</string>
+    <string name="push_nudge_body">Quack! 🦆</string>
+    <string name="push_wake_title">%1$s is waking you up</string>
+    <string name="push_wake_body">Open Wake Me to start your wake-up.</string>
+    <string name="push_focus_title">%1$s asks you to focus</string>
+    <string name="push_focus_body">A %2$s-minute focus session. You choose whether to start it.</string>
+    <string name="push_checkin_request_title">%1$s is checking on you</string>
+    <string name="push_checkin_request_body">Let them know you’re OK.</string>
+    <string name="push_location_request_title">%1$s asked where you are</string>
+    <string name="push_location_request_body">Nothing is shared unless you choose to share.</string>
+    <string name="push_outcome_acknowledged_title">%1$s</string>
+    <string name="push_outcome_acknowledged_body">Saw your request 👍</string>
+    <string name="push_outcome_challenge_completed_title">%1$s</string>
+    <string name="push_outcome_challenge_completed_body">Finished the wake-up challenge ☀️</string>
+    <string name="push_outcome_bypassed_title">%1$s</string>
+    <string name="push_outcome_bypassed_body">Ended the wake-up without the challenge.</string>
+    <string name="push_plan_proposed_title">%1$s suggested a wake-up routine</string>
+    <string name="push_plan_proposed_body">Review it. Nothing changes until you accept.</string>
+    <string name="push_plan_accepted_title">%1$s</string>
+    <string name="push_plan_accepted_body">Accepted your wake-up routine.</string>
+    <string name="push_message_direct_title">%1$s</string>
+    <string name="push_message_direct_body">New message</string>
+    <string name="push_message_circle_title">%3$s</string>
+    <string name="push_message_circle_body">New message from %1$s</string>
+    <string name="push_sos_title">SOS from %1$s</string>
+    <string name="push_sos_body">Open Wake Me to see what they shared. Call emergency services if needed.</string>
+    <string name="push_checkin_missed_title">%1$s</string>
+    <string name="push_checkin_missed_body">Hasn’t checked in yet. Try reaching them.</string>
+
+    <!-- Notification actions -->
+    <string name="action_got_it">👍 Got it</string>
+    <string name="action_im_ok">I’m OK</string>
+    <string name="action_open">Open</string>
+
+    <!-- Alarm screen -->
+    <string name="alarm_im_up">I’m up</string>
+    <string name="alarm_start_challenge">Start challenge</string>
+    <string name="alarm_stop_sound">Stop sound now</string>
+    <string name="alarm_end_session">End this wake session</string>
+    <string name="alarm_need_to_stop">I need to stop</string>
+    <string name="alarm_escape_explainer">This always works. It stops the sound and cancels the follow-up.</string>
+    <string name="alarm_followup_note">A follow-up alarm is set for %1$s unless you finish the challenge.</string>
+    <string name="alarm_from_friend">%1$s is helping you wake up</string>
+    <string name="alarm_notification_title">Wake-up alarm</string>
+    <string name="alarm_notification_body">Tap to open. Use Stop to silence it.</string>
+
+    <!-- Delivery status (literal; never stronger than the evidence) -->
+    <string name="status_sending">Sending…</string>
+    <string name="status_sent">Sent</string>
+    <string name="status_no_confirmation_yet">Sent · no confirmation from their phone yet</string>
+    <string name="status_not_delivered">Couldn’t reach their phone</string>
+    <string name="status_phone_received">Their phone received it</string>
+    <string name="status_alarm_scheduled_on_phone">Alarm scheduled on their phone</string>
+    <string name="status_alarm_started">Alarm started on their phone</string>
+    <string name="status_not_played">Their phone didn’t play it (their settings)</string>
+    <string name="status_opened">Opened</string>
+    <string name="status_acknowledged">They saw it 👍</string>
+    <string name="status_challenge_completed">Challenge completed (not proof they’re awake)</string>
+    <string name="status_stopped">Alarm stopped</string>
+    <string name="status_ended_without_challenge">Ended without the challenge</string>
+    <string name="status_expired">Expired before their phone confirmed</string>
+    <string name="status_cancelled">Cancelled</string>
+
+    <!-- Readiness -->
+    <string name="ready_title">Make this phone ready</string>
+    <string name="ready_all_good">Ready for wake-ups on this phone</string>
+    <string name="ready_notifications">Allow notifications so quacks and requests can reach you.</string>
+    <string name="ready_exact_alarm">Allow “Alarms &amp; reminders” so wake-ups ring on time.</string>
+    <string name="ready_full_screen">Allow full-screen alarms so a wake-up can show over the lock screen.</string>
+    <string name="ready_battery">Battery optimisation may delay wake-ups on some phones. You can exempt Wake Me.</string>
+    <string name="ready_test_sound">Test my alarm sound</string>
+    <string name="ready_test_note">Plays here only, at alarm volume, through the speaker when the phone allows it.</string>
+</resources>

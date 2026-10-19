@@ -1,0 +1,53 @@
+# Local integration stack with a real PostgreSQL server (concurrency and
+# SKIP LOCKED behaviour differ from the embedded engine used by default tests).
+#   docker compose -f infra/docker-compose.yml up --build
+# Then run the API tests against it:
+#   TEST_DATABASE_URL=postgres://wakeme:wakeme@localhost:5433/wakeme_test npm test -w @wakeme/api
+# Identity: point AUTH_* at a Supabase project (or `supabase start` locally).
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: wakeme
+      POSTGRES_PASSWORD: wakeme
+      POSTGRES_DB: wakeme
+    ports: ["5433:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wakeme"]
+      interval: 2s
+      retries: 30
+
+  migrate:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    command: ["node", "services/api/src/entrypoints/migrate.ts"]
+    environment:
+      MIGRATION_DATABASE_URL: postgres://wakeme:wakeme@postgres:5432/wakeme
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://wakeme_app:wakeme_app@postgres:5432/wakeme
+      DATABASE_SSL_DISABLED: "true"
+    ports: ["8080:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    command: ["node", "services/api/src/entrypoints/worker.ts"]
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://wakeme_app:wakeme_app@postgres:5432/wakeme
+      DATABASE_SSL_DISABLED: "true"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+volumes:
+  pgdata: {}

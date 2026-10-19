@@ -1,0 +1,107 @@
+# Wake Me CI. Supply-chain policy: before enabling on the real repository,
+# replace every action tag below with its full commit SHA (e.g. with `pinact`)
+# and keep production secrets out of every job here; CI needs none.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (policy, challenges, API on embedded PostgreSQL)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - name: Generated contract and design tokens are up to date (incl. WCAG contrast)
+        run: npm run check:generated
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+  backend-postgres:
+    name: API against server PostgreSQL 17 (row locks, SKIP LOCKED, roles)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: wakeme
+          POSTGRES_PASSWORD: wakeme
+          POSTGRES_DB: wakeme_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U wakeme" --health-interval 2s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test --workspace @wakeme/api
+        env:
+          TEST_DATABASE_URL: postgres://wakeme:wakeme@localhost:5432/wakeme_test
+
+  android:
+    name: Android (unit tests incl. shared fixtures, lint, debug build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.8.1"
+      # The repository has no binary wrapper jar yet; run `gradle wrapper --gradle-version 9.8.1` once on a dev machine and commit it.
+      - run: gradle --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-reports
+          path: |
+            apps/android/**/build/reports
+            apps/android/app/build/outputs/apk/debug/*.apk
+
+  ios:
+    name: iOS (WakeMeCore tests incl. shared fixtures, app build)
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.app || xcodebuild -version
+      - name: WakeMeCore unit tests (policy and challenge parity with server fixtures)
+        run: swift test --package-path WakeMeCore
+      - name: Generate project
+        run: brew install xcodegen && xcodegen generate
+      - name: Build app for simulator (no signing)
+        run: >
+          xcodebuild -project WakeMe.xcodeproj -scheme WakeMe -configuration Debug
+          -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build

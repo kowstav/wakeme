@@ -1,0 +1,37 @@
+{
+  "suite": "challenge-verification",
+  "schemaVersion": 1,
+  "description": "Offline answer verification for each challenge step type. Short answers are normalized: NFKC, strip combining marks after NFD, lowercase, replace Unicode punctuation/symbols with spaces, collapse whitespace, trim. Math responses must be integer strings (optional sign) after trimming. Chess moves are UCI, case-insensitive. QR/manual codes: strip an optional 'WAKEME:' prefix, uppercase, drop non-alphanumerics, then compare SHA-256 hex.",
+  "normalizationCases": [
+    { "input": "  Bean   House!! ", "expected": "bean house" },
+    { "input": "Béan House", "expected": "bean house" },
+    { "input": "Chaos-Curry", "expected": "chaos curry" },
+    { "input": "ＣＨＡＯＳ curry", "expected": "chaos curry" },
+    { "input": "\tLibrary\nLunch.", "expected": "library lunch" },
+    { "input": "Café ☕ HQ", "expected": "cafe hq" }
+  ],
+  "cases": [
+    { "name": "short answer normalized match", "step": { "type": "short_answer", "id": "s1", "prompt": "Which cafe is HQ?", "acceptedAnswers": ["Bean House"], "source": "creator_provided" }, "response": { "text": "  bean   house!! " }, "expected": true },
+    { "name": "short answer diacritics", "step": { "type": "short_answer", "id": "s1", "prompt": "Which cafe is HQ?", "acceptedAnswers": ["Bean House"], "source": "creator_provided" }, "response": { "text": "Béan House" }, "expected": true },
+    { "name": "short answer missing space", "step": { "type": "short_answer", "id": "s1", "prompt": "Which cafe is HQ?", "acceptedAnswers": ["Bean House"], "source": "creator_provided" }, "response": { "text": "beanhouse" }, "expected": false },
+    { "name": "short answer alternate accepted", "step": { "type": "short_answer", "id": "s1", "prompt": "Exam song?", "acceptedAnswers": ["Eye of the Tiger", "eye of tiger"], "source": "creator_provided" }, "response": { "text": "Eye of Tiger" }, "expected": true },
+    { "name": "multiple choice correct", "step": { "type": "multiple_choice", "id": "m1", "prompt": "Thursday dinner?", "options": ["Chaos curry", "Monday brunch", "Library lunch"], "correctIndex": 0, "source": "creator_provided" }, "response": { "index": 0 }, "expected": true },
+    { "name": "multiple choice wrong", "step": { "type": "multiple_choice", "id": "m1", "prompt": "Thursday dinner?", "options": ["Chaos curry", "Monday brunch", "Library lunch"], "correctIndex": 0, "source": "creator_provided" }, "response": { "index": 2 }, "expected": false },
+    { "name": "math correct", "step": { "type": "math", "id": "x1", "operands": [7, 8], "operator": "+", "answer": 15 }, "response": { "text": " 15 " }, "expected": true },
+    { "name": "math leading zero", "step": { "type": "math", "id": "x1", "operands": [7, 8], "operator": "+", "answer": 15 }, "response": { "text": "015" }, "expected": true },
+    { "name": "math decimal rejected", "step": { "type": "math", "id": "x1", "operands": [7, 8], "operator": "+", "answer": 15 }, "response": { "text": "15.0" }, "expected": false },
+    { "name": "math negative", "step": { "type": "math", "id": "x2", "operands": [5, 8], "operator": "-", "answer": -3 }, "response": { "text": "-3" }, "expected": true },
+    { "name": "math three operands left to right", "step": { "type": "math", "id": "x3", "operands": [12, 3, 2], "operator": "*", "answer": 72 }, "response": { "text": "72" }, "expected": true },
+    { "name": "memory order correct", "step": { "type": "memory_order", "id": "o1", "prompt": "Tap in the order shown", "items": ["sun", "kettle", "shoes", "bus"], "displaySeconds": 5 }, "response": { "order": ["sun", "kettle", "shoes", "bus"] }, "expected": true },
+    { "name": "memory order wrong", "step": { "type": "memory_order", "id": "o1", "prompt": "Tap in the order shown", "items": ["sun", "kettle", "shoes", "bus"], "displaySeconds": 5 }, "response": { "order": ["sun", "shoes", "kettle", "bus"] }, "expected": false },
+    { "name": "chess solution", "step": { "type": "chess", "id": "c1", "prompt": "White to mate in one", "fen": "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1", "solutions": ["a1a8"], "goal": "mate_in_1" }, "response": { "move": "A1A8" }, "expected": true },
+    { "name": "chess wrong move", "step": { "type": "chess", "id": "c1", "prompt": "White to mate in one", "fen": "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1", "solutions": ["a1a8"], "goal": "mate_in_1" }, "response": { "move": "a1a7" }, "expected": false },
+    { "name": "qr manual code with separators", "step": { "type": "qr_code", "id": "q1", "prompt": "Scan the code on your kettle", "codeHash": "6cfbe3b43686012f6af84cee093f89e5f28c766a903c209b29bbecaeccfa3a18" }, "response": { "text": "k7p2-qx9m" }, "expected": true },
+    { "name": "qr scanned payload with prefix", "step": { "type": "qr_code", "id": "q1", "prompt": "Scan the code on your kettle", "codeHash": "6cfbe3b43686012f6af84cee093f89e5f28c766a903c209b29bbecaeccfa3a18" }, "response": { "text": "WAKEME:K7P2QX9M" }, "expected": true },
+    { "name": "qr wrong code", "step": { "type": "qr_code", "id": "q1", "prompt": "Scan the code on your kettle", "codeHash": "6cfbe3b43686012f6af84cee093f89e5f28c766a903c209b29bbecaeccfa3a18" }, "response": { "text": "K7P2QX9N" }, "expected": false },
+    { "name": "timer complete", "step": { "type": "timer", "id": "t1", "prompt": "Ten minutes of guitar", "seconds": 600, "activity": "practice" }, "response": { "elapsedSeconds": 600 }, "expected": true },
+    { "name": "timer incomplete", "step": { "type": "timer", "id": "t1", "prompt": "Ten minutes of guitar", "seconds": 600, "activity": "practice" }, "response": { "elapsedSeconds": 599 }, "expected": false },
+    { "name": "checklist complete", "step": { "type": "self_attested", "id": "a1", "prompt": "Before you go", "items": ["Curtains open", "Glass of water nearby"], "category": "general" }, "response": { "checked": [true, true] }, "expected": true },
+    { "name": "checklist incomplete", "step": { "type": "self_attested", "id": "a1", "prompt": "Before you go", "items": ["Curtains open", "Glass of water nearby"], "category": "general" }, "response": { "checked": [true, false] }, "expected": false }
+  ]
+}

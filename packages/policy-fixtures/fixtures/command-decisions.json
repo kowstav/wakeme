@@ -1,0 +1,163 @@
+{
+  "suite": "command-decisions",
+  "schemaVersion": 1,
+  "description": "Server authorization of remote commands. Each case deep-merges `override` into `base` (objects merge recursively; arrays and scalars replace; null replaces). `disabledFeatures` is a list of kill-switch keys. Base time 2026-10-19T14:00:00Z is Monday 10:00 in America/New_York.",
+  "base": {
+    "now": "2026-10-19T14:00:00Z",
+    "actor": { "id": "u_friend", "active": true },
+    "target": {
+      "id": "u_recipient",
+      "active": true,
+      "timeZone": "America/New_York",
+      "settings": { "quietHours": { "enabled": true, "start": "22:00", "end": "07:00" }, "pausedUntil": null, "soundBudgetPerHour": 6 }
+    },
+    "friendship": { "state": "accepted" },
+    "grant": {
+      "id": "grant_1",
+      "grantorId": "u_recipient",
+      "granteeId": "u_friend",
+      "version": 3,
+      "capabilities": ["nudge.send", "alarm.request", "challenge.assign", "focus.request", "safety.checkin.request", "location.request"],
+      "limits": {
+        "nudge": { "maxPerHour": 3, "windows": [{ "days": [1, 2, 3, 4, 5, 6, 7], "start": "08:00", "end": "22:00" }], "sounds": ["bundled:quack.classic"], "overridesQuietHours": false },
+        "alarm": { "maxAlarmSeconds": 120, "maxPerDay": 1, "windows": [{ "days": [1, 2, 3, 4, 5], "start": "06:00", "end": "11:00" }], "sounds": ["bundled:rise.gentle"], "followUp": { "allowed": true, "maxDelaySeconds": 300 } },
+        "challenge": { "types": ["multiple_choice", "math"], "maxDurationSeconds": 90, "maxDifficulty": "medium" },
+        "focus": { "maxSessionMinutes": 30, "maxPerDay": 2, "windows": [{ "days": [1, 2, 3, 4, 5], "start": "09:00", "end": "21:00" }] },
+        "checkin": { "maxPerDay": 2 }
+      },
+      "validFrom": "2026-10-01T00:00:00Z",
+      "validUntil": "2027-01-01T00:00:00Z",
+      "paused": false,
+      "revokedAt": null
+    },
+    "request": { "capability": "nudge.send", "soundId": "bundled:quack.classic", "expiresInSeconds": 120 },
+    "counts": {
+      "senderToTargetLastHour": { "count": 0, "oldestAt": null },
+      "senderToTargetToday": 0,
+      "targetAudibleLastHour": { "count": 0, "oldestAt": null },
+      "senderAllLastHour": { "count": 0, "oldestAt": null }
+    },
+    "disabledFeatures": [],
+    "device": { "pushable": true, "alarmCapable": true }
+  },
+  "cases": [
+    { "name": "permitted quack", "override": {}, "expected": { "allowed": true, "deliveryMode": "audible", "expiresAt": "2026-10-19T14:02:00Z" } },
+    { "name": "self target", "override": { "actor": { "id": "u_recipient" } }, "expected": { "allowed": false, "reason": "self_target" } },
+    { "name": "stranger learns nothing", "override": { "friendship": null }, "expected": { "allowed": false, "reason": "not_found" } },
+    { "name": "blocked looks like stranger", "override": { "friendship": { "state": "blocked" } }, "expected": { "allowed": false, "reason": "not_found" } },
+    { "name": "deactivated recipient looks like stranger", "override": { "target": { "active": false } }, "expected": { "allowed": false, "reason": "not_found" } },
+    { "name": "suspended sender", "override": { "actor": { "active": false } }, "expected": { "allowed": false, "reason": "actor_inactive" } },
+    { "name": "kill switch", "override": { "disabledFeatures": ["remote_dispatch.nudge"] }, "expected": { "allowed": false, "reason": "feature_disabled" } },
+    { "name": "friendship alone grants nothing", "override": { "grant": null }, "expected": { "allowed": false, "reason": "capability_not_granted" } },
+    { "name": "grant in the other direction does not apply", "override": { "grant": { "grantorId": "u_friend", "granteeId": "u_recipient" } }, "expected": { "allowed": false, "reason": "capability_not_granted" } },
+    { "name": "revoked grant", "override": { "grant": { "revokedAt": "2026-10-19T13:00:00Z" } }, "expected": { "allowed": false, "reason": "capability_not_granted" } },
+    { "name": "expired grant", "override": { "grant": { "validUntil": "2026-10-19T13:00:00Z" } }, "expected": { "allowed": false, "reason": "capability_not_granted" } },
+    { "name": "grant not yet valid", "override": { "grant": { "validFrom": "2026-10-20T00:00:00Z" } }, "expected": { "allowed": false, "reason": "capability_not_granted" } },
+    { "name": "capability missing", "override": { "grant": { "capabilities": ["alarm.request"] } }, "expected": { "allowed": false, "reason": "capability_not_granted" } },
+    { "name": "sender saw old terms", "override": { "expectedGrantVersion": 2 }, "expected": { "allowed": false, "reason": "grant_changed" } },
+    { "name": "per-friend pause", "override": { "grant": { "paused": true } }, "expected": { "allowed": false, "reason": "grant_paused" } },
+    { "name": "expiry too long for a nudge", "override": { "request": { "expiresInSeconds": 3600 } }, "expected": { "allowed": false, "reason": "invalid_expiry" } },
+    { "name": "sound not approved by recipient", "override": { "request": { "soundId": "bundled:pulse.wake" } }, "expected": { "allowed": false, "reason": "sound_not_allowed" } },
+    { "name": "outside nudge window", "override": { "now": "2026-10-19T11:30:00Z" }, "expected": { "allowed": false, "reason": "outside_allowed_window" } },
+    {
+      "name": "quiet hours block quack inside a late window",
+      "override": { "now": "2026-10-20T02:30:00Z", "grant": { "limits": { "nudge": { "windows": [{ "days": [1, 2, 3, 4, 5, 6, 7], "start": "06:00", "end": "23:30" }] } } } },
+      "expected": { "allowed": false, "reason": "quiet_hours" }
+    },
+    {
+      "name": "recipient override of quiet hours",
+      "override": { "now": "2026-10-20T02:30:00Z", "grant": { "limits": { "nudge": { "overridesQuietHours": true, "windows": [{ "days": [1, 2, 3, 4, 5, 6, 7], "start": "06:00", "end": "23:30" }] } } } },
+      "expected": { "allowed": true, "deliveryMode": "audible", "expiresAt": "2026-10-20T02:32:00Z" }
+    },
+    { "name": "recipient paused", "override": { "target": { "settings": { "pausedUntil": "2026-10-19T15:00:00Z" } } }, "expected": { "allowed": false, "reason": "recipient_paused", "retryAfterSeconds": 3600 } },
+    {
+      "name": "per-sender hourly limit",
+      "override": { "counts": { "senderToTargetLastHour": { "count": 3, "oldestAt": "2026-10-19T13:20:00Z" } } },
+      "expected": { "allowed": false, "reason": "rate_limited_sender", "retryAfterSeconds": 1200 }
+    },
+    {
+      "name": "five friends cannot exceed the recipient budget",
+      "override": { "counts": { "targetAudibleLastHour": { "count": 6, "oldestAt": "2026-10-19T13:10:00Z" } } },
+      "expected": { "allowed": false, "reason": "rate_limited_recipient", "retryAfterSeconds": 600 }
+    },
+    {
+      "name": "global sender limit",
+      "override": { "counts": { "senderAllLastHour": { "count": 30, "oldestAt": "2026-10-19T13:30:00Z" } } },
+      "expected": { "allowed": false, "reason": "rate_limited_global", "retryAfterSeconds": 1800 }
+    },
+    { "name": "no pushable device", "override": { "device": { "pushable": false } }, "expected": { "allowed": false, "reason": "recipient_not_ready" } },
+    {
+      "name": "wake request inside wake window",
+      "override": { "now": "2026-10-19T10:30:00Z", "request": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 90, "expiresInSeconds": 300 } },
+      "expected": { "allowed": true, "deliveryMode": "audible", "expiresAt": "2026-10-19T10:35:00Z" }
+    },
+    {
+      "name": "wake request longer than granted",
+      "override": { "request": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 121, "expiresInSeconds": 300 } },
+      "expected": { "allowed": false, "reason": "duration_exceeds_limit" }
+    },
+    {
+      "name": "wake request daily limit",
+      "override": { "request": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 60, "expiresInSeconds": 300 }, "counts": { "senderToTargetToday": 1 } },
+      "expected": { "allowed": false, "reason": "daily_limit_reached" }
+    },
+    {
+      "name": "wake request needs alarm-capable phone",
+      "override": { "request": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 60, "expiresInSeconds": 300 }, "device": { "alarmCapable": false } },
+      "expected": { "allowed": false, "reason": "recipient_not_ready" }
+    },
+    {
+      "name": "wake challenge within limits",
+      "override": { "request": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 60, "expiresInSeconds": 300, "challenge": { "stepTypes": ["math"], "maxDurationSeconds": 60, "difficulty": "easy" } } },
+      "expected": { "allowed": true, "deliveryMode": "audible", "expiresAt": "2026-10-19T14:05:00Z" }
+    },
+    {
+      "name": "wake challenge type not allowed",
+      "override": { "request": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 60, "expiresInSeconds": 300, "challenge": { "stepTypes": ["chess"], "maxDurationSeconds": 60, "difficulty": "easy" } } },
+      "expected": { "allowed": false, "reason": "challenge_not_allowed" }
+    },
+    {
+      "name": "wake challenge too hard",
+      "override": { "request": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 60, "expiresInSeconds": 300, "challenge": { "stepTypes": ["math"], "maxDurationSeconds": 60, "difficulty": "hard" } } },
+      "expected": { "allowed": false, "reason": "challenge_not_allowed" }
+    },
+    {
+      "name": "wake challenge without challenge.assign",
+      "override": {
+        "grant": { "capabilities": ["alarm.request"] },
+        "request": { "capability": "alarm.request", "soundId": "bundled:rise.gentle", "ringSeconds": 60, "expiresInSeconds": 300, "challenge": { "stepTypes": ["math"], "maxDurationSeconds": 60, "difficulty": "easy" } }
+      },
+      "expected": { "allowed": false, "reason": "challenge_not_allowed" }
+    },
+    {
+      "name": "focus session within limit",
+      "override": { "request": { "capability": "focus.request", "minutes": 25, "expiresInSeconds": 900 } },
+      "expected": { "allowed": true, "deliveryMode": "notify", "expiresAt": "2026-10-19T14:15:00Z" }
+    },
+    {
+      "name": "focus session too long",
+      "override": { "request": { "capability": "focus.request", "minutes": 45, "expiresInSeconds": 900 } },
+      "expected": { "allowed": false, "reason": "duration_exceeds_limit" }
+    },
+    {
+      "name": "check-in request during quiet hours is silent",
+      "override": { "now": "2026-10-20T03:00:00Z", "request": { "capability": "safety.checkin.request", "expiresInSeconds": 3600 } },
+      "expected": { "allowed": true, "deliveryMode": "silent", "expiresAt": "2026-10-20T04:00:00Z" }
+    },
+    {
+      "name": "check-in daily limit",
+      "override": { "request": { "capability": "safety.checkin.request", "expiresInSeconds": 3600 }, "counts": { "senderToTargetToday": 2 } },
+      "expected": { "allowed": false, "reason": "daily_limit_reached" }
+    },
+    {
+      "name": "location request rate limit",
+      "override": { "request": { "capability": "location.request", "expiresInSeconds": 300 }, "counts": { "senderToTargetLastHour": { "count": 4, "oldestAt": "2026-10-19T13:30:00Z" } } },
+      "expected": { "allowed": false, "reason": "rate_limited_sender", "retryAfterSeconds": 1800 }
+    },
+    {
+      "name": "location request is not limited by the quack budget",
+      "override": { "request": { "capability": "location.request", "expiresInSeconds": 300 }, "counts": { "targetAudibleLastHour": { "count": 6, "oldestAt": "2026-10-19T13:10:00Z" } } },
+      "expected": { "allowed": true, "deliveryMode": "notify", "expiresAt": "2026-10-19T14:05:00Z" }
+    }
+  ]
+}

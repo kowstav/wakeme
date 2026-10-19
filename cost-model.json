@@ -1,0 +1,31 @@
+{
+  "research_date": "2026-10-18",
+  "currency": "USD",
+  "paid_share": 0.05,
+  "monthly_price": 4.99,
+  "annual_price": 34.99,
+  "annual_payer_share": 0.5,
+  "assumed_store_fee": 0.15,
+  "revenuecat_threshold": 2500,
+  "revenuecat_fee": 0.01,
+  "free_generations_per_mau": 0.2,
+  "paid_generations_per_user": 10,
+  "input_tokens_per_generation": 3000,
+  "output_tokens_per_generation": 1000,
+  "input_price_per_million": 4,
+  "output_price_per_million": 20,
+  "retry_and_validation_multiplier": 1.2,
+  "scenarios": [
+    {"mau": 1000, "base_infrastructure": 150, "support_moderation": 100},
+    {"mau": 10000, "base_infrastructure": 400, "support_moderation": 500},
+    {"mau": 100000, "base_infrastructure": 2500, "support_moderation": 5000}
+  ],
+  "limitations": [
+    "Assumptions, not measured product costs or vendor quotes.",
+    "Recognized monthly revenue approximates RevenueCat tracked revenue; actual annual billing can change fees.",
+    "Excludes payroll, acquisition, taxes, refunds, equipment, legal and general overhead.",
+    "No continuous GPS, video feed or SMS login included.",
+    "Store commission varies by region and program; 15 percent is a model assumption.",
+    "Free AI usage depends on new-user growth and introductory credit redemption."
+  ]
+}

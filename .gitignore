@@ -1,0 +1,37 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+*.p8
+*.pem
+*.jks
+*.keystore
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# Android
+apps/android/.gradle/
+apps/android/build/
+apps/android/**/build/
+apps/android/local.properties
+apps/android/.idea/
+apps/android/*.iml
+
+# iOS
+apps/ios/WakeMe.xcodeproj/
+apps/ios/DerivedData/
+apps/ios/.build/
+apps/ios/**/.build/
+apps/ios/**/xcuserdata/
+apps/ios/Config/Secrets.xcconfig
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local dev backend data
+services/api/.devdata/
