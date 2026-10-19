@@ -20,7 +20,11 @@ export interface Db extends Queryable {
 export class PgDb implements Db {
   readonly pool: pg.Pool;
 
-  constructor(connectionString: string, max: number) {
+  /**
+   * onError receives errors from idle pooled clients (server restart, failover, a terminated
+   * backend). Without a listener, pg re-emits them as uncaught exceptions and the process exits.
+   */
+  constructor(connectionString: string, max: number, onError: (e: Error) => void = () => undefined) {
     this.pool = new pg.Pool({
       connectionString,
       max,
@@ -29,6 +33,7 @@ export class PgDb implements Db {
       statement_timeout: 10_000,
       application_name: 'wakeme',
     });
+    this.pool.on('error', onError);
   }
 
   async query<T>(text: string, params: readonly unknown[] = []): Promise<QueryResult<T>> {
@@ -60,11 +65,13 @@ export class PgDb implements Db {
   async listen(channel: string, onNotify: () => void): Promise<() => Promise<void>> {
     if (!/^[a-z_]+$/.test(channel)) throw new Error('invalid channel');
     const client = await this.pool.connect();
+    // A checked-out client's errors are not routed to the pool; polling covers the lost LISTEN.
+    client.on('error', () => undefined);
     client.on('notification', () => onNotify());
     await client.query(`listen ${channel}`);
     return async () => {
       await client.query(`unlisten ${channel}`).catch(() => undefined);
-      client.release();
+      client.release(true); // never hand a possibly broken LISTEN connection back to the pool
     };
   }
 
