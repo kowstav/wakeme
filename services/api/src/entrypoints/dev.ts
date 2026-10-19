@@ -46,6 +46,7 @@ const config: Config = {
   reauthSecondsForHighImpactGrants: 86_400,
   adminUserIds: [],
   challengeSigning: { keyId: 'dev-1', privateKeyPem: signing },
+  challengeVerifyKeys: [],
   locationKey: { keyId: 'dev', keyBase64: Buffer.alloc(32, 1).toString('base64') },
   inviteLinkBase: 'http://127.0.0.1:8787/i/',
   apns: null,

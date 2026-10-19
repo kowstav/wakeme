@@ -53,9 +53,10 @@ import javax.inject.Singleton
 /** Downloads, verifies and stores signed challenge revisions for offline use. */
 @Singleton
 class ChallengeInstaller @Inject constructor(private val api: ApiClient, private val db: LocalDb, private val prefs: Prefs) {
-    suspend fun trustedKeys(): Map<String, String> {
+    /** The cached key list, or the server's published list when [refresh] is set or nothing is cached. */
+    suspend fun trustedKeys(refresh: Boolean = false): Map<String, String> {
         val cached = prefs.trustedChallengeKeys()
-        if (cached.isNotEmpty()) return cached
+        if (cached.isNotEmpty() && !refresh) return cached
         val cfg = api.get("/v1/config", PublicConfigDto.serializer())
         val keys = cfg.challengeSigningKeys.associate { it.keyId to it.spki }
         prefs.setTrustedChallengeKeys(keys)
@@ -66,7 +67,10 @@ class ChallengeInstaller @Inject constructor(private val api: ApiClient, private
     suspend fun ensureInstalled(revisionId: String): Boolean {
         if (db.revisions().get(revisionId) != null) return true
         val env = api.get("/v1/challenge-revisions/$revisionId", SignedEnvelopeDto.serializer())
-        val payload = ChallengeEnvelopes.verify(SignedEnvelope(env.revisionId, env.payload, env.signature, env.keyId, env.digest, env.alg), trustedKeys())
+        // After a signing-key rotation the cached list lacks the new key ID: refresh once.
+        // Revisions installed earlier were verified at install time and stay installed.
+        val keys = trustedKeys().let { if (env.keyId in it) it else trustedKeys(refresh = true) }
+        val payload = ChallengeEnvelopes.verify(SignedEnvelope(env.revisionId, env.payload, env.signature, env.keyId, env.digest, env.alg), keys)
         db.revisions().upsert(RevisionEntity(revisionId, WakeMeJson.encodeToString(app.wakeme.core.ChallengeDefinition.serializer(), payload.definition), System.currentTimeMillis()))
         return true
     }

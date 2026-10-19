@@ -56,7 +56,11 @@ export const operationsRoutes: RouteDef[] = [
       const keys = ['remote_dispatch.nudge', 'remote_dispatch.alarm', 'focus_requests', 'safety_requests', 'location', 'ai_generation', 'media_uploads'];
       return {
         apiVersion: '1',
-        challengeSigningKeys: [{ keyId: deps.config.challengeSigning.keyId, alg: 'ES256', spki: publicKeyDerBase64(deps.challengeKey) }],
+        // Current key first, then retired keys that still verify previously published revisions.
+        challengeSigningKeys: [
+          { keyId: deps.config.challengeSigning.keyId, alg: 'ES256', spki: publicKeyDerBase64(deps.challengeKey) },
+          ...deps.config.challengeVerifyKeys.filter((k) => k.keyId !== deps.config.challengeSigning.keyId).map((k) => ({ keyId: k.keyId, alg: 'ES256', spki: k.spki })),
+        ],
         bundledSounds: BUNDLED_SOUNDS.map((id) => ({ id, file: soundFileName(id) })),
         capabilities: [...CAPABILITIES],
         features: Object.fromEntries(keys.map((k) => [k, !disabled.has(k)])),

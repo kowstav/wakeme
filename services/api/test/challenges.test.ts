@@ -27,6 +27,22 @@ const quiz = {
 };
 
 describe('manual challenges', () => {
+  it('publishes retired verification keys after a signing-key rotation, current key first', async () => {
+    const { generateKeyPairSync } = await import('node:crypto');
+    const { publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+    const retired = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+    const cfgObj = h.deps.config as { challengeVerifyKeys: { keyId: string; spki: string }[] };
+    cfgObj.challengeVerifyKeys = [{ keyId: 'old-1', spki: retired }, { keyId: h.deps.config.challengeSigning.keyId, spki: retired }];
+    try {
+      const cfg = await h.req('GET', '/v1/config');
+      const ids = cfg.body.challengeSigningKeys.map((k: { keyId: string }) => k.keyId);
+      assert.deepEqual(ids, [h.deps.config.challengeSigning.keyId, 'old-1'], 'current first; the current id is never shadowed by a retired entry');
+      assert.equal(cfg.body.challengeSigningKeys[1].spki, retired);
+    } finally {
+      cfgObj.challengeVerifyKeys = [];
+    }
+  });
+
   it('requires a preview before publishing, then freezes a signed revision', async () => {
     const maya = await h.createUser('Maya');
     const c = await h.req('POST', '/v1/challenges', { user: maya, body: { body: quiz } });
