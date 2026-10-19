@@ -201,6 +201,11 @@ fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewM
                 }
             }
         }
+        // What friends share with you comes first, an SOS before anything else.
+        val shared = s.sharedWithMe.filter { it.active }.sortedBy { if (it.purpose == "sos") 0 else 1 }
+        if (shared.isNotEmpty()) item { SectionTitle("Shared with you") }
+        items(shared, key = { "v" + it.id }) { v -> ViewerSession(v, s.locations[v.id], highlight = v.id == focusSessionId, onAck = { vm.acknowledge(v) }) }
+
         val active = s.mine.filter { it.active }
         if (active.isNotEmpty()) item { SectionTitle("You're sharing") }
         items(active, key = { "m" + it.id }) { m -> MySession(m, onCheckIn = { vm.checkIn(m) }, onEnd = { ctx -> vm.end(ctx, m) }) }
@@ -214,10 +219,6 @@ fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewM
             SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty())
             if (s.friends.isEmpty() && !s.loading) Body("Add a friend first. Only friends you pick can see a session.")
         }
-
-        val shared = s.sharedWithMe.filter { it.active }
-        if (shared.isNotEmpty()) item { SectionTitle("Shared with you") }
-        items(shared, key = { "v" + it.id }) { v -> ViewerSession(v, s.locations[v.id], highlight = v.id == focusSessionId, onAck = { vm.acknowledge(v) }) }
 
         item {
             Gap(WakeMeTokens.spaceLg)

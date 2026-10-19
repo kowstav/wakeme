@@ -40,6 +40,11 @@ struct SafetyView: View {
                         .foregroundStyle(WMColor.textSecondary)
                 }
             }
+            // What friends share with you comes first, an SOS before anything else.
+            let shared = sharedWithMe.filter(\.active).sorted { ($0.purpose == "sos" ? 0 : 1) < ($1.purpose == "sos" ? 0 : 1) }
+            if !shared.isEmpty {
+                Section("Shared with you") { ForEach(shared) { s in viewerSession(s) } }
+            }
             let active = mine.filter(\.active)
             Section("You're sharing") {
                 if active.isEmpty && sharer.active == nil { StatusPill(text: "You're not sharing anything") }
@@ -53,10 +58,6 @@ struct SafetyView: View {
                 if loaded && friends.isEmpty {
                     Text("Add a friend first. Only friends you pick can see a session.").foregroundStyle(WMColor.textSecondary)
                 }
-            }
-            let shared = sharedWithMe.filter(\.active)
-            if !shared.isEmpty {
-                Section("Shared with you") { ForEach(shared) { s in viewerSession(s) } }
             }
             Section {
                 Button(role: .destructive) { composing = .sos } label: {

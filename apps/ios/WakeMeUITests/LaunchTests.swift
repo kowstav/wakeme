@@ -241,7 +241,7 @@ final class LaunchTests: XCTestCase {
         let seen = app.buttons["I've seen this"]
         for _ in 0..<3 where !seen.isHittable { app.swipeUp() }
         seen.tap()
-        for _ in 0..<3 where !app.buttons["Check in with friends later"].isHittable { app.swipeDown() }
+        for _ in 0..<3 where !app.buttons["Check in with friends later"].isHittable { app.swipeUp() } // below what friends share
         app.buttons["Check in with friends later"].tap()
         let alexSwitch = app.switches["Alex"]
         try must(alexSwitch.waitForExistence(timeout: 10), "pick who can see it")
@@ -251,6 +251,7 @@ final class LaunchTests: XCTestCase {
         app.navigationBars["Check in later"].buttons["Start"].tap()
         let ok = app.buttons["I'm OK — check in now"]
         try must(ok.waitForExistence(timeout: 20), "the check-in is running")
+        for _ in 0..<3 where !ok.isHittable { app.swipeUp() }
         shot(app, "28-check-in-running")
         ok.tap()
         try must(app.staticTexts["You're not sharing anything"].waitForExistence(timeout: 20), "checking in ends it")
