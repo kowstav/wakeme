@@ -1,6 +1,7 @@
-# Wake Me CI. Supply-chain policy: before enabling on the real repository,
-# replace every action tag below with its full commit SHA (e.g. with `pinact`)
-# and keep production secrets out of every job here; CI needs none.
+# Wake Me CI. Supply-chain policy: every action is pinned to a full commit SHA (the
+# commit its tag resolved to in our runs); production secrets stay out of every job
+# here (CI needs none); tracked files are scanned for credentials; the API service's
+# production dependencies are listed in a CycloneDX SBOM.
 name: ci
 
 on:
@@ -33,6 +34,14 @@ jobs:
         run: npm run check:generated
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
+      - name: Secret scan (tracked files)
+        run: npm run check:secrets && npm run test:tools
+      - name: SBOM for the API service (CycloneDX, production dependencies)
+        run: npm sbom --sbom-format cyclonedx --omit dev -w @wakeme/api > sbom-api.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom
+          path: sbom-api.cdx.json
 
   backend-postgres:
     name: API against server PostgreSQL 17 (row locks, SKIP LOCKED, roles)
