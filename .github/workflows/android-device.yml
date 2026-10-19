@@ -68,7 +68,9 @@ jobs:
           echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" --force
           "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list avd
-          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none -memory 4096 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          # The default data partition is too small for the debug APK ("not enough space").
+          echo "disk.dataPartition.size=6G" >> "$ANDROID_AVD_HOME/wakeme.avd/config.ini"
+          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none -memory 4096 -partition-size 6144 > "$RUNNER_TEMP/emulator.log" 2>&1 &
           sleep 20 # let QEMU start before checking that its process is alive
           booted=0
           for i in $(seq 1 120); do
@@ -133,8 +135,8 @@ jobs:
             convert "$f" -resize 360x "$RUNNER_TEMP/$n.small.png" 2>/dev/null || cp "$f" "$RUNNER_TEMP/$n.small.png"
             echo "=====BEGIN SCREENSHOT $n====="; base64 -w 100 "$RUNNER_TEMP/$n.small.png"; echo "=====END SCREENSHOT $n====="
           done
-      - name: Fail on app crash
-        run: '! grep -q "FATAL EXCEPTION" "$RUNNER_TEMP/evidence/logcat.txt"'
+      - name: Fail on a Wake Me crash (system-app crashes on the emulator are reported, not failed on)
+        run: '! grep -A1 "FATAL EXCEPTION" "$RUNNER_TEMP/evidence/logcat.txt" | grep -q "Process: $APP_ID"'
 
       - uses: actions/upload-artifact@v4
         if: always()
