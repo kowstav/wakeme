@@ -20,6 +20,9 @@
     <!-- Safety sessions only, requested just in time, foreground while the user is sharing. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Android 17 system location button, used for an SOS ("share my location now"). Timed shares
+         still use the ordinary permission, so precise location is not limited to the button. -->
+    <uses-permission android:name="android.permission.USE_LOCATION_BUTTON" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- No microphone permission: voice recording for alarms isn't built yet. Add

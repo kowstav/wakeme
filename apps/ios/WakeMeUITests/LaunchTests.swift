@@ -79,15 +79,15 @@ final class LaunchTests: XCTestCase {
         var r = URLRequest(url: URL(string: "http://127.0.0.1:8787" + path)!)
         r.httpMethod = method
         if let token { r.setValue("Bearer \(token)", forHTTPHeaderField: "authorization") }
-        let data = try body.map { try JSONSerialization.data(withJSONObject: $0) } ?? Data()
+        let payload = try body.map { try JSONSerialization.data(withJSONObject: $0) } ?? Data()
         if body != nil {
             r.setValue("application/json", forHTTPHeaderField: "content-type")
-            r.httpBody = data
+            r.httpBody = payload
         }
         if let device {
             // WAKEME-V1 canonical request, as the apps sign it (services/api/src/http/device-auth.ts).
             let ts = String(Int(Date().timeIntervalSince1970))
-            let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+            let digest = SHA256.hash(data: payload).map { String(format: "%02x", $0) }.joined()
             let message = ["WAKEME-V1", method, path, ts, digest].joined(separator: "\n")
             let signature = try device.key.signature(for: Data(message.utf8)).derRepresentation.base64EncodedString()
             r.setValue(device.id, forHTTPHeaderField: "x-wakeme-device")

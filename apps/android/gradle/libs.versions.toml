@@ -11,6 +11,9 @@ room = "2.8.5"
 navigation = "2.10.2"
 lifecycle = "2.11.0"
 activity = "1.13.0"
+# Android 17 system location button (experimental, reviewed 2026-10-20). Only the View artifact:
+# the Compose one would raise Material3 app-wide to 1.5.0-alpha21.
+locationbutton = "1.0.0-alpha01"
 work = "2.12.0"
 datastore = "1.2.1"
 coreKtx = "1.19.1"
@@ -35,6 +38,7 @@ espresso = "3.8.0-alpha01"
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
+androidx-locationbutton = { module = "androidx.core.locationbutton:locationbutton", version.ref = "locationbutton" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }

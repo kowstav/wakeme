@@ -315,8 +315,10 @@ private fun StartSheet(
     var shareLocation by remember { mutableStateOf(kind != "checkin") }
     var message by remember { mutableStateOf("") }
     var permissionDenied by remember { mutableStateOf(false) }
+    /** An SOS gets location through the system location button (Android 17; older versions show the usual prompt). */
+    var buttonGranted by remember { mutableStateOf(false) }
     val viewers = friends.filter { it.friendshipId in selected }
-    val go = { onStart(kind, viewers, minutes, shareLocation && hasLocationPermission(context), if (kind == "checkin") checkin else null, message, context) }
+    val go = { onStart(kind, viewers, minutes, shareLocation && (hasLocationPermission(context) || buttonGranted), if (kind == "checkin") checkin else null, message, context) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.any { it }) go() else permissionDenied = true
     }
@@ -366,16 +368,50 @@ private fun StartSheet(
                 }
                 item { SettingRow("Share my location", "Friends see where you were, when it was captured and how accurate it is. You'll see a notification with Stop while it's on.", shareLocation) { shareLocation = it } }
                 if (kind != "sos") item { OutlinedTextField(message, { if (it.length <= 200) message = it }, label = { Text("Note (optional)") }, singleLine = true) }
+                // Doc 06: "share my location now" for an SOS uses the session-scoped system button, separate
+                // from timed shares. Without it the SOS still goes, with no location.
+                if (kind == "sos" && shareLocation && !hasLocationPermission(context) && !buttonGranted) {
+                    item { Body("Tap to include where you are. Without it, friends get the SOS with no location.") }
+                    item { SystemLocationButton(onResult = { granted -> buttonGranted = granted; permissionDenied = !granted }) }
+                }
+                if (buttonGranted) item { StatusPill("Your location will be included.", Tone.Info) }
                 if (permissionDenied) item { StatusPill("Location is off for Wake Me, so only the alert is sent, with no location.", Tone.Warning) }
             }
         },
         confirmButton = {
             TextButton(enabled = viewers.isNotEmpty(), onClick = {
-                if (shareLocation && !hasLocationPermission(context) && !permissionDenied) {
+                if (kind != "sos" && shareLocation && !hasLocationPermission(context) && !permissionDenied) {
                     permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 } else go()
             }) { Text(if (kind == "sos") "Send SOS" else "Start") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/**
+ * Android 17's system-rendered location button (doc 06): a tap grants precise location for this
+ * session only. On Android 16 and earlier the library shows a look-alike that opens the usual
+ * permission prompt. Hosted as a View: the Compose artifact would pull alpha Material3 (see
+ * libs.versions.toml). Not yet exercised on an emulator or phone.
+ */
+@Composable
+private fun SystemLocationButton(onResult: (Boolean) -> Unit) {
+    val activity = LocalContext.current.let { c ->
+        generateSequence(c) { (it as? android.content.ContextWrapper)?.baseContext }.firstOrNull { it is android.app.Activity } as? android.app.Activity
+    } ?: return
+    androidx.compose.ui.viewinterop.AndroidView(
+        factory = { ctx ->
+            androidx.core.locationbutton.LocationButton(ctx).apply {
+                parentActivity = activity
+                setTextType(androidx.core.locationbutton.LocationButton.TEXT_TYPE_SHARE_PRECISE_LOCATION)
+                setOnPermissionResultListener(object : androidx.core.locationbutton.OnPermissionResultListener {
+                    override fun onPermissionResult(granted: Boolean) = onResult(granted)
+                })
+                setOnErrorListener(object : androidx.core.locationbutton.OnErrorListener {
+                    override fun onError(error: Throwable) = onResult(false)
+                })
+            }
+        },
     )
 }
