@@ -163,13 +163,15 @@ struct ChallengesView: View {
 private struct TryOutView: View {
     let tryOut: ChallengesView.TryOut
     let onFinish: (_ publish: Bool) -> Void
-    @State private var finished = false
+    /// nil while running; true when every step was done, false when stopped early.
+    @State private var completed: Bool?
 
     var body: some View {
-        if finished {
+        if let completed {
             ScrollView {
                 VStack(alignment: .leading, spacing: WMSpacing.md) {
                     Text(tryOut.definition.title).font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                    StatusPill(text: completed ? "You finished it." : "You stopped before the end. Friends always have the same way out.", tone: completed ? .success : .neutral)
                     if let notes = tryOut.notes {
                         Text("About this draft: \(notes)").foregroundStyle(WMColor.textPrimary)
                     }
@@ -186,7 +188,7 @@ private struct TryOutView: View {
             }
             .background(WMColor.surface)
         } else {
-            ChallengeRunnerView(definition: tryOut.definition, escapeLabel: "Stop trying", onComplete: { _ in finished = true }, onEscape: { finished = true })
+            ChallengeRunnerView(definition: tryOut.definition, escapeLabel: "Stop trying", onComplete: { _ in completed = true }, onEscape: { completed = false })
         }
     }
 }
@@ -232,6 +234,14 @@ struct ChallengeCreatorView: View {
         }
     }
 
+    /// A label that stays visible after typing (a placeholder disappears).
+    private func labelled<Field: View>(_ label: String, @ViewBuilder _ field: () -> Field) -> some View {
+        VStack(alignment: .leading, spacing: WMSpacing.xxs) {
+            Text(label).font(.footnote).foregroundStyle(WMColor.textSecondary).accessibilityHidden(true)
+            field().accessibilityLabel(label)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -257,21 +267,29 @@ struct ChallengeCreatorView: View {
                     }
                 } else {
                     Section {
-                        TextField("Title", text: $title)
-                            .accessibilityIdentifier("quizTitle")
-                            .onChange(of: title) { _, v in if v.count > 60 { title = String(v.prefix(60)) } }
+                        labelled("Title") {
+                            TextField("e.g. Thursday quiz", text: $title)
+                                .accessibilityIdentifier("quizTitle")
+                                .onChange(of: title) { _, v in if v.count > 60 { title = String(v.prefix(60)) } }
+                        }
                     }
                 }
                 ForEach($questions) { $q in
                     Section(mode == .ai ? "Fact (optional)" : "Question") {
-                        TextField("Question", text: $q.question, axis: .vertical)
-                            .accessibilityIdentifier("quizQuestion")
-                            .onChange(of: q.question) { _, v in if v.count > 200 { q.question = String(v.prefix(200)) } }
-                        TextField("Your answer", text: $q.answer)
-                            .accessibilityIdentifier("quizAnswer")
-                            .onChange(of: q.answer) { _, v in if v.count > 60 { q.answer = String(v.prefix(60)) } }
-                        TextField("Wrong options, comma separated (optional)", text: $q.wrong)
-                            .accessibilityIdentifier("quizWrong")
+                        labelled("Question") {
+                            TextField("e.g. What do we call our Thursday dinner?", text: $q.question, axis: .vertical)
+                                .accessibilityIdentifier("quizQuestion")
+                                .onChange(of: q.question) { _, v in if v.count > 200 { q.question = String(v.prefix(200)) } }
+                        }
+                        labelled("Right answer") {
+                            TextField("e.g. Chaos curry", text: $q.answer)
+                                .accessibilityIdentifier("quizAnswer")
+                                .onChange(of: q.answer) { _, v in if v.count > 60 { q.answer = String(v.prefix(60)) } }
+                        }
+                        labelled("Wrong options (optional, comma separated)") {
+                            TextField("e.g. Brunch, Pasta night", text: $q.wrong)
+                                .accessibilityIdentifier("quizWrong")
+                        }
                     }
                 }
                 if questions.count < 8 {
