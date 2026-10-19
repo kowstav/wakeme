@@ -62,7 +62,12 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/evidence"
           emulator -accel-check || true
+          # One explicit AVD home for avdmanager and the emulator (they disagreed on the runner).
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" --force
+          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list avd
           nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none -memory 4096 > "$RUNNER_TEMP/emulator.log" 2>&1 &
           sleep 20 # let QEMU start before checking that its process is alive
           booted=0
