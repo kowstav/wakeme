@@ -1,0 +1,111 @@
+# Runs the Android app on an Android 17 (API 37) emulator on a KVM-enabled
+# GitHub-hosted Linux runner: installs the debug APK, runs the instrumented
+# tests, cold-launches the app, and keeps screenshots, logcat and the alarm
+# audio observations as an artifact. Emulator results are not device
+# evidence (doc 04 Stage 0 still needs real phones).
+name: android-device
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main-o7h6l5]
+    paths:
+      - apps/android/**
+      - packages/policy-fixtures/**
+      - .github/workflows/android-device.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-device-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SYSTEM_IMAGE: system-images;android-37.0;google_apis;x86_64
+  APP_ID: app.wakeme.android.debug
+
+jobs:
+  emulator:
+    name: Android 17 emulator (instrumented tests, launch, screenshots)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+      - name: Install SDK packages and system image
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platform-tools" "emulator" "platforms;android-37.0" "build-tools;37.0.0" "$SYSTEM_IMAGE" > /dev/null
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build app and test APKs
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Start emulator
+        run: |
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" -d pixel_8 --force
+          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 120); do [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break; sleep 5; done
+          adb shell getprop ro.build.version.release
+          adb shell getprop ro.build.version.sdk
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+      - name: Install and grant the permissions a user would grant in onboarding
+        run: |
+          adb install -r app/build/outputs/apk/debug/app-debug.apk
+          adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          adb shell pm grant "$APP_ID" android.permission.POST_NOTIFICATIONS
+          adb shell appops set "$APP_ID" SCHEDULE_EXACT_ALARM allow
+          adb logcat -c
+      - name: Instrumented tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/evidence"
+          adb shell am instrument -w -r "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
+          grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
+      - name: Cold launch and screenshot
+        if: always()
+        run: |
+          adb shell am force-stop "$APP_ID"
+          adb shell am start -W -n "$APP_ID/app.wakeme.MainActivity" | tee "$RUNNER_TEMP/evidence/cold-start.txt"
+          sleep 6
+          adb exec-out screencap -p > "$RUNNER_TEMP/evidence/10-cold-launch.png"
+          adb shell cmd uimode night yes; sleep 3
+          adb exec-out screencap -p > "$RUNNER_TEMP/evidence/11-cold-launch-dark.png"
+          adb shell cmd uimode night no
+          adb shell settings put system font_scale 1.6; sleep 3
+          adb exec-out screencap -p > "$RUNNER_TEMP/evidence/12-large-font.png"
+          adb shell settings put system font_scale 1.0
+          adb shell pidof "$APP_ID" && echo "process alive after launch"
+      - name: Collect evidence
+        if: always()
+        run: |
+          adb pull "/sdcard/Android/data/$APP_ID/files/evidence/." "$RUNNER_TEMP/evidence/" || true
+          adb logcat -d > "$RUNNER_TEMP/evidence/logcat.txt"
+          cp "$RUNNER_TEMP/emulator.log" "$RUNNER_TEMP/evidence/" || true
+          echo "--- observations ---"; cat "$RUNNER_TEMP"/evidence/*.txt 2>/dev/null | grep -E "started=|TotalTime|^OK|FAILURES|Tests run" || true
+          echo "--- crashes ---"; grep -E "FATAL EXCEPTION|AndroidRuntime: Process: $APP_ID" -A12 "$RUNNER_TEMP/evidence/logcat.txt" || echo "no app crash in logcat"
+          ls -la "$RUNNER_TEMP/evidence"
+      - name: Fail on app crash
+        run: '! grep -q "FATAL EXCEPTION" "$RUNNER_TEMP/evidence/logcat.txt"'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-emulator-evidence
+          path: ${{ runner.temp }}/evidence

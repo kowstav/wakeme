@@ -75,7 +75,9 @@ jobs:
           java-version: |
             17
             21
-      - uses: android-actions/setup-android@v3
+      # The runner ships an Android SDK; setup-android@v3 fails (it installs the removed 'tools' package).
+      - name: SDK packages
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
       # setup-gradle also validates gradle/wrapper/gradle-wrapper.jar against Gradle's published checksums.
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
