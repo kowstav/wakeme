@@ -1,4 +1,9 @@
 import Foundation
+#if canImport(CryptoKit)
+import CryptoKit
+#else
+import Crypto
+#endif
 
 /// An installed routine version as the phone keeps it: everything needed to
 /// ring and run the challenge with no network at ring time.
@@ -43,6 +48,18 @@ public struct ScheduledAlarm: Equatable, Sendable {
 
     /// Stable identifier so re-scheduling replaces instead of duplicating (AlarmKit/notification id).
     public var stableId: String { "\(planId):\(occurrenceKey):\(role.rawValue)" }
+
+    /// A name-based UUID (version 5 layout over SHA-256) of `stableId`: the same
+    /// occurrence always maps to the same AlarmKit alarm ID.
+    public var alarmUUID: UUID { stableUUID(stableId) }
+}
+
+/// Deterministic UUID for a name: SHA-256, truncated to 16 bytes, with RFC 4122 version 5 and variant bits.
+public func stableUUID(_ name: String) -> UUID {
+    var b = Array(SHA256.hash(data: Data(("wakeme:" + name).utf8)).prefix(16))
+    b[6] = (b[6] & 0x0F) | 0x50
+    b[8] = (b[8] & 0x3F) | 0x80
+    return UUID(uuid: (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]))
 }
 
 /// Computes the alarms to install: the next occurrence and, if the owner

@@ -30,6 +30,7 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSSupportsLiveActivities: true
         NSAlarmKitUsageDescription: Wake Me schedules the wake-ups you set or accept, so they ring even in silent mode or Focus.
         ITSAppUsesNonExemptEncryption: false
     settings:

@@ -58,7 +58,8 @@ jobs:
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Start emulator
         run: |
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" -d pixel_8 --force
+          mkdir -p "$RUNNER_TEMP/evidence"
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" --force
           nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none > "$RUNNER_TEMP/emulator.log" 2>&1 &
           adb wait-for-device
           for i in $(seq 1 120); do [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break; sleep 5; done
@@ -76,7 +77,6 @@ jobs:
           adb logcat -c
       - name: Instrumented tests
         run: |
-          mkdir -p "$RUNNER_TEMP/evidence"
           adb shell am instrument -w -r "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
       - name: Cold launch and screenshot
@@ -96,6 +96,7 @@ jobs:
       - name: Collect evidence
         if: always()
         run: |
+          mkdir -p "$RUNNER_TEMP/evidence"
           adb pull "/sdcard/Android/data/$APP_ID/files/evidence/." "$RUNNER_TEMP/evidence/" || true
           adb logcat -d > "$RUNNER_TEMP/evidence/logcat.txt"
           cp "$RUNNER_TEMP/emulator.log" "$RUNNER_TEMP/evidence/" || true
@@ -104,6 +105,7 @@ jobs:
           ls -la "$RUNNER_TEMP/evidence"
       - name: Fail on app crash
         run: '! grep -q "FATAL EXCEPTION" "$RUNNER_TEMP/evidence/logcat.txt"'
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

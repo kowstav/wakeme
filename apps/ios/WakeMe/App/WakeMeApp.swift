@@ -20,7 +20,9 @@ struct RootView: View {
             WelcomeView(onInvite: { path.append(.signIn) }, onSelfSetup: { path.append(.selfSetup) })
                 .navigationDestination(for: Route.self) { route in
                     switch route {
-                    case .signIn, .selfSetup:
+                    case .selfSetup:
+                        ReadyView()
+                    case .signIn:
                         PlaceholderView(title: "Sign in", message: "Sign-in arrives in the next build.")
                     }
                 }

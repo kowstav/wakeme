@@ -57,6 +57,14 @@ final class WakePlanTests: XCTestCase {
         XCTAssertThrowsError(try minuteOfDay("7:00"))
     }
 
+    func testAlarmIDsAreStablePerOccurrenceAndRole() throws {
+        let a = try scheduleFor(routine, now: Instant.parse("2026-10-18T12:00:00Z"), deviceZone: timeZone("UTC"))
+        let b = try scheduleFor(routine, now: Instant.parse("2026-10-18T12:00:00Z"), deviceZone: timeZone("UTC"))
+        XCTAssertEqual(a.map(\.alarmUUID), b.map(\.alarmUUID))
+        XCTAssertNotEqual(a[0].alarmUUID, a[1].alarmUUID)
+        XCTAssertEqual(a[0].alarmUUID.uuidString.dropFirst(14).first, "5") // version 5 layout
+    }
+
     func testMathOverflowIsRejectedNotWrapped() {
         XCTAssertNil(evaluateMath([Int64.max, 1], "+"))
         XCTAssertEqual(evaluateMath([12, 4, 3], "/"), 1)
