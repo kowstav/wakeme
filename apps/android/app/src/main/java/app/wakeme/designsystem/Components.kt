@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -30,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,8 +58,11 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         enabled = enabled,
         modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = WakeMeTokens.minTouchTarget),
         shape = RoundedCornerShape(WakeMeTokens.radiusMd),
-        border = BorderStroke(1.dp, WM.colors.border),
-    ) { Text(text, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, textAlign = TextAlign.Center) }
+        border = BorderStroke(1.dp, if (enabled) WM.colors.border else WM.colors.border.copy(alpha = 0.5f)),
+    ) {
+        // A disabled button must not look tappable: Material's 38 % for disabled content.
+        Text(text, style = MaterialTheme.typography.titleMedium, color = if (enabled) WM.colors.textPrimary else WM.colors.textPrimary.copy(alpha = 0.38f), textAlign = TextAlign.Center)
+    }
 }
 
 /** Destructive and SOS actions only. */
@@ -134,13 +138,36 @@ fun SettingRow(title: String, subtitle: String?, checked: Boolean, onChange: (Bo
         Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = WakeMeTokens.minTouchTarget)
-            .semantics(mergeDescendants = true) { role = Role.Switch },
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
             subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = WM.colors.textSecondary) }
         }
-        androidx.compose.material3.Switch(checked = checked, onCheckedChange = onChange)
+        Spacer(Modifier.width(WakeMeTokens.spaceSm))
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
     }
+}
+
+/** A number with − and + buttons, each a full 48 dp target with its own spoken label. */
+@Composable
+fun Stepper(label: String, value: Int, min: Int, max: Int, onChange: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
+        StepButton("−", "Fewer", value > min) { onChange((value - 1).coerceAtLeast(min)) }
+        StepButton("+", "More", value < max) { onChange((value + 1).coerceAtMost(max)) }
+    }
+}
+
+@Composable
+private fun StepButton(glyph: String, spoken: String, enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(WakeMeTokens.minTouchTarget).semantics { contentDescription = spoken },
+        shape = CircleShape,
+        border = BorderStroke(1.dp, if (enabled) WM.colors.border else WM.colors.border.copy(alpha = 0.5f)),
+        contentPadding = PaddingValues(0.dp),
+    ) { Text(glyph, style = MaterialTheme.typography.titleLarge, color = if (enabled) WM.colors.textPrimary else WM.colors.textPrimary.copy(alpha = 0.38f)) }
 }

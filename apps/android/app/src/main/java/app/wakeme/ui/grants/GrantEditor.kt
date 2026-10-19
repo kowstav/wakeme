@@ -46,6 +46,7 @@ import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.SectionTitle
 import app.wakeme.designsystem.SettingRow
+import app.wakeme.designsystem.Stepper
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
@@ -232,15 +233,6 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
         Gap(WakeMeTokens.spaceXl)
     }
     s.error?.let { AlertDialog(onDismissRequest = vm::clearError, confirmButton = { TextButton(onClick = vm::clearError) { Text("OK") } }, text = { Text(it) }) }
-}
-
-@Composable
-private fun Stepper(label: String, value: Int, min: Int, max: Int, onChange: (Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
-        TextButton(onClick = { onChange((value - 1).coerceAtLeast(min)) }, enabled = value > min) { Text("−") }
-        TextButton(onClick = { onChange((value + 1).coerceAtMost(max)) }, enabled = value < max) { Text("+") }
-    }
 }
 
 @Composable
