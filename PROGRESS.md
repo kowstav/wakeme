@@ -4,15 +4,16 @@ Last updated: 2026-10-19. Status words: **specified**, **implemented**, **verifi
 
 ## Verified
 
-Conditions: Linux cloud container (Node 24.19.0; PostgreSQL 17.11 in Docker; JDK 17.0.20 + Gradle 9.8.1; Swift 6.2.4). Earlier runs: Windows 11, Node 24.19.0, embedded PostgreSQL 17 via PGlite 0.5.8.
+Conditions: Linux cloud container (Node 24.19.0; PostgreSQL 17.11 in Docker; JDK 17.0.20 + Gradle 9.8.1; Swift 6.2.4); GitHub-hosted `macos-26` runner (Xcode 26.6, iOS 26.x Simulator, iPhone 17 Pro) and Ubuntu 24.04 runner with KVM (Android 17 / API 37 emulator, `google_apis` x86_64). Earlier runs: Windows 11, Node 24.19.0, embedded PostgreSQL 17 via PGlite 0.5.8. Simulator and emulator results are not device evidence (ADR 0009).
 
 | Area | Status | Evidence |
 |---|---|---|
 | Shared policy engine (`packages/policy`) | verified | 119 tests (Windows and Linux): windows, quiet hours, DST gap/fold, command decisions, local re-validation, delivery-state reduction. Golden fixtures were hand-computed. |
 | Challenge engine (`packages/challenges`) | verified | 205 tests: schema, semantic checks, 59-case safety eval set, 15 chess puzzles checked by move generation, signing and tamper detection, answer-free preview, shared envelope vectors. |
 | Backend API + worker (`services/api`) | verified on server PostgreSQL 17.11 and on PGlite | 88 integration tests, run twice against real PostgreSQL 17.11 (`TEST_DATABASE_URL`), including the concurrent-sender budget race. TypeScript 7 type-check clean; OpenAPI drift check clean. |
-| Android `:core` (pure Kotlin) | verified (JVM unit tests) | 10 tests: every case in time-windows, occurrences, local-execution, delivery-state and challenge-verification fixtures, plus all 7 signed-envelope vectors. Run with `./gradlew -p tools/core-only :core:test` from `apps/android`. |
-| iOS `WakeMeCore` (Swift package) | verified on Linux | 13 XCTest tests: the same five fixture files, all 7 envelope vectors (swift-crypto 5.0.1 on Linux; CryptoKit on Apple), explicit DST gap/fold, plan scheduling, wake-session transitions. **Not yet run on macOS/iOS.** |
+| Android `:core` (pure Kotlin) | verified (JVM unit tests) | 11 tests (incl. the primary-phone rule, ADR 0007): every case in time-windows, occurrences, local-execution, delivery-state and challenge-verification fixtures, plus all 7 signed-envelope vectors. Run with `./gradlew -p tools/core-only :core:test` from `apps/android`. |
+| iOS `WakeMeCore` + `WakeMeAPI` (Swift package) | verified on Linux and macOS | 21 XCTest tests on Linux (Swift 6.2.4); 20 of them also on the macOS runner (the primary-phone test was added after that run): the five fixture files, all 7 envelope vectors (CryptoKit on Apple, swift-crypto 5.0.1 on Linux), DST gap/fold, plan scheduling, stable alarm IDs, primary-phone rule, and the API client (retries only when idempotent, one token refresh on 401, offline error, WAKEME-V1 device signature verified over the canonical string, explicit-null pause). |
+| iOS app, slice 1 (`apps/ios/WakeMe`) | verified on the iOS Simulator (CI) | Builds with Xcode 26.6 against the real AlarmKit SDK; UI tests pass on iPhone 17 Pro: cold launch to the welcome screen, self-setup to the alarm-readiness screen. Screenshots reviewed (light, dark, largest text). |
 | Android app (`apps/android/app`) | **compiles; lint has no errors; debug APK builds** (2026-10-19, AGP 9.4.1, Kotlin 2.4.21, compile/target SDK 37, JDK 17) | `./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug` succeeds. APK: `app.wakeme.android.debug` 0.1.0, targetSdk 37. **Never installed or run on a device or emulator** (no KVM here). The app module has no unit tests yet. 52 lint warnings remain (mostly unused resources and KTX style). |
 | Shared envelope vectors | verified on 3 platforms | `packages/policy-fixtures/fixtures/signed-envelopes.json`, made by the server's `signEnvelope` with a throwaway key (generator in `packages/challenges/scripts`). |
 | SigV4 storage signer | verified | Matches AWS's published presigned-URL example. |
@@ -30,15 +31,20 @@ Bugs found and fixed by tests and review: invite brute-force throttle never coun
   - Screens: onboarding (welcome with quack preview, sign-in, profile with age attestation, invite acceptance, **self-setup readiness flow**), Friends, Friend detail, Grant editor (presets, rows per doc 03 §6, last used, version, circle note), Routines, Challenges, **You** (readiness, sound test with measured route, primary phone, quiet hours, pause, sound budget, bypass sharing, subscription, export, deletion), **Safety** (check-in, timed location share, SOS, viewer labels with capture time and accuracy), **Conversation** (reactions, report), **Paywall** (store data only, Continue free always available).
   - Platform: `setAlarmClock`, systemExempted alarm service with USAGE_ALARM and audio-focus/route reporting, direct-boot mirror, full-screen alarm with an always-available escape, location-typed foreground service for safety sessions, just-in-time notification permission, Keystore device key, push re-validation, receipts, sync (installs only on the primary phone), Supabase auth, RevenueCat.
   - Gradle wrapper 9.8.1 committed; `distributionSha256Sum` not pinned (the published checksum host was blocked here).
-- **iOS app (`apps/ios`)**: only `WakeMeCore` exists. The SwiftUI app, AlarmKit, App Intents and the notification service extension need a Mac with Xcode.
-- **CI (`.github/workflows/ci.yml`)**: written, never run. Now uses `./gradlew` and installs JDK 17 + 21. Action tags still need pinning to commit SHAs.
+- **iOS app (`apps/ios/WakeMe`)**, slice 2 (sign-in, profile, Secure Enclave device key and registration, Friends with invites and quacks, Routines with accept/decline and AlarmKit installation plus receipts, You): written; the first macOS build found one missing `await` (fixed). AlarmKit alarms (main + follow-up, system Stop kept on iOS 26.1+, explicit Stop on 26.0, Start-challenge App Intent), one-minute test alarm. **Not run on a physical iPhone; AlarmKit alarms have not been observed ringing.** No APNs (needs signing/entitlements), no notification service extension, no challenge runner yet.
+- **CI**: `ios.yml` (macOS runner, dev backend for UI journeys) and `android-device.yml` (Android 17 emulator) run on pushes to the working branch; screenshots are also printed into job logs. `ci.yml` runs on `main`/PRs; its first run (initial commit) failed only in the Android setup action (fixed: uses the runner SDK) and the iOS job (WakeMeCore did not exist then). Action tags still need pinning to commit SHAs.
+- **Android emulator runs**: the emulator boots Android 17 (release 17, SDK 37) with KVM. Earlier runs failed on CI configuration (AVD profile, AVD home, data partition too small for the 87 MB debug APK); the app has not yet been observed running on it.
 - **Infra**: Dockerfile, compose file, role split and `.env.example` written, not built.
 
 ## Specified only (not yet written)
 
-ADRs (`docs/adr`), threat model, runbooks (incident, noisy friend, key rotation, restore, billing reconciliation, deletion), store metadata and reviewer instructions, privacy policy and terms drafts, focus supervision (Stage 6; server flag off by default; Focus buddy preset hidden in the app), the Android 17 session-scoped location button, Stage 0 physical-device experiments and capability matrix.
+Runbooks (incident, noisy friend, key rotation, restore, billing reconciliation, deletion), store metadata and reviewer instructions, privacy policy and terms drafts, focus supervision (Stage 6; server flag off by default; Focus buddy preset hidden in the app), the Android 17 session-scoped location button, Stage 0 physical-device experiments and capability matrix.
 
-## Open decisions and deviations (to record as ADRs)
+## Decisions
+
+Recorded in `docs/adr` (0001–0009); threat model with control-to-test mapping in `docs/threat-model.md`.
+
+## Open decisions and deviations
 
 - `message.send` is not a grant: accepted friends can message each other; block ends the conversation.
 - `location.last_known.read` became `location.request`: no standing location read; every share is owner-started and time-boxed.
