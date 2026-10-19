@@ -17,8 +17,15 @@ every signed-in phone, so two phones could both ring.
   never skips its alarms.
 - Changing the primary moves alarms: the new phone installs on its next sync; the old one
   removes them on its next sync (a window where both may hold them is accepted over a window
-  where neither does).
+  where neither does). Every change of primary appears in the sync feed as a profile change,
+  including one made by registering a phone (amended 2026-10-19: registration and sign-out of
+  the primary used to change it silently, so the old phone never learned and kept ringing).
+- Signing out the primary phone makes the most recently seen remaining device primary;
+  with none left, the next phone to register becomes primary. (Before 2026-10-19 the primary
+  was cleared, and every remaining phone counted as primary and rang.)
 
 ## Verification
 
-Android `SyncEngine` and iOS `AppModel.isPrimaryPhone`; unit tests for the rule are still to add.
+Android `SyncEngine` and iOS `SyncEngine` (profile changes in the feed); the rule itself in
+Kotlin `WakePlanTest` and Swift `WakePlanTests`; the server's feed in `sync.test.ts` (a new
+primary and a promoted one both reach every phone).

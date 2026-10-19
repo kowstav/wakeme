@@ -16,3 +16,4 @@ says what evidence the decision rests on and what would make us revisit it.
 | [0008](0008-signed-challenge-envelopes.md) | Published challenges are ES256-signed and verified on the phone | Accepted |
 | [0009](0009-ci-emulators-and-simulators.md) | Device CI on GitHub-hosted emulators/simulators; not device evidence | Accepted |
 | [0010](0010-sync-feed-commit-order.md) | Sync feed positions follow commit order; restores force one re-fetch | Accepted |
+| [0011](0011-rolling-arming-window.md) | Routines are armed 8 days ahead and topped up whenever the app runs | Accepted |
