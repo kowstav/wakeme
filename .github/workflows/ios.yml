@@ -75,6 +75,15 @@ jobs:
           xcrun simctl ui "$DEVICE" content_size extra-extra-extra-large; sleep 3
           xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/evidence/12-welcome-large-text.png"
           ls -la "$RUNNER_TEMP/evidence"
+      - name: Screenshots into the log (downscaled base64, for review without artifact access)
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/evidence/*.png; do
+            [ -f "$f" ] || continue
+            n=$(basename "$f" .png)
+            sips -Z 640 "$f" --out "$RUNNER_TEMP/$n.small.png" > /dev/null
+            echo "=====BEGIN SCREENSHOT $n====="; base64 -b 100 -i "$RUNNER_TEMP/$n.small.png"; echo; echo "=====END SCREENSHOT $n====="
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:

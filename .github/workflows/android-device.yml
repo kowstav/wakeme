@@ -57,6 +57,7 @@ jobs:
       - name: Build app and test APKs
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Start emulator
+        id: boot
         timeout-minutes: 15
         run: |
           mkdir -p "$RUNNER_TEMP/evidence"
@@ -90,7 +91,7 @@ jobs:
           adb shell am instrument -w -r "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
       - name: Cold launch and screenshot
-        if: always()
+        if: always() && steps.boot.outcome == 'success'
         run: |
           adb shell am force-stop "$APP_ID"
           adb shell am start -W -n "$APP_ID/app.wakeme.MainActivity" | tee "$RUNNER_TEMP/evidence/cold-start.txt"
@@ -107,12 +108,26 @@ jobs:
         if: always()
         run: |
           mkdir -p "$RUNNER_TEMP/evidence"
-          adb pull "/sdcard/Android/data/$APP_ID/files/evidence/." "$RUNNER_TEMP/evidence/" || true
-          adb logcat -d > "$RUNNER_TEMP/evidence/logcat.txt"
-          cp "$RUNNER_TEMP/emulator.log" "$RUNNER_TEMP/evidence/" || true
+          cp "$RUNNER_TEMP/emulator.log" "$RUNNER_TEMP/evidence/" 2>/dev/null || true
+          # adb waits forever for a device; only talk to it when one is attached.
+          if timeout 10 adb get-state 2>/dev/null | grep -q device; then
+            timeout 60 adb pull "/sdcard/Android/data/$APP_ID/files/evidence/." "$RUNNER_TEMP/evidence/" || true
+            timeout 60 adb logcat -d > "$RUNNER_TEMP/evidence/logcat.txt" || true
+          else
+            echo "no emulator attached"; touch "$RUNNER_TEMP/evidence/logcat.txt"
+          fi
           echo "--- observations ---"; cat "$RUNNER_TEMP"/evidence/*.txt 2>/dev/null | grep -E "started=|TotalTime|^OK|FAILURES|Tests run" || true
           echo "--- crashes ---"; grep -E "FATAL EXCEPTION|AndroidRuntime: Process: $APP_ID" -A12 "$RUNNER_TEMP/evidence/logcat.txt" || echo "no app crash in logcat"
           ls -la "$RUNNER_TEMP/evidence"
+      - name: Screenshots into the log (downscaled base64, for review without artifact access)
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/evidence/*.png; do
+            [ -f "$f" ] || continue
+            n=$(basename "$f" .png)
+            convert "$f" -resize 360x "$RUNNER_TEMP/$n.small.png" 2>/dev/null || cp "$f" "$RUNNER_TEMP/$n.small.png"
+            echo "=====BEGIN SCREENSHOT $n====="; base64 -w 100 "$RUNNER_TEMP/$n.small.png"; echo "=====END SCREENSHOT $n====="
+          done
       - name: Fail on app crash
         run: '! grep -q "FATAL EXCEPTION" "$RUNNER_TEMP/evidence/logcat.txt"'
 
