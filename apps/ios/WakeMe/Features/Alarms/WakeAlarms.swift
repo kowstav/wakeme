@@ -219,6 +219,14 @@ final class WakeAlarms: @unchecked Sendable {
 
     func armedRoutine(planId: String) -> ArmedRoutine? { armedMap()[planId] }
 
+    /// The soonest main alarm armed on this phone across routines, for the home screen.
+    func nextMainAlarm(after now: Date = Date()) -> (fireAt: Date, label: String)? {
+        armedMap().values
+            .flatMap { r in r.alarms.filter { $0.role == .main && $0.fireAt > now }.map { ($0.fireAt, r.label) } }
+            .min { $0.0 < $1.0 }
+            .map { (fireAt: $0.0, label: $0.1) }
+    }
+
     /// The installed version and challenge for a routine on this phone (for the wake session).
     func installedRoutine(planId: String) -> (version: Int, challengeRevisionId: String?)? {
         armedMap()[planId].map { ($0.routine.version, $0.routine.challengeRevisionId) }

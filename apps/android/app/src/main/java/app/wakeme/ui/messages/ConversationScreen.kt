@@ -40,6 +40,7 @@ import app.wakeme.data.local.Prefs
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.MessageDto
 import app.wakeme.data.net.OfflineException
+import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.StatusPill
@@ -169,6 +170,7 @@ private val reportReasons = listOf("harassment" to "Harassment", "spam" to "Spam
 @Composable
 fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
+    HideFromRecents() // private messages
     var draft by remember { mutableStateOf("") }
     var acting by remember { mutableStateOf<MessageDto?>(null) }
     var reporting by remember { mutableStateOf<MessageDto?>(null) }

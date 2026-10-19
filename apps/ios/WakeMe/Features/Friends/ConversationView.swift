@@ -45,6 +45,7 @@ struct ConversationView: View {
         }
         .background(WMColor.surface)
         .navigationTitle(friendName)
+        .appSwitcherCover()
         .navigationBarTitleDisplayMode(.inline)
         .task { await poll() }
         .confirmationDialog("Report this message?", isPresented: Binding(get: { reporting != nil }, set: { if !$0 { reporting = nil } }), titleVisibility: .visible, presenting: reporting) { m in

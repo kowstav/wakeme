@@ -2,6 +2,7 @@ package app.wakeme.ui.friends
 
 import android.content.Intent
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.wakeme.ui.permissions.notificationsAllowed
 import app.wakeme.ui.permissions.notificationsAsked
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -32,7 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +69,7 @@ fun FriendsScreen(onOpen: (String) -> Unit, vm: FriendsViewModel = hiltViewModel
     var notificationsOn by remember { mutableStateOf(notificationsAllowed(context)) }
     LifecycleResumeEffect(Unit) {
         notificationsOn = notificationsAllowed(context)
+        vm.refreshReadiness()
         onPauseOrDispose { }
     }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
@@ -71,6 +77,19 @@ fun FriendsScreen(onOpen: (String) -> Unit, vm: FriendsViewModel = hiltViewModel
             Gap()
             Text("Friends", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             if (s.offline) StatusPill("Offline · showing nothing new. Your alarms still work.", Tone.Warning)
+        }
+        // Doc 03 §3: home shows the next alarm on this phone and, at most, one readiness issue.
+        s.nextAlarm?.let { next ->
+            item {
+                WMCard {
+                    Text("Next alarm on this phone", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                    Body(nextAlarmText(next.fireAt, next.label))
+                    s.readinessIssue?.let { issue ->
+                        StatusPill(readinessIssueText(issue), Tone.Warning)
+                        SecondaryButton(readinessFixLabel(issue), onClick = { context.startActivity(vm.settingsIntent(issue)) })
+                    }
+                }
+            }
         }
         if (!s.loading && s.friends.isEmpty()) {
             item {
@@ -180,6 +199,11 @@ fun FriendDetailScreen(
     var confirmBlock by remember { mutableStateOf(false) }
     val name = f.user.displayName
     val askNotifications = rememberNotificationAsk()
+    // Doc 03 §2: a subtle confirmation on send, a distinct but calm warning on failure; the
+    // system haptics setting decides whether either is felt.
+    val view = LocalView.current
+    LaunchedEffect(s.sentTick) { if (s.sentTick > 0) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM) }
+    LaunchedEffect(s.failTick) { if (s.failTick > 0) view.performHapticFeedback(HapticFeedbackConstants.REJECT) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         Text(name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
@@ -200,6 +224,7 @@ fun FriendDetailScreen(
                     vm.send(Capability.NUDGE, mapOf("soundId" to (sound ?: "bundled:quack.classic")))
                 }
             }
+            if (s.lastSent?.capability == Capability.NUDGE && s.sentTick > 0) QuackSent(name, s.sentTick)
         }
 
         // ---- Escalation only if they enabled it; never automatic.
@@ -267,5 +292,59 @@ private fun ActionButton(label: String, action: FriendAction?, name: String, bus
     } else {
         SecondaryButton(label, onClick = {}, enabled = false)
         Body(reasonText(name, action?.reason ?: "capability_not_granted"))
+    }
+}
+
+/** "Today 07:00 · Gym", "Tomorrow 06:30", "Tue 07:00" in this phone's time zone. */
+internal fun nextAlarmText(fireAtMillis: Long, label: String, now: java.time.ZonedDateTime = java.time.ZonedDateTime.now()): String {
+    val at = java.time.Instant.ofEpochMilli(fireAtMillis).atZone(now.zone)
+    val time = at.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+    val day = when (java.time.temporal.ChronoUnit.DAYS.between(now.toLocalDate(), at.toLocalDate())) {
+        0L -> "Today"
+        1L -> "Tomorrow"
+        else -> at.format(java.time.format.DateTimeFormatter.ofPattern("EEE", java.util.Locale.getDefault()))
+    }
+    return "$day $time" + if (label.isNotBlank()) " · $label" else ""
+}
+
+private fun readinessIssueText(item: app.wakeme.readiness.ReadinessItem) = when (item) {
+    app.wakeme.readiness.ReadinessItem.EXACT_ALARMS -> "Exact alarms are off, so it may not ring on time."
+    app.wakeme.readiness.ReadinessItem.ALARM_VOLUME -> "Alarm volume is at zero, so it would be silent."
+    app.wakeme.readiness.ReadinessItem.FULL_SCREEN -> "It can't open over the lock screen."
+    app.wakeme.readiness.ReadinessItem.NOTIFICATIONS -> "Notifications are off."
+    app.wakeme.readiness.ReadinessItem.BATTERY -> "Battery optimisation may delay it."
+}
+
+private fun readinessFixLabel(item: app.wakeme.readiness.ReadinessItem) = when (item) {
+    app.wakeme.readiness.ReadinessItem.EXACT_ALARMS -> "Allow exact alarms"
+    app.wakeme.readiness.ReadinessItem.ALARM_VOLUME -> "Open sound settings"
+    app.wakeme.readiness.ReadinessItem.FULL_SCREEN -> "Allow full-screen alarms"
+    app.wakeme.readiness.ReadinessItem.NOTIFICATIONS -> "Turn on notifications"
+    app.wakeme.readiness.ReadinessItem.BATTERY -> "Open battery settings"
+}
+
+/**
+ * The signature quack acknowledgement (doc 03 §2): the duck hops once beside "Sent to Alex".
+ * Compose animations follow the system animator scale, so with animations removed (Android's
+ * reduced-motion setting) the duck simply appears. Sent is not "heard"; the status says more.
+ */
+@Composable
+private fun QuackSent(name: String, tick: Int) {
+    val hop = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(tick) {
+        hop.snapTo(0f)
+        hop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 600f))
+        hop.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 400f))
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.semantics(mergeDescendants = true) {}) {
+        Text(
+            "🦆",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier
+                .graphicsLayer { translationY = -24f * hop.value; rotationZ = -12f * hop.value }
+                .clearAndSetSemantics { },
+        )
+        androidx.compose.foundation.layout.Spacer(Modifier.width(WakeMeTokens.spaceXs))
+        Text("Sent to $name", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
     }
 }

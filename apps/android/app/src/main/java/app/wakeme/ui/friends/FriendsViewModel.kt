@@ -11,6 +11,10 @@ import app.wakeme.data.net.CommandDto
 import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.InviteCreatedDto
 import app.wakeme.data.net.OfflineException
+import app.wakeme.data.local.LocalDb
+import app.wakeme.data.local.ScheduledAlarmEntity
+import app.wakeme.readiness.Readiness
+import app.wakeme.readiness.ReadinessItem
 import app.wakeme.sync.SyncEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -59,17 +63,37 @@ data class FriendsState(
     val invite: InviteCreatedDto? = null,
     val offline: Boolean = false,
     val message: String? = null,
+    /** The next main alarm armed on this phone (doc 03 §3: home shows it). */
+    val nextAlarm: ScheduledAlarmEntity? = null,
+    /** At most one thing stopping it from ringing well; notifications have their own card. */
+    val readinessIssue: ReadinessItem? = null,
 )
 
 @HiltViewModel
-class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: SyncEngine) : ViewModel() {
+class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: SyncEngine, db: LocalDb, private val readiness: Readiness) : ViewModel() {
     private val _state = MutableStateFlow(FriendsState())
     val state: StateFlow<FriendsState> = _state
 
     init {
         load()
         viewModelScope.launch { sync.changes.collect { if (it == "grant" || it == "friendship" || it == "all") load() } }
+        viewModelScope.launch {
+            db.alarms().observe().collect { all ->
+                val now = System.currentTimeMillis()
+                _state.value = _state.value.copy(nextAlarm = all.firstOrNull { it.fireAt > now && it.role == "MAIN" })
+                refreshReadiness()
+            }
+        }
     }
+
+    /** Re-checked when the screen resumes (a setting may have changed outside the app). */
+    fun refreshReadiness() {
+        val missing = readiness.state().missing
+        val issue = if (_state.value.nextAlarm == null) null else HOME_ISSUES.firstOrNull { it in missing }
+        _state.value = _state.value.copy(readinessIssue = issue)
+    }
+
+    fun settingsIntent(item: ReadinessItem) = readiness.settingsIntent(item)
 
     fun load() = viewModelScope.launch {
         try {
@@ -100,6 +124,9 @@ data class DetailState(
     val sending: String? = null,
     val lastSent: CommandDto? = null,
     val message: String? = null,
+    /** Bumped on each send result: haptics and the quack animation follow them (doc 03 §2). */
+    val sentTick: Int = 0,
+    val failTick: Int = 0,
 )
 
 @HiltViewModel
@@ -126,13 +153,13 @@ class FriendDetailViewModel @Inject constructor(private val api: WakeMeApi) : Vi
         _state.value = _state.value.copy(sending = capability)
         try {
             val cmd = api.sendCommand(f.user.id, capability, f.theyAllowMe?.version, extra, key)
-            _state.value = _state.value.copy(sending = null, lastSent = cmd)
+            _state.value = _state.value.copy(sending = null, lastSent = cmd, sentTick = _state.value.sentTick + 1)
             poll(cmd.id)
         } catch (e: ApiException) {
-            _state.value = _state.value.copy(sending = null, message = e.message)
+            _state.value = _state.value.copy(sending = null, message = e.message, failTick = _state.value.failTick + 1)
             if (e.code == "grant_changed") id?.let { load(it) }
         } catch (e: OfflineException) {
-            _state.value = _state.value.copy(sending = null, message = "You're offline, so nothing was sent.")
+            _state.value = _state.value.copy(sending = null, message = "You're offline, so nothing was sent.", failTick = _state.value.failTick + 1)
         }
     }
 
@@ -158,3 +185,6 @@ class FriendDetailViewModel @Inject constructor(private val api: WakeMeApi) : Vi
         _state.value = _state.value.copy(message = null)
     }
 }
+
+/** What could stop the next alarm, most serious first. Notifications have their own card. */
+private val HOME_ISSUES = listOf(ReadinessItem.EXACT_ALARMS, ReadinessItem.ALARM_VOLUME, ReadinessItem.FULL_SCREEN)

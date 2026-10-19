@@ -77,3 +77,55 @@ struct StatusPill: View {
         }
     }
 }
+
+/// The signature quack acknowledgement (doc 03 §2): the duck hops once beside "Sent to Alex".
+/// With Reduce Motion it simply appears. Literal copy: sent is not "heard" (the status pill
+/// below says what the phone reported).
+struct QuackSent: View {
+    let name: String
+    /// Changes on every send, replaying the hop.
+    let tick: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hop = false
+
+    var body: some View {
+        HStack(spacing: WMSpacing.xs) {
+            Text("🦆")
+                .font(.title)
+                .rotationEffect(.degrees(hop ? -12 : 0))
+                .offset(y: hop ? -10 : 0)
+                .accessibilityHidden(true)
+            Text("Sent to \(name)").font(.headline).foregroundStyle(WMColor.textPrimary)
+        }
+        .accessibilityElement(children: .combine)
+        .task(id: tick) {
+            guard !reduceMotion else { return }
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.45)) { hop = true }
+            try? await Task.sleep(for: .milliseconds(220))
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { hop = false }
+        }
+    }
+}
+
+/// Covers a sensitive screen (locations, private messages) while the app isn't active, so the
+/// app switcher's snapshot doesn't show it (doc 02 §10, ADR 0012). Screenshots by the person
+/// and VoiceOver are unaffected while the app is in use.
+struct AppSwitcherCover: ViewModifier {
+    @Environment(\.scenePhase) private var scenePhase
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if scenePhase != .active {
+                ZStack {
+                    WMColor.surface
+                    Text("🦆").font(.system(size: 56)).accessibilityHidden(true)
+                }
+                .ignoresSafeArea()
+            }
+        }
+    }
+}
+
+extension View {
+    func appSwitcherCover() -> some View { modifier(AppSwitcherCover()) }
+}

@@ -11,8 +11,27 @@ struct FriendsView: View {
     @State private var code = ""
     @State private var message: String?
 
+    @State private var nextAlarm: (fireAt: Date, label: String)?
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         List {
+            // Doc 03 §3: home shows the next alarm on this phone and, at most, one readiness issue.
+            if let nextAlarm {
+                Section {
+                    VStack(alignment: .leading, spacing: WMSpacing.xs) {
+                        Text("Next alarm on this phone").font(.headline).foregroundStyle(WMColor.textPrimary)
+                        Text(nextAlarmText(nextAlarm.fireAt, label: nextAlarm.label)).foregroundStyle(WMColor.textSecondary)
+                        if WakeAlarms.shared.authorization != .authorized {
+                            StatusPill(text: "Alarm access is off, so it can't ring.", tone: .warning)
+                            SecondaryButton(title: "Open Settings") {
+                                if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                            }
+                        }
+                    }
+                    .accessibilityElement(children: .contain)
+                }
+            }
             if loaded && friends.isEmpty {
                 Section {
                     VStack(alignment: .leading, spacing: WMSpacing.xs) {
@@ -52,6 +71,7 @@ struct FriendsView: View {
         .navigationDestination(for: String.self) { id in FriendDetailView(friendshipId: id) }
         .refreshable { await load() }
         .task { await load() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { nextAlarm = WakeAlarms.shared.nextMainAlarm() } }
         .sheet(item: $invite) { inv in InviteSheet(invite: inv) }
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
     }
@@ -65,6 +85,7 @@ struct FriendsView: View {
     }
 
     private func load() async {
+        nextAlarm = WakeAlarms.shared.nextMainAlarm()
         do {
             friends = try await app.api.friends()
             app.offline = false
@@ -131,6 +152,9 @@ struct FriendDetailView: View {
     @State private var suggesting = false
     @State private var confirmBlock = false
     @State private var confirmRemove = false
+    /// Bumped on each send result: haptics (doc 03 §2) and the quack animation follow them.
+    @State private var sentTick = 0
+    @State private var failTick = 0
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -172,6 +196,8 @@ struct FriendDetailView: View {
         .task { await load() }
         // While a request is on its way, show what their phone reports, in words.
         .task(id: lastCommand?.id) { await followLastCommand() }
+        .sensoryFeedback(.success, trigger: sentTick)
+        .sensoryFeedback(.warning, trigger: failTick)
         .sheet(isPresented: $editing) {
             if let f = friend { GrantEditorView(friend: f, onSaved: { await load() }) }
         }
@@ -211,6 +237,9 @@ struct FriendDetailView: View {
             if let quack, quack.granted, quack.availableNow {
                 PrimaryButton(title: sending == Capability.nudge ? "Sending…" : "Send quack") { Task { await maybeAskThenSend() } }
                     .disabled(sending != nil)
+                if lastCommand?.capability == Capability.nudge, sentTick > 0 {
+                    QuackSent(name: f.user.displayName, tick: sentTick)
+                }
             } else {
                 Text(reasonText(f.user.displayName, quack?.reason ?? "capability_not_granted")).foregroundStyle(WMColor.textSecondary)
             }
@@ -351,10 +380,13 @@ struct FriendDetailView: View {
         defer { sending = nil }
         do {
             lastCommand = try await app.api.send(request)
+            sentTick += 1
         } catch let e as APIError {
+            failTick += 1
             message = e.message
             await load() // availability may have changed (their hours, a pause, a limit)
         } catch {
+            failTick += 1
             message = "You're offline. Nothing was sent."
         }
     }
@@ -369,4 +401,15 @@ func statusTone(_ displayStatus: String) -> Tone {
     case "not_delivered", "expired", "not_played": .warning
     default: .info
     }
+}
+
+/// "Today 07:00 · Gym", "Tomorrow 06:30", "Tue 07:00" in this phone's time zone.
+func nextAlarmText(_ fireAt: Date, label: String, now: Date = Date(), calendar: Calendar = .current) -> String {
+    let clock = DateFormatter()
+    clock.dateFormat = "HH:mm" // as routines are written (07:00), same as Android
+    clock.timeZone = calendar.timeZone
+    let time = clock.string(from: fireAt)
+    let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: fireAt)).day ?? 0
+    let day = days == 0 ? "Today" : days == 1 ? "Tomorrow" : fireAt.formatted(.dateTime.weekday(.abbreviated))
+    return "\(day) \(time)" + (label.isEmpty ? "" : " · \(label)")
 }

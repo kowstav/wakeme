@@ -39,6 +39,7 @@ import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.LatestLocationDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.data.net.SafetySessionDto
+import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
@@ -181,6 +182,7 @@ private fun hasLocationPermission(context: Context) =
 @Composable
 fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
+    HideFromRecents() // locations and who is told
     val sharing by LocationShareService.active.collectAsState()
     var composing by remember { mutableStateOf<String?>(null) } // "share" | "checkin" | "sos"
     LaunchedEffect(focusSessionId) { if (focusSessionId != null) vm.load() }

@@ -73,6 +73,7 @@ struct SafetyView: View {
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
         .navigationTitle("Safety")
+        .appSwitcherCover()
         .task { await refreshLoop() }
         .refreshable { await load() }
         .sheet(item: $composing) { kind in
