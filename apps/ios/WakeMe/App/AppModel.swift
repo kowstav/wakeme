@@ -65,6 +65,8 @@ final class AppModel {
             return
         }
         await registerDevice()
+        let api = self.api
+        Task { await ReceiptQueue.shared.flush(api: api) } // outcomes recorded while offline
         gate = defaults.bool(forKey: selfSetupKey) ? .ready : .main
     }
 
@@ -121,6 +123,7 @@ final class AppModel {
     func signOut() async {
         for planId in WakeAlarms.shared.installedPlanIds() { WakeAlarms.shared.cancel(planId: planId) }
         await ChallengeStore.shared.clear()
+        await ReceiptQueue.shared.clear()
         await Session.shared.signOut()
         DeviceKey.shared.setDeviceId(nil)
         defaults.removeObject(forKey: meCacheKey)

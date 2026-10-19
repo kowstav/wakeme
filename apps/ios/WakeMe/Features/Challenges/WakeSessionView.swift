@@ -4,8 +4,8 @@ import WakeMeCore
 
 /// Opened from the alarm's "Start challenge" button. Runs the routine's installed challenge
 /// with no network. Finishing it, or "End this wake session", cancels the follow-up alarm at
-/// once; then the outcome is reported (best effort). The system Stop alone never counts as
-/// completion.
+/// once; then the outcome is queued and reported, later if offline. The system Stop alone never
+/// counts as completion.
 struct WakeSessionView: View {
     @Environment(AppModel.self) private var app
     let pending: WakeSessionRouter.Pending
@@ -46,7 +46,8 @@ struct WakeSessionView: View {
         let version = WakeAlarms.shared.installedRoutine(planId: session.planId)?.version
         WakeSessionRouter.shared.pending = nil
         guard let version else { return }
-        Task { try? await app.api.reportOccurrence(planId: session.planId, occurrenceKey: session.occurrenceKey, version: version, outcome: outcome) }
+        let api = app.api
+        Task { await ReceiptQueue.shared.enqueue(.init(planId: session.planId, occurrenceKey: session.occurrenceKey, version: version, outcome: outcome), api: api) }
     }
 }
 
