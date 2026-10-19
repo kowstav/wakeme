@@ -1,0 +1,84 @@
+# Builds the iOS app on a GitHub-hosted macOS runner, runs WakeMeCore and
+# UI tests on the iOS Simulator, and keeps screenshots as an artifact.
+# Simulator results are not device evidence: AlarmKit, audio routes and
+# lock-screen behaviour need physical iPhones (doc 04 Stage 0).
+# macOS minutes are billed at 10x on private repositories: runs are limited
+# to iOS changes on the working branch, or started by hand.
+name: ios
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main-o7h6l5]
+    paths:
+      - apps/ios/**
+      - packages/policy-fixtures/**
+      - .github/workflows/ios.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    name: iOS app (build, tests, simulator screenshots)
+    runs-on: macos-26
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XCODE" ] && sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          xcrun simctl list runtimes | grep -i ios
+      - name: AlarmKit API surface in this SDK (for implementation against real signatures)
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          IF=$(find "$SDK/System/Library/Frameworks/AlarmKit.framework" -name "*.swiftinterface" | head -1)
+          echo "$IF"
+          grep -E "public (struct|enum|class|protocol|init|func|static|var|typealias|actor)|@available" "$IF" | grep -v "^ *//" | head -400
+      - name: WakeMeCore tests (shared fixtures)
+        run: swift test --package-path WakeMeCore
+      - name: Generate project
+        run: brew install xcodegen && xcodegen generate
+      - name: Build and UI-test on a simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available | grep -E "iPhone 1[6-9]|iPhone 2[0-9]" | grep -v Plus | head -1 | sed -E 's/^ *([^()]+) \(.*/\1/' | xargs)
+          echo "Using $DEVICE"
+          echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
+          xcodebuild -project WakeMe.xcodeproj -scheme WakeMe -configuration Debug \
+            -destination "platform=iOS Simulator,name=$DEVICE" -resultBundlePath "$RUNNER_TEMP/WakeMe.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log" | grep -E "error:|warning: |Test Case|Executed|BUILD|\*\*" | head -300
+          test ${PIPESTATUS[0]} -eq 0
+      - name: Launch and screenshot
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/evidence"
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -path "*Debug-iphonesimulator/WakeMe.app" -type d | head -1)
+          xcrun simctl boot "$DEVICE" 2>/dev/null || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" "$APP"
+          xcrun simctl launch "$DEVICE" app.wakeme.ios
+          sleep 6
+          xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/evidence/10-welcome-light.png"
+          xcrun simctl ui "$DEVICE" appearance dark; sleep 3
+          xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/evidence/11-welcome-dark.png"
+          xcrun simctl ui "$DEVICE" appearance light
+          xcrun simctl ui "$DEVICE" content_size extra-extra-extra-large; sleep 3
+          xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/evidence/12-welcome-large-text.png"
+          ls -la "$RUNNER_TEMP/evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-evidence
+          path: |
+            ${{ runner.temp }}/evidence
+            ${{ runner.temp }}/xcodebuild.log

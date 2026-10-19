@@ -1,0 +1,59 @@
+# XcodeGen spec: `xcodegen generate` writes WakeMe.xcodeproj (not committed).
+name: WakeMe
+options:
+  bundleIdPrefix: app.wakeme
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+packages:
+  WakeMeCore:
+    path: WakeMeCore
+targets:
+  WakeMe:
+    type: application
+    platform: iOS
+    sources:
+      - path: WakeMe
+    dependencies:
+      - package: WakeMeCore
+    info:
+      path: WakeMe/Info.plist
+      properties:
+        CFBundleDisplayName: Wake Me
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSAlarmKitUsageDescription: Wake Me schedules the wake-ups you set or accept, so they ring even in silent mode or Focus.
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_PREVIEWS: YES
+  WakeMeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: WakeMeUITests
+    dependencies:
+      - target: WakeMe
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  WakeMe:
+    build:
+      targets:
+        WakeMe: all
+        WakeMeUITests: [test]
+    test:
+      targets:
+        - WakeMeUITests

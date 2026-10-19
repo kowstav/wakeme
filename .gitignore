@@ -37,3 +37,4 @@ Thumbs.db
 services/api/.devdata/
 apps/android/tools/core-only/.gradle/
 apps/android/tools/core-only/build/
+apps/ios/WakeMe/Info.plist
