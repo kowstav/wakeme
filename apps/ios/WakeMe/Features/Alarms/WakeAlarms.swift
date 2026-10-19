@@ -170,6 +170,8 @@ final class WakeAlarms: @unchecked Sendable {
         )
     }
 
+    func installedPlanIds() -> [String] { Array(installedMap().keys) }
+
     private func installedMap() -> [String: [String]] {
         UserDefaults.standard.dictionary(forKey: installedKey) as? [String: [String]] ?? [:]
     }

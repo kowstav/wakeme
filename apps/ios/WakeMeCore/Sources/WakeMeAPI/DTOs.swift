@@ -4,7 +4,16 @@ import WakeMeCore
 // Mirrors packages/contracts/openapi.yaml (generated from the server). Only the fields the app uses;
 // unknown fields are ignored by JSONDecoder. Same shapes as the Android Dtos.kt.
 
-public struct QuietHoursDTO: Codable, Equatable, Sendable { public var enabled: Bool; public var start: String; public var end: String }
+public struct QuietHoursDTO: Codable, Equatable, Sendable {
+    public var enabled: Bool
+    public var start: String
+    public var end: String
+    public init(enabled: Bool, start: String, end: String) {
+        self.enabled = enabled
+        self.start = start
+        self.end = end
+    }
+}
 public struct SettingsDTO: Codable, Equatable, Sendable { public var quietHours: QuietHoursDTO; public var pausedUntil: String?; public var soundBudgetPerHour: Int; public var shareBypass: Bool }
 public struct CreditsDTO: Codable, Equatable, Sendable { public var available: Int; public var introRemaining: Int; public var monthlyRemaining: Int; public var monthlyResetsAt: String? }
 public struct BillingSummaryDTO: Codable, Equatable, Sendable { public var plan: String; public var status: String; public var expiresAt: String?; public var willRenew: Bool?; public var store: String?; public var credits: CreditsDTO }
@@ -60,7 +69,7 @@ public struct FriendDTO: Codable, Equatable, Sendable, Identifiable {
 }
 public struct FriendsDTO: Codable, Sendable { public var friends: [FriendDTO] }
 public struct GrantsDTO: Codable, Sendable { public var grants: [GrantDTO] }
-public struct InviteCreatedDTO: Codable, Equatable, Sendable { public var id: String; public var kind: String; public var token: String; public var code: String; public var url: String; public var expiresAt: String; public var maxUses: Int }
+public struct InviteCreatedDTO: Codable, Equatable, Sendable, Identifiable { public var id: String; public var kind: String; public var token: String; public var code: String; public var url: String; public var expiresAt: String; public var maxUses: Int }
 public struct CircleRefDTO: Codable, Equatable, Sendable { public var name: String; public var memberCount: Int }
 public struct InvitePreviewDTO: Codable, Equatable, Sendable { public var kind: String; public var inviter: PublicUser; public var circle: CircleRefDTO?; public var expiresAt: String; public var ownInvite: Bool; public var alreadyConnected: Bool }
 public struct RedeemDTO: Codable, Sendable { public var kind: String; public var friend: FriendDTO? }

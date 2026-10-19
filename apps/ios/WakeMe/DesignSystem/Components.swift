@@ -17,18 +17,27 @@ struct PrimaryButton: View {
     }
 }
 
+/// Outlined on the raised surface (same as Android's outlined button); never accent-tinted,
+/// so it stays clearly secondary in dark mode.
 struct SecondaryButton: View {
     let title: String
     let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+
     var body: some View {
         Button(action: action) {
             Text(title)
                 .font(.headline)
+                .foregroundStyle(WMColor.textPrimary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, WMSpacing.md)
                 .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
+                .background(WMColor.surfaceRaised, in: RoundedRectangle(cornerRadius: WMRadius.md))
+                .overlay(RoundedRectangle(cornerRadius: WMRadius.md).stroke(WMColor.border))
+                .contentShape(RoundedRectangle(cornerRadius: WMRadius.md))
         }
-        .buttonStyle(.bordered)
-        .foregroundStyle(WMColor.textPrimary)
-        .clipShape(RoundedRectangle(cornerRadius: WMRadius.md))
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.45)
     }
 }
 

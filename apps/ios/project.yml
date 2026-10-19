@@ -33,11 +33,21 @@ targets:
         NSSupportsLiveActivities: true
         NSAlarmKitUsageDescription: Wake Me schedules the wake-ups you set or accept, so they ring even in silent mode or Focus.
         ITSAppUsesNonExemptEncryption: false
+        # Non-secret configuration, set per build (e.g. xcodebuild WAKEME_API_BASE_URL=https://api.example).
+        WakeMeAPIBaseURL: $(WAKEME_API_BASE_URL)
+        WakeMeSupabaseURL: $(WAKEME_SUPABASE_URL)
+        WakeMeSupabaseAnonKey: $(WAKEME_SUPABASE_ANON_KEY)
+        # Plain HTTP only to the local dev backend; production uses HTTPS with platform trust.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: YES
+        WAKEME_API_BASE_URL: "http://127.0.0.1:8787"
+        WAKEME_SUPABASE_URL: ""
+        WAKEME_SUPABASE_ANON_KEY: ""
   WakeMeUITests:
     type: bundle.ui-testing
     platform: iOS

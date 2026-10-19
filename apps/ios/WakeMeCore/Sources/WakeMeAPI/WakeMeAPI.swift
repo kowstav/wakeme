@@ -42,6 +42,56 @@ public struct WakeMeAPI: Sendable {
 
     public func devices() async throws -> [DeviceDTO] { try await client.get("/v1/devices", as: DevicesDTO.self).devices }
 
+    public struct DeviceCapabilities: Encodable, Sendable {
+        public var notificationsAuthorized: Bool?
+        public var timeSensitiveAuthorized: Bool?
+        /// iOS: AlarmKit authorization. The server treats an iPhone as able to ring wake alarms only when true.
+        public var alarmAuthorized: Bool?
+        public var backgroundRefreshAvailable: Bool?
+        public var speakerPreferenceSupported: Bool?
+        public init(notificationsAuthorized: Bool? = nil, timeSensitiveAuthorized: Bool? = nil, alarmAuthorized: Bool? = nil, backgroundRefreshAvailable: Bool? = nil, speakerPreferenceSupported: Bool? = nil) {
+            self.notificationsAuthorized = notificationsAuthorized
+            self.timeSensitiveAuthorized = timeSensitiveAuthorized
+            self.alarmAuthorized = alarmAuthorized
+            self.backgroundRefreshAvailable = backgroundRefreshAvailable
+            self.speakerPreferenceSupported = speakerPreferenceSupported
+        }
+    }
+
+    public struct DevicePush: Encodable, Sendable {
+        public var provider = "apns"
+        public var token: String
+        public var environment: String
+        public init(token: String, environment: String) {
+            self.token = token
+            self.environment = environment
+        }
+    }
+
+    struct RegisterDevice: Encodable {
+        let installId: String
+        let platform = "ios"
+        let osVersion: String
+        let appBuild: String
+        let publicKey: String
+        let push: DevicePush?
+        let capabilities: DeviceCapabilities
+        let makePrimary: Bool?
+    }
+
+    /// Registers (or refreshes) this installation with its hardware-backed public key.
+    public func registerDevice(installId: String, osVersion: String, appBuild: String, publicKeySPKIBase64: String, push: DevicePush?, capabilities: DeviceCapabilities, makePrimary: Bool) async throws -> DeviceDTO {
+        try await client.post("/v1/devices", body: RegisterDevice(installId: installId, osVersion: osVersion, appBuild: appBuild, publicKey: publicKeySPKIBase64, push: push, capabilities: capabilities, makePrimary: makePrimary ? true : nil), idempotent: true)
+    }
+
+    struct CapabilitiesPatch: Encodable { let capabilities: DeviceCapabilities }
+    /// Signed by this device: only the phone itself may describe what it can do.
+    public func updateCapabilities(deviceId: String, _ capabilities: DeviceCapabilities) async throws -> DeviceDTO {
+        try await client.patch("/v1/devices/\(deviceId)", body: CapabilitiesPatch(capabilities: capabilities), signed: true)
+    }
+
+    public func makePrimary(deviceId: String) async throws -> DeviceDTO { try await client.post("/v1/devices/\(deviceId)/primary", body: Optional<Empty>.none) }
+
     // MARK: friends
     public func friends() async throws -> [FriendDTO] { try await client.get("/v1/friends", as: FriendsDTO.self).friends }
     public func friend(_ friendshipId: String) async throws -> FriendDTO { try await client.get("/v1/friendships/\(friendshipId)") }
@@ -83,6 +133,32 @@ public struct WakeMeAPI: Sendable {
     struct Version: Encodable { let version: Int }
     public func acceptPlan(_ id: String, version: Int) async throws -> PlanDTO { try await client.post("/v1/alarm-plans/\(id)/accept", body: Version(version: version)) }
     public func declinePlan(_ id: String, version: Int) async throws -> PlanDTO { try await client.post("/v1/alarm-plans/\(id)/decline", body: Version(version: version)) }
+    struct Paused: Encodable { let paused: Bool }
+    public func pausePlan(_ id: String, paused: Bool) async throws -> PlanDTO { try await client.post("/v1/alarm-plans/\(id)/pause", body: Paused(paused: paused)) }
+    public func cancelPlan(_ id: String) async throws -> PlanDTO { try await client.delete("/v1/alarm-plans/\(id)") }
+
+    public struct InstallationReceipt: Encodable, Sendable {
+        public var version: Int
+        /// scheduled | failed | removed: what this phone's OS actually accepted.
+        public var result: String
+        public var nextFireAt: String?
+        public var scheduledInstants: [String]?
+        public var errorCode: String?
+        public init(version: Int, result: String, nextFireAt: String? = nil, scheduledInstants: [String]? = nil, errorCode: String? = nil) {
+            self.version = version
+            self.result = result
+            self.nextFireAt = nextFireAt
+            self.scheduledInstants = scheduledInstants
+            self.errorCode = errorCode
+        }
+    }
+    /// "Ready" on the server means this receipt arrived, not merely that the plan was saved.
+    public func reportInstallation(planId: String, _ receipt: InstallationReceipt) async throws {
+        let _: OkDTO = try await client.post("/v1/alarm-plans/\(planId)/installations", body: receipt, signed: true, idempotent: true)
+    }
+
+    // MARK: friends actions
+    public func removeFriend(_ friendshipId: String) async throws { let _: OkDTO = try await client.delete("/v1/friendships/\(friendshipId)") }
 
     // MARK: messages
     public func messages(_ conversationId: String) async throws -> [MessageDTO] { try await client.get("/v1/conversations/\(conversationId)/messages", as: MessagesDTO.self).messages }

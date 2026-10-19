@@ -47,6 +47,16 @@ jobs:
           grep -E "public (struct|enum|class|protocol|init|func|static|var|typealias|actor)|@available" "$IF" | grep -v "^ *//" | head -400
       - name: WakeMeCore tests (shared fixtures)
         run: swift test --package-path WakeMeCore
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+      - name: Start the local dev backend (embedded database) for UI journeys
+        working-directory: .
+        run: |
+          npm ci --no-audit --no-fund
+          (cd services/api && nohup npm run dev > "$RUNNER_TEMP/dev-backend.log" 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/v1/health > /dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:8787/v1/health
       - name: Generate project
         run: brew install xcodegen && xcodegen generate
       - name: Build and UI-test on a simulator
@@ -66,7 +76,7 @@ jobs:
           xcrun simctl boot "$DEVICE" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl install "$DEVICE" "$APP"
-          xcrun simctl launch "$DEVICE" app.wakeme.ios
+          xcrun simctl launch "$DEVICE" app.wakeme.ios -uiTestReset
           sleep 6
           xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/evidence/10-welcome-light.png"
           xcrun simctl ui "$DEVICE" appearance dark; sleep 3
@@ -78,6 +88,17 @@ jobs:
       - name: Screenshots into the log (downscaled base64, for review without artifact access)
         if: always()
         run: |
+          xcrun xcresulttool export attachments --path "$RUNNER_TEMP/WakeMe.xcresult" --output-path "$RUNNER_TEMP/attachments" > /dev/null 2>&1 || true
+          if [ -f "$RUNNER_TEMP/attachments/manifest.json" ]; then
+            python3 - "$RUNNER_TEMP/attachments" "$RUNNER_TEMP/evidence" <<'PY'
+          import json, os, shutil, sys
+          src, dst = sys.argv[1], sys.argv[2]
+          for test in json.load(open(os.path.join(src, "manifest.json"))):
+              for a in test.get("attachments", []):
+                  name = a.get("suggestedHumanReadableName", a["exportedFileName"]).split("_")[0]
+                  shutil.copy(os.path.join(src, a["exportedFileName"]), os.path.join(dst, "ui-" + name + ".png"))
+          PY
+          fi
           for f in "$RUNNER_TEMP"/evidence/*.png; do
             [ -f "$f" ] || continue
             n=$(basename "$f" .png)
@@ -91,3 +112,4 @@ jobs:
           path: |
             ${{ runner.temp }}/evidence
             ${{ runner.temp }}/xcodebuild.log
+            ${{ runner.temp }}/dev-backend.log
