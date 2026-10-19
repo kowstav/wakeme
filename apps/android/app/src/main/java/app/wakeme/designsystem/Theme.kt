@@ -16,7 +16,8 @@ val LocalWakeMeColors = staticCompositionLocalOf { WakeMeTokens.Light }
 // the accent fill; PrimaryButton sets the accent fill itself. Selected chips and the navigation
 // indicator use secondaryContainer: the accent fill with its own text colour, instead of
 // Material's default lavender, which isn't part of the design system; so does the unchecked
-// switch track (surfaceContainerHighest).
+// switch track (surfaceContainerHighest); dialogs and sheets (the other surface containers)
+// use the raised surface.
 private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
     if (dark) {
         darkColorScheme(
@@ -24,6 +25,7 @@ private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
             surface = c.surface, onSurface = c.textPrimary, surfaceVariant = c.surfaceSunken, onSurfaceVariant = c.textSecondary,
             surfaceContainer = c.surfaceRaised, error = c.danger, onError = c.textOnDanger, outline = c.border, secondary = c.info,
             secondaryContainer = c.accent, onSecondaryContainer = c.textOnAccent, surfaceContainerHighest = c.surfaceSunken,
+            surfaceContainerHigh = c.surfaceRaised, surfaceContainerLow = c.surfaceRaised, surfaceContainerLowest = c.surfaceRaised,
         )
     } else {
         lightColorScheme(
@@ -31,6 +33,7 @@ private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
             surface = c.surface, onSurface = c.textPrimary, surfaceVariant = c.surfaceSunken, onSurfaceVariant = c.textSecondary,
             surfaceContainer = c.surfaceRaised, error = c.dangerFill, onError = c.textOnDanger, outline = c.border, secondary = c.info,
             secondaryContainer = c.accent, onSecondaryContainer = c.textOnAccent, surfaceContainerHighest = c.surfaceSunken,
+            surfaceContainerHigh = c.surfaceRaised, surfaceContainerLow = c.surfaceRaised, surfaceContainerLowest = c.surfaceRaised,
         )
     }
 

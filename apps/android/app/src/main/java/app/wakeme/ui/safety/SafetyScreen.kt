@@ -332,6 +332,16 @@ private fun StartSheet(
                         }
                     }
                 }
+                // Who is told and until when, right under the choice of friends: the dialog scrolls,
+                // and this line must not end up below the fold.
+                item {
+                    val until = clock.format(Instant.now().plus(Duration.ofMinutes(if (kind == "sos") 120L else minutes.toLong())))
+                    Body(
+                        if (viewers.isEmpty()) "Pick at least one friend."
+                        else "${viewers.joinToString(", ") { it.user.displayName }} will be notified and can see this until $until. You can stop it anytime.",
+                        color = WM.colors.textPrimary,
+                    )
+                }
                 if (kind != "sos") {
                     item { Body("For how long?") }
                     item {
@@ -355,14 +365,6 @@ private fun StartSheet(
                 item { SettingRow("Share my location", "Friends see where you were, when it was captured and how accurate it is. You'll see a notification with Stop while it's on.", shareLocation) { shareLocation = it } }
                 if (kind != "sos") item { OutlinedTextField(message, { if (it.length <= 200) message = it }, label = { Text("Note (optional)") }, singleLine = true) }
                 if (permissionDenied) item { StatusPill("Location is off for Wake Me, so only the alert is sent, with no location.", Tone.Warning) }
-                item {
-                    val until = clock.format(Instant.now().plus(Duration.ofMinutes(if (kind == "sos") 120L else minutes.toLong())))
-                    Body(
-                        if (viewers.isEmpty()) "Pick at least one friend."
-                        else "${viewers.joinToString(", ") { it.user.displayName }} will be notified and can see this until $until. You can stop it anytime.",
-                        color = WM.colors.textPrimary,
-                    )
-                }
             }
         },
         confirmButton = {
