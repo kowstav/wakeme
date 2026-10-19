@@ -115,6 +115,26 @@ public struct WakeMeAPI: Sendable {
     public func grants(direction: String) async throws -> [GrantDTO] { try await client.get("/v1/grants?direction=\(direction)&includeRevoked=true", as: GrantsDTO.self).grants }
     public func revokeGrant(_ id: String) async throws { let _: OkDTO = try await client.delete("/v1/grants/\(id)") }
 
+    public struct PresetDTO: Codable, Equatable, Sendable { public var id: String; public var capabilities: [String]; public var limits: GrantLimits; public var validUntil: String }
+    struct PresetsDTO: Codable { let presets: [PresetDTO] }
+    /// Editable starting points (Gentle nudges, Wake buddy, Focus buddy); there is no "allow everything".
+    public func presets() async throws -> [PresetDTO] { try await client.get("/v1/grants/presets", as: PresetsDTO.self).presets }
+
+    struct NewGrant: Encodable { let granteeId: String; let capabilities: [String]; let limits: GrantLimits; let validUntil: String }
+    /// Only the recipient grants. Not retried automatically (one live grant per direction).
+    public func createGrant(granteeId: String, capabilities: [String], limits: GrantLimits, validUntil: Date) async throws -> GrantDTO {
+        try await client.post("/v1/grants", body: NewGrant(granteeId: granteeId, capabilities: capabilities, limits: limits, validUntil: Instant.format(validUntil)))
+    }
+
+    struct GrantEdit: Encodable { let expectedVersion: Int; let paused: Bool; let capabilities: [String]; let limits: GrantLimits; let validUntil: String }
+    /// Replaces the terms; fails with `version_conflict` if the grant changed meanwhile.
+    public func updateGrant(_ id: String, expectedVersion: Int, paused: Bool, capabilities: [String], limits: GrantLimits, validUntil: Date) async throws -> GrantDTO {
+        try await client.put("/v1/grants/\(id)", body: GrantEdit(expectedVersion: expectedVersion, paused: paused, capabilities: capabilities, limits: limits, validUntil: Instant.format(validUntil)))
+    }
+
+    struct GrantPause: Encodable { let paused: Bool }
+    public func pauseGrant(_ id: String, paused: Bool) async throws -> GrantDTO { try await client.post("/v1/grants/\(id)/pause", body: GrantPause(paused: paused)) }
+
     // MARK: commands
     public struct CommandRequest: Encodable, Sendable {
         public var targetUserId: String
@@ -196,6 +216,15 @@ public struct WakeMeAPI: Sendable {
 
     // MARK: friends actions
     public func removeFriend(_ friendshipId: String) async throws { let _: OkDTO = try await client.delete("/v1/friendships/\(friendshipId)") }
+
+    struct BlockBody: Encodable {
+        struct Report: Encodable { let reason: String }
+        let report: Report?
+    }
+    /// Revokes every permission both ways and ends the conversation; optionally files a report.
+    public func block(_ friendshipId: String, reportReason: String?) async throws {
+        let _: OkDTO = try await client.post("/v1/friendships/\(friendshipId)/block", body: BlockBody(report: reportReason.map(BlockBody.Report.init(reason:))))
+    }
 
     // MARK: messages
     public func messages(_ conversationId: String) async throws -> [MessageDTO] { try await client.get("/v1/conversations/\(conversationId)/messages", as: MessagesDTO.self).messages }

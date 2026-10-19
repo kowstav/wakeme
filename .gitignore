@@ -38,3 +38,4 @@ services/api/.devdata/
 apps/android/tools/core-only/.gradle/
 apps/android/tools/core-only/build/
 apps/ios/WakeMe/Info.plist
+apps/ios/WakeMeUITests/Info.plist

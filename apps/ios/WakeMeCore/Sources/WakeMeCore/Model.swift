@@ -49,11 +49,21 @@ public struct NudgeLimits: Codable, Equatable, Sendable {
     public var windows: [LocalWindow]
     public var sounds: [String]
     public var overridesQuietHours: Bool
+    public init(maxPerHour: Int, windows: [LocalWindow], sounds: [String], overridesQuietHours: Bool) {
+        self.maxPerHour = maxPerHour
+        self.windows = windows
+        self.sounds = sounds
+        self.overridesQuietHours = overridesQuietHours
+    }
 }
 
 public struct FollowUp: Codable, Equatable, Sendable {
     public var allowed: Bool
     public var maxDelaySeconds: Int
+    public init(allowed: Bool, maxDelaySeconds: Int) {
+        self.allowed = allowed
+        self.maxDelaySeconds = maxDelaySeconds
+    }
 }
 
 public struct AlarmLimits: Codable, Equatable, Sendable {
@@ -62,22 +72,40 @@ public struct AlarmLimits: Codable, Equatable, Sendable {
     public var windows: [LocalWindow]
     public var sounds: [String]
     public var followUp: FollowUp
+    public init(maxAlarmSeconds: Int, maxPerDay: Int, windows: [LocalWindow], sounds: [String], followUp: FollowUp) {
+        self.maxAlarmSeconds = maxAlarmSeconds
+        self.maxPerDay = maxPerDay
+        self.windows = windows
+        self.sounds = sounds
+        self.followUp = followUp
+    }
 }
 
 public struct ChallengeLimits: Codable, Equatable, Sendable {
     public var types: [String]
     public var maxDurationSeconds: Int
     public var maxDifficulty: String
+    public init(types: [String], maxDurationSeconds: Int, maxDifficulty: String) {
+        self.types = types
+        self.maxDurationSeconds = maxDurationSeconds
+        self.maxDifficulty = maxDifficulty
+    }
 }
 
 public struct FocusLimits: Codable, Equatable, Sendable {
     public var maxSessionMinutes: Int
     public var maxPerDay: Int
     public var windows: [LocalWindow]
+    public init(maxSessionMinutes: Int, maxPerDay: Int, windows: [LocalWindow]) {
+        self.maxSessionMinutes = maxSessionMinutes
+        self.maxPerDay = maxPerDay
+        self.windows = windows
+    }
 }
 
 public struct CheckinLimits: Codable, Equatable, Sendable {
     public var maxPerDay: Int
+    public init(maxPerDay: Int) { self.maxPerDay = maxPerDay }
 }
 
 public struct GrantLimits: Codable, Equatable, Sendable {

@@ -101,7 +101,8 @@ struct InviteSheet: View {
                 Text("Share your invite").font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
                 Text("If the link doesn't open the app, they can type this code:").foregroundStyle(WMColor.textSecondary)
                 Text(invite.code).font(.system(.title, design: .monospaced).bold()).foregroundStyle(WMColor.textPrimary).textSelection(.enabled)
-                Text("It works once and expires soon. Opening it gives you no permissions.").foregroundStyle(WMColor.textSecondary)
+                    .accessibilityIdentifier("inviteCode")
+                Text("It works once and expires soon. Accepting makes you friends and nothing more: each of you chooses what the other can do.").foregroundStyle(WMColor.textSecondary)
                 ShareLink(item: "Let's wake each other up on Wake Me: \(invite.url) (code \(invite.code))") {
                     Text("Share").font(.headline).frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
                 }
@@ -123,12 +124,16 @@ struct FriendDetailView: View {
     @State private var sending = false
     @State private var message: String?
     @State private var askNotifications = false
+    @State private var editing = false
+    @State private var confirmBlock = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
             if let f = friend {
                 VStack(alignment: .leading, spacing: WMSpacing.md) {
                     Text(f.user.displayName).font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary)
+                    permissionsCard(f)
                     let quack = f.actions?.first { $0.capability == Capability.nudge }
                     WMCard {
                         Text("Quack").font(.title3.bold()).foregroundStyle(WMColor.textPrimary)
@@ -143,6 +148,7 @@ struct FriendDetailView: View {
                     }
                     Text("What \(f.user.displayName) can do on your phone is up to you. Circle membership never changes it.")
                         .foregroundStyle(WMColor.textSecondary)
+                    SecondaryButton(title: "Block or report \(f.user.displayName)") { confirmBlock = true }
                 }
                 .padding(WMSpacing.md).frame(maxWidth: 640).frame(maxWidth: .infinity)
             } else {
@@ -151,6 +157,15 @@ struct FriendDetailView: View {
         }
         .background(WMColor.surface)
         .task { await load() }
+        .sheet(isPresented: $editing) {
+            if let f = friend { GrantEditorView(friend: f, onSaved: { await load() }) }
+        }
+        .confirmationDialog("Block \(friend?.user.displayName ?? "this friend")?", isPresented: $confirmBlock, titleVisibility: .visible) {
+            Button("Block and report", role: .destructive) { Task { await block(report: true) } }
+            Button("Block only", role: .destructive) { Task { await block(report: false) } }
+        } message: {
+            Text("Every permission between you ends at once, in both directions, and your conversation closes. They aren't told that you reported them.")
+        }
         .alert("Turn on notifications?", isPresented: $askNotifications) {
             Button("Continue") { Task { await requestNotificationsThenSend() } }
             Button("Not now", role: .cancel) { Task { await send() } }
@@ -162,6 +177,42 @@ struct FriendDetailView: View {
 
     private func load() async {
         friend = try? await app.api.friend(friendshipId)
+    }
+
+    /// What this friend may do on MY phone: recipient-owned, so only I change it.
+    @ViewBuilder private func permissionsCard(_ f: FriendDTO) -> some View {
+        let name = f.user.displayName
+        let mine = f.iAllowThem.flatMap { $0.revokedAt == nil ? $0 : nil }
+        WMCard {
+            Text("What \(name) can do on your phone").font(.title3.bold()).foregroundStyle(WMColor.textPrimary)
+            if let g = mine {
+                Text("\(name) can \(g.capabilities.map(capabilityText).sorted().joined(separator: ", ")).").foregroundStyle(WMColor.textPrimary)
+                if g.paused { StatusPill(text: "Paused", tone: .neutral) }
+                PrimaryButton(title: "Change permissions") { editing = true }
+                SecondaryButton(title: g.paused ? "Resume \(name)'s permissions" : "Pause \(name)'s permissions") { Task { await pause(g, !g.paused) } }
+            } else {
+                Text("Nothing yet. \(name) can't make a sound or set an alarm on your phone.").foregroundStyle(WMColor.textSecondary)
+                PrimaryButton(title: "Choose what \(name) can do") { editing = true }
+            }
+        }
+    }
+
+    private func pause(_ g: GrantDTO, _ paused: Bool) async {
+        do {
+            _ = try await app.api.pauseGrant(g.id, paused: paused)
+            await load()
+        } catch {
+            message = (error as? APIError)?.message ?? "You're offline. Nothing was changed."
+        }
+    }
+
+    private func block(report: Bool) async {
+        do {
+            try await app.api.block(friendshipId, reportReason: report ? "unwanted_alerts" : nil)
+            dismiss()
+        } catch {
+            message = (error as? APIError)?.message ?? "You're offline. Nothing was changed."
+        }
     }
 
     /// Doc 03 §5 step 6: explain before the system prompt, at the first nudge. Declining never blocks sending.

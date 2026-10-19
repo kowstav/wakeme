@@ -98,12 +98,15 @@ struct RoutinesView: View {
     private func load() async {
         guard let p = try? await app.api.plans() else { return }
         plans = p
-        await install(p.mine)
+        // A receipt changes the server's readiness line; show what this phone just reported.
+        if await install(p.mine), let fresh = try? await app.api.plans() { plans = fresh }
     }
 
     /// Installs accepted versions with AlarmKit on the primary phone and reports exactly
     /// what the OS accepted; ended or paused routines are cancelled locally first.
-    private func install(_ mine: [PlanDTO]) async {
+    @discardableResult
+    private func install(_ mine: [PlanDTO]) async -> Bool {
+        var reported = false
         let primary = await app.isPrimaryPhone()
         // Alarms are installed only from server data, so a routine the server no longer
         // lists (possible only after a server restore) stops ringing here.
@@ -120,6 +123,9 @@ struct RoutinesView: View {
             let receipt: WakeMeAPI.InstallationReceipt
             switch await WakeAlarms.shared.install(routine, label: v.label) {
             case .scheduled(let dates):
+                // Same version already confirmed with the same next ring: nothing new to report.
+                let reportedNext = plan.installation?.nextFireAt.flatMap { try? Instant.parse($0) } // server sends milliseconds
+                if plan.readiness == "ready", plan.installation?.version == v.version, reportedNext == dates.first { continue }
                 receipt = .init(version: v.version, result: "scheduled", nextFireAt: dates.first.map(Instant.format), scheduledInstants: dates.map(Instant.format))
             case .nothingToSchedule:
                 continue
@@ -128,8 +134,9 @@ struct RoutinesView: View {
             case .failed(let code):
                 receipt = .init(version: v.version, result: "failed", errorCode: code)
             }
-            try? await app.api.reportInstallation(planId: plan.id, receipt)
+            if (try? await app.api.reportInstallation(planId: plan.id, receipt)) != nil { reported = true }
         }
+        return reported
     }
 }
 

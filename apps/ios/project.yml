@@ -58,10 +58,15 @@ targets:
       - path: WakeMeUITests
     dependencies:
       - target: WakeMe
+    info:
+      path: WakeMeUITests/Info.plist
+      properties:
+        # The journey test talks to the local dev backend (http://127.0.0.1:8787).
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.uitests
-        GENERATE_INFOPLIST_FILE: YES
 schemes:
   WakeMe:
     build:

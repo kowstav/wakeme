@@ -9,6 +9,7 @@ import Crypto
 #endif
 import XCTest
 @testable import WakeMeAPI
+import WakeMeCore
 
 /// Scripted transport: returns queued responses and records requests.
 final class FakeTransport: HTTPTransport, @unchecked Sendable {
@@ -147,5 +148,25 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(t.requests.last?.httpMethod, "DELETE")
         XCTAssertEqual(t.requests.last?.url?.path, "/v1/account")
         XCTAssertEqual(t.requests.count, 2, "reauth_required is not a token refresh")
+    }
+
+    func testGrantBodiesCarryOnlyChosenLimitsAndBlockReportsOnlyWhenAsked() async throws {
+        let grant = #"{"id":"g1","grantorId":"me","granteeId":"f1","version":1,"capabilities":["nudge.send"],"limits":{"nudge":{"maxPerHour":3,"windows":[{"days":[1,2,3,4,5,6,7],"start":"08:00","end":"22:00"}],"sounds":["bundled:quack.classic"],"overridesQuietHours":false}},"validFrom":"2026-10-19T12:00:00Z","validUntil":"2027-01-17T12:00:00Z","paused":false,"updatedAt":"2026-10-19T12:00:00Z"}"#
+        let t = FakeTransport([(201, grant, [:]), (200, #"{"ok":true,"revokedGrants":1,"reportId":null}"#, [:]), (200, #"{"ok":true,"revokedGrants":0,"reportId":"r1"}"#, [:])])
+        let api = WakeMeAPI(client: client(t))
+        let limits = GrantLimits(nudge: NudgeLimits(maxPerHour: 3, windows: [LocalWindow(days: [1, 2, 3, 4, 5, 6, 7], start: "08:00", end: "22:00")], sounds: ["bundled:quack.classic"], overridesQuietHours: false))
+        let g = try await api.createGrant(granteeId: "f1", capabilities: [Capability.nudge], limits: limits, validUntil: Instant.parse("2027-01-17T12:00:00Z"))
+        XCTAssertEqual(g.version, 1)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(t.requests[0].httpBody)) as? [String: Any])
+        XCTAssertEqual(Set(body.keys), ["granteeId", "capabilities", "limits", "validUntil"])
+        XCTAssertEqual(Set((body["limits"] as? [String: Any] ?? [:]).keys), ["nudge"], "no null limits for capabilities not chosen (the server rejects unknown or null fields)")
+        XCTAssertEqual(body["validUntil"] as? String, "2027-01-17T12:00:00Z")
+
+        try await api.block("fs1", reportReason: nil)
+        XCTAssertEqual(String(decoding: try XCTUnwrap(t.requests[1].httpBody), as: UTF8.self), "{}")
+        try await api.block("fs1", reportReason: "unwanted_alerts")
+        let blocked = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(t.requests[2].httpBody)) as? [String: Any])
+        XCTAssertEqual((blocked["report"] as? [String: Any])?["reason"] as? String, "unwanted_alerts")
+        XCTAssertEqual(t.requests[2].url?.path, "/v1/friendships/fs1/block")
     }
 }
