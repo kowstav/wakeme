@@ -1,9 +1,11 @@
 package app.wakeme.alarm
 
+import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import app.wakeme.sync.SyncWorker
 
 /**
  * Fired by AlarmManager at the exact time. Exact alarms are an allowed
@@ -33,10 +35,13 @@ class RescheduleReceiver : BroadcastReceiver() {
             return
         }
         val pending = goAsync()
+        val clockChanged = intent.action == Intent.ACTION_TIME_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED
         AlarmEntryPoints.scope.launchCatching {
             try {
-                scheduler.rescheduleAll()
+                scheduler.rescheduleAll(recompute = clockChanged)
                 AlarmEntryPoints.readiness(context).reportCapabilities()
+                // Exact alarms allowed again: routines that failed to install meanwhile come from the server.
+                if (intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) SyncWorker.runNow(context)
             } finally {
                 pending.finish()
             }

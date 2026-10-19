@@ -29,6 +29,7 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
     private val trustedKeysKey = stringPreferencesKey("challenge_keys")
     private val trustedKeysAtKey = longPreferencesKey("challenge_keys_at")
     private val onboardingKey = stringPreferencesKey("onboarding_step")
+    private val installErrorsKey = stringPreferencesKey("install_errors")
 
     val me: Flow<MeDto?> = context.appPrefs.data.map { p -> p[meKey]?.let { runCatching { WakeMeApiJson.decodeFromString(MeDto.serializer(), it) }.getOrNull() } }
 
@@ -58,6 +59,16 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
         it[trustedKeysKey] = WakeMeJson.encodeToString(keys)
         it[trustedKeysAtKey] = at
     }
+
+    /** Error code of each routine's last installation receipt (e.g. challenge_unavailable), repeated when its window is topped up. */
+    suspend fun installError(planId: String): String? = installErrors()[planId]
+    suspend fun setInstallError(planId: String, code: String?) = context.appPrefs.edit {
+        val errors = it[installErrorsKey]?.let { raw -> runCatching { WakeMeJson.decodeFromString<Map<String, String>>(raw) }.getOrNull() }.orEmpty().toMutableMap()
+        if (code == null) errors.remove(planId) else errors[planId] = code
+        it[installErrorsKey] = WakeMeJson.encodeToString(errors.toMap())
+    }
+    private suspend fun installErrors(): Map<String, String> =
+        context.appPrefs.data.first()[installErrorsKey]?.let { runCatching { WakeMeJson.decodeFromString<Map<String, String>>(it) }.getOrNull() } ?: emptyMap()
 
     val onboardingStep: Flow<String?> = context.appPrefs.data.map { it[onboardingKey] }
     suspend fun setOnboardingStep(step: String?) = context.appPrefs.edit { if (step == null) it.remove(onboardingKey) else it[onboardingKey] = step }

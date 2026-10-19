@@ -108,6 +108,9 @@ class AlarmService : Service() {
             else receipts.enqueue(Receipt.Command(alarm.commandId, "execution_refused", report.failure ?: "audio_focus_denied"))
         } else if (alarm.planId != null) {
             receipts.enqueue(Receipt.Occurrence(alarm.planId, alarm.occurrenceKey, alarm.version, if (isFollowUp) "follow_up_rang" else "rang"))
+            // Arm the occurrence that just entered the window, so the routine keeps ringing
+            // even if the app doesn't run again before then (ADR 0011).
+            if (unlocked) AlarmEntryPoints.scope.launchCatching { AlarmEntryPoints.arming(this@AlarmService).topUpAll() }
         }
     }
 

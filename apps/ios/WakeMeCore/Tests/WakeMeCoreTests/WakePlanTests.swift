@@ -9,12 +9,30 @@ final class WakePlanTests: XCTestCase {
         challengeRevisionId: nil, followUpDelaySeconds: 180, paused: false
     )
 
-    func testInstallsMainAndOneFollowUp() throws {
+    func testArmsEveryOccurrenceInTheWindowEachWithItsFollowUp() throws {
         let alarms = try scheduleFor(routine, now: Instant.parse("2026-10-18T12:00:00Z"), deviceZone: timeZone("Europe/London"))
-        XCTAssertEqual(alarms.map(\.role), [.main, .followUp])
         XCTAssertEqual(alarms[0].fireAt, try Instant.parse("2026-10-19T11:00:00Z"))
+        XCTAssertEqual(alarms[1].role, .followUp)
         XCTAssertEqual(alarms[1].fireAt, try Instant.parse("2026-10-19T11:03:00Z"))
-        XCTAssertNotEqual(alarms[0].stableId, alarms[1].stableId)
+        // Sunday noon: weekdays through the next Monday, which is inside the 8-day window.
+        let mains = alarms.filter { $0.role == .main }
+        XCTAssertEqual(mains.map(\.occurrenceKey), ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-26"])
+        XCTAssertEqual(mains.count, alarms.filter { $0.role == .followUp }.count)
+        XCTAssertEqual(Set(alarms.map(\.stableId)).count, alarms.count)
+    }
+
+    func testWindowIsCappedAndAlwaysIncludesTheNextOccurrence() throws {
+        var daily = routine
+        daily.timeZone = "UTC"
+        daily.recurrence = .weekly([1, 2, 3, 4, 5, 6, 7])
+        daily.followUpDelaySeconds = nil
+        let alarms = try scheduleFor(daily, now: Instant.parse("2026-10-18T12:00:00Z"), deviceZone: timeZone("UTC"))
+        XCTAssertEqual(alarms.count, armMaxOccurrences)
+        XCTAssertEqual(alarms.last?.fireAt, try Instant.parse("2026-10-26T07:00:00Z"))
+        // A one-off weeks away is still armed.
+        daily.recurrence = .once("2026-11-20")
+        let once = try scheduleFor(daily, now: Instant.parse("2026-10-18T12:00:00Z"), deviceZone: timeZone("UTC"))
+        XCTAssertEqual(once.map(\.fireAt), [try Instant.parse("2026-11-20T07:00:00Z")])
     }
 
     func testDeviceTimeZonePolicyFollowsThePhone() throws {
@@ -22,7 +40,8 @@ final class WakePlanTests: XCTestCase {
         r.timeZonePolicy = "device"
         r.followUpDelaySeconds = nil
         let alarms = try scheduleFor(r, now: Instant.parse("2026-10-18T12:00:00Z"), deviceZone: timeZone("Asia/Tokyo"))
-        XCTAssertEqual(alarms.map(\.fireAt), [try Instant.parse("2026-10-18T22:00:00Z")])
+        XCTAssertEqual(alarms.first?.fireAt, try Instant.parse("2026-10-18T22:00:00Z"))
+        XCTAssertTrue(alarms.allSatisfy { $0.role == .main })
     }
 
     func testPausedRoutinesInstallNothing() throws {

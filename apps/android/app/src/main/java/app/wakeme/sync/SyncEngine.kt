@@ -13,7 +13,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.wakeme.alarm.AlarmScheduler
+import app.wakeme.alarm.ArmingWindow
 import app.wakeme.alarm.ScheduleResult
+import app.wakeme.core.AlarmRole
 import app.wakeme.core.ChallengeEnvelopes
 import app.wakeme.core.InstalledRoutine
 import app.wakeme.core.SignedEnvelope
@@ -108,6 +110,7 @@ class SyncEngine @Inject constructor(
     private val receipts: ReceiptQueue,
     private val challenges: ChallengeInstaller,
     private val device: DeviceIdentity,
+    private val arming: ArmingWindow,
 ) {
     private val mutex = Mutex()
     private val _changes = MutableSharedFlow<String>(extraBufferCapacity = 32)
@@ -115,6 +118,8 @@ class SyncEngine @Inject constructor(
     val changes: SharedFlow<String> = _changes
 
     suspend fun sync() = mutex.withLock {
+        // Local first: keep routines armed over the window even when the server can't be reached.
+        arming.topUpAll()
         val cursor = prefs.cursor()
         if (cursor == null) return@withLock bootstrap()
         var next: String = cursor
@@ -221,22 +226,46 @@ class SyncEngine @Inject constructor(
             challengeRevisionId = if (challengeOk) accepted.challengeRevisionId else null, followUpDelaySeconds = accepted.followUpDelaySeconds, paused = false,
         )
         val helper = if (plan.creator.id != myId) plan.creator.displayName else null
+        val errorCode = if (challengeOk) null else "challenge_unavailable"
+        val ready = plan.readiness == "ready" || plan.readiness == "ready_edit_pending"
+        val installed = existing?.let { runCatching { WakeMeJson.decodeFromString(InstalledRoutine.serializer(), it.json) }.getOrNull() }
+        if (installed == routine) {
+            // Already installed as is: only arm what entered the window. Installing again would
+            // drop a follow-up still pending for an occurrence that just rang (reporting "rang"
+            // changes the routine on the server, which brings it back here).
+            val added = scheduler.topUp(routine, helper)
+            val next = scheduler.armed(plan.id).firstOrNull { it.role == AlarmRole.MAIN.name }?.fireAt?.let(java.time.Instant::ofEpochMilli)
+            val reportedNext = plan.installation?.nextFireAt?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
+            if (next != null && (added || !ready || reportedNext != next)) {
+                prefs.setInstallError(plan.id, errorCode)
+                arming.report(routine)
+            }
+            return
+        }
         // Replace by installing the new version first, then the cancellation of old alarms happens inside installRoutine.
         when (val result = scheduler.installRoutine(routine, helper)) {
             is ScheduleResult.Scheduled -> {
                 db.routines().upsert(RoutineEntity(plan.id, routine.version, WakeMeJson.encodeToString(InstalledRoutine.serializer(), routine), plan.creator.displayName, plan.creator.id == myId, System.currentTimeMillis()))
                 val main = result.alarms.firstOrNull()
                 val reportedNext = plan.installation?.nextFireAt?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
-                if (!sameVersion || plan.readiness != "ready" || reportedNext != main?.fireAt) {
-                    receipts.enqueue(Receipt.Installation(plan.id, routine.version, "scheduled", main?.fireAt?.toString(), result.alarms.map { it.fireAt.toString() }, if (challengeOk) null else "challenge_unavailable"))
+                if (!sameVersion || !ready || reportedNext != main?.fireAt) {
+                    prefs.setInstallError(plan.id, errorCode)
+                    receipts.enqueue(Receipt.Installation(plan.id, routine.version, "scheduled", main?.fireAt?.toString(), result.alarms.map { it.fireAt.toString() }, errorCode))
                 }
             }
             ScheduleResult.NothingToSchedule -> {
                 db.routines().upsert(RoutineEntity(plan.id, routine.version, WakeMeJson.encodeToString(InstalledRoutine.serializer(), routine), plan.creator.displayName, plan.creator.id == myId, System.currentTimeMillis()))
             }
-            ScheduleResult.ExactAlarmPermissionMissing ->
+            // Nothing is armed for it now; drop the local copy so a top-up can't arm an older version.
+            ScheduleResult.ExactAlarmPermissionMissing -> {
+                db.routines().delete(plan.id)
                 receipts.enqueue(Receipt.Installation(plan.id, routine.version, "failed", null, emptyList(), "exact_alarm_permission_missing"))
-            is ScheduleResult.Failed -> receipts.enqueue(Receipt.Installation(plan.id, routine.version, "failed", null, emptyList(), result.reason))
+            }
+            is ScheduleResult.Failed -> {
+                db.routines().delete(plan.id)
+                receipts.enqueue(Receipt.Installation(plan.id, routine.version, "failed", null, emptyList(), result.reason))
+            }
+            ScheduleResult.Abandoned -> Unit
         }
     }
 

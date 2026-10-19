@@ -78,16 +78,28 @@ public func stableUUID(_ name: String) -> UUID {
     return UUID(uuid: (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]))
 }
 
-/// Computes the alarms to install: the next occurrence and, if the owner
-/// accepted it, one follow-up. Completing the challenge cancels the follow-up
-/// locally; stopping the main alarm with the system control does not.
+/// Routines are armed this far ahead (ADR 0011); the app tops the window up whenever it runs.
+public let armWindowDays = 8
+
+/// At most this many occurrences of one routine are armed at once.
+public let armMaxOccurrences = 8
+
+/// Computes the alarms to install: every occurrence in the next `armWindowDays` days (at most
+/// `armMaxOccurrences`, and always the next one even when it is further away), each with one
+/// follow-up if the owner accepted it. Arming ahead keeps a routine ringing when the app doesn't
+/// run between occurrences. Completing the challenge cancels that occurrence's follow-up locally;
+/// stopping the main alarm with the system control does not.
 public func scheduleFor(_ routine: InstalledRoutine, now: Date, deviceZone: TimeZone) throws -> [ScheduledAlarm] {
     if routine.paused { return [] }
     let zone = routine.timeZonePolicy == "device" ? deviceZone : try timeZone(routine.timeZone)
-    guard let next = try nextOccurrences(routine.localTime, zone, routine.recurrence, after: now, count: 1).first else { return [] }
-    let main = ScheduledAlarm(planId: routine.planId, version: routine.version, occurrenceKey: next.localDate, role: .main, fireAt: next.instant)
-    guard let delay = routine.followUpDelaySeconds else { return [main] }
-    return [main, ScheduledAlarm(planId: routine.planId, version: routine.version, occurrenceKey: next.localDate, role: .followUp, fireAt: next.instant.addingTimeInterval(TimeInterval(delay)))]
+    let until = now.addingTimeInterval(TimeInterval(armWindowDays * 86_400))
+    let occurrences = try nextOccurrences(routine.localTime, zone, routine.recurrence, after: now, count: armMaxOccurrences)
+        .enumerated().filter { $0.offset == 0 || $0.element.instant <= until }.map(\.element)
+    return occurrences.flatMap { o -> [ScheduledAlarm] in
+        let main = ScheduledAlarm(planId: routine.planId, version: routine.version, occurrenceKey: o.localDate, role: .main, fireAt: o.instant)
+        guard let delay = routine.followUpDelaySeconds else { return [main] }
+        return [main, ScheduledAlarm(planId: routine.planId, version: routine.version, occurrenceKey: o.localDate, role: .followUp, fireAt: o.instant.addingTimeInterval(TimeInterval(delay)))]
+    }
 }
 
 /// States of one wake session on the phone. Transitions are monotonic.
