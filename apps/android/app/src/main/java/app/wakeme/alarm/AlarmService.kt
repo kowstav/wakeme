@@ -6,6 +6,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -67,7 +68,12 @@ class AlarmService : Service() {
         val hasFollowUp = alarm.role == AlarmRole.MAIN.name && unlocked && alarm.planId != null &&
             runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().forPlan(alarm.planId) }.any { it.role == AlarmRole.FOLLOW_UP.name && it.occurrenceKey == alarm.occurrenceKey }
 
-        startForeground(NOTIFICATION_ID, notification(alarm, helper), ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        // systemExempted exists from Android 14; before that the untyped call is the supported form.
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(NOTIFICATION_ID, notification(alarm, helper), ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        } else {
+            startForeground(NOTIFICATION_ID, notification(alarm, helper))
+        }
         wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WakeMe:alarm").apply { acquire((alarm.ringSeconds + 30) * 1000L) }
 
         val report = audio.start(alarm.soundId)

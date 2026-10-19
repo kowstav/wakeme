@@ -187,6 +187,10 @@ class AppViewModel @Inject constructor(
         _gate.value = Gate.Welcome
     }
 
+    fun showError(message: String) {
+        _error.value = message
+    }
+
     fun clearError() {
         _error.value = null
     }

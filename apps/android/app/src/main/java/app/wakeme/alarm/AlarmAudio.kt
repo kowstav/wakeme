@@ -7,6 +7,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
+import android.os.Build
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
@@ -104,7 +105,13 @@ class AlarmAudio(private val context: Context) {
     private fun vibrate() {
         val vm = context.getSystemService(VibratorManager::class.java) ?: return
         val effect = VibrationEffect.createWaveform(longArrayOf(0, 600, 400, 600, 1200), 0)
-        vm.defaultVibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+        if (Build.VERSION.SDK_INT >= 33) {
+            vm.defaultVibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+        } else {
+            // Android 12: the AudioAttributes overload marks it as alarm vibration.
+            @Suppress("DEPRECATION")
+            vm.defaultVibrator.vibrate(effect, attributes)
+        }
     }
 
     fun alarmVolumeIsZero(): Boolean = audioManager.getStreamVolume(AudioManager.STREAM_ALARM) == 0

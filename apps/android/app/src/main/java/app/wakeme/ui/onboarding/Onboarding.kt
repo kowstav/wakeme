@@ -32,6 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.credentials.GetCredentialRequest
 import app.wakeme.R
 import app.wakeme.config.AppConfig
@@ -107,12 +110,20 @@ fun SignInScreen(app: AppViewModel) {
                     val rawNonce = UUID.randomUUID().toString()
                     val hashed = MessageDigest.getInstance("SHA-256").digest(rawNonce.toByteArray()).joinToString("") { "%02x".format(it) }
                     val option = GetGoogleIdOption.Builder().setServerClientId(AppConfig.googleServerClientId).setFilterByAuthorizedAccounts(false).setNonce(hashed).build()
-                    runCatching {
+                    try {
                         val result = CredentialManager.create(context).getCredential(context, GetCredentialRequest.Builder().addCredentialOption(option).build())
                         val cred = result.credential
                         if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                             app.googleSignIn(GoogleIdTokenCredential.createFrom(cred.data).idToken, rawNonce)
+                        } else {
+                            app.showError("That sign-in option isn't supported. Use the email code instead.")
                         }
+                    } catch (e: GetCredentialCancellationException) {
+                        // The person closed the sheet; nothing to say.
+                    } catch (e: NoCredentialException) {
+                        app.showError("There's no Google account on this phone. Use the email code below instead.")
+                    } catch (e: GetCredentialException) {
+                        app.showError("Google sign-in didn't work. Try again, or use the email code below.")
                     }
                 }
             })

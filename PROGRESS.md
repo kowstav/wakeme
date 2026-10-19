@@ -13,6 +13,7 @@ Conditions: Linux cloud container (Node 24.19.0; PostgreSQL 17.11 in Docker; JDK
 | Backend API + worker (`services/api`) | verified on server PostgreSQL 17.11 and on PGlite | 88 integration tests, run twice against real PostgreSQL 17.11 (`TEST_DATABASE_URL`), including the concurrent-sender budget race. TypeScript 7 type-check clean; OpenAPI drift check clean. |
 | Android `:core` (pure Kotlin) | verified (JVM unit tests) | 10 tests: every case in time-windows, occurrences, local-execution, delivery-state and challenge-verification fixtures, plus all 7 signed-envelope vectors. Run with `./gradlew -p tools/core-only :core:test` from `apps/android`. |
 | iOS `WakeMeCore` (Swift package) | verified on Linux | 13 XCTest tests: the same five fixture files, all 7 envelope vectors (swift-crypto 5.0.1 on Linux; CryptoKit on Apple), explicit DST gap/fold, plan scheduling, wake-session transitions. **Not yet run on macOS/iOS.** |
+| Android app (`apps/android/app`) | **compiles; lint has no errors; debug APK builds** (2026-10-19, AGP 9.4.1, Kotlin 2.4.21, compile/target SDK 37, JDK 17) | `./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug` succeeds. APK: `app.wakeme.android.debug` 0.1.0, targetSdk 37. **Never installed or run on a device or emulator** (no KVM here). The app module has no unit tests yet. 52 lint warnings remain (mostly unused resources and KTX style). |
 | Shared envelope vectors | verified on 3 platforms | `packages/policy-fixtures/fixtures/signed-envelopes.json`, made by the server's `signEnvelope` with a throwaway key (generator in `packages/challenges/scripts`). |
 | SigV4 storage signer | verified | Matches AWS's published presigned-URL example. |
 | APNs / FCM clients | verified against local fake servers | **Not tested against Apple or Google.** |
@@ -25,7 +26,7 @@ Bugs found and fixed by tests and review: invite brute-force throttle never coun
 
 ## Implemented but NOT compiled or run
 
-- **Android app (`apps/android/app`)**: not compiled. Google Maven redirects every artifact to `dl.google.com`, which this environment's network policy blocks, so AGP and androidx can't be resolved. Allowing `dl.google.com` (or building on a machine with the Android SDK) is the next step. A static check confirmed that every `app.wakeme.*` import and every `R.string`/`R.drawable` reference resolves.
+- **Android app (`apps/android/app`)**: compiles and builds (see above) but has never run. The first build passed Kotlin compilation; lint then found two real crashes, now fixed: alarm vibration used an Android 13 API on Android 12, and the alarm service passed the Android 14 `systemExempted` type on Android 12–13. Google sign-in also failed silently when the phone had no Google account; it now explains and points to the email code. Remaining deprecation: `hiltViewModel` moved to `androidx.hilt.lifecycle.viewmodel.compose`. Library-added permissions to declare in store privacy forms: `USE_BIOMETRIC`, `USE_FINGERPRINT`, `BILLING`.
   - Screens: onboarding (welcome with quack preview, sign-in, profile with age attestation, invite acceptance, **self-setup readiness flow**), Friends, Friend detail, Grant editor (presets, rows per doc 03 §6, last used, version, circle note), Routines, Challenges, **You** (readiness, sound test with measured route, primary phone, quiet hours, pause, sound budget, bypass sharing, subscription, export, deletion), **Safety** (check-in, timed location share, SOS, viewer labels with capture time and accuracy), **Conversation** (reactions, report), **Paywall** (store data only, Continue free always available).
   - Platform: `setAlarmClock`, systemExempted alarm service with USAGE_ALARM and audio-focus/route reporting, direct-boot mirror, full-screen alarm with an always-available escape, location-typed foreground service for safety sessions, just-in-time notification permission, Keystore device key, push re-validation, receipts, sync (installs only on the primary phone), Supabase auth, RevenueCat.
   - Gradle wrapper 9.8.1 committed; `distributionSha256Sum` not pinned (the published checksum host was blocked here).
@@ -51,7 +52,7 @@ Physical-device soak matrix (iOS 26/27, Android 17 on Pixel/Samsung/one aggressi
 
 ## Next step
 
-1. Allow `dl.google.com` in this environment's network settings (or use a machine with the Android SDK), then compile `:app`, fix build errors, run `:app:testDebugUnitTest` and `:app:lintDebug`, and produce a debug APK.
+1. Add app-module tests (Robolectric is pinned): sync installs only on the primary phone, local re-validation on push, alarm scheduling results, paywall offer rendering.
 2. Install the APK on a real Android 17 phone and run the Stage 0 alarm experiment (exact alarm + systemExempted service + USAGE_ALARM, locked and idle, with and without earbuds), recording device/OS/build/settings.
 3. On a Mac: run `swift test` for WakeMeCore, then build the SwiftUI/AlarmKit app.
 4. Write the ADRs and the threat model listed above.
