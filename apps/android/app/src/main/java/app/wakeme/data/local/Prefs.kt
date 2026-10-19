@@ -2,6 +2,7 @@ package app.wakeme.data.local
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.wakeme.core.QuietHours
@@ -26,6 +27,7 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
     private val cursorKey = stringPreferencesKey("sync_cursor")
     private val inviteKey = stringPreferencesKey("pending_invite")
     private val trustedKeysKey = stringPreferencesKey("challenge_keys")
+    private val trustedKeysAtKey = longPreferencesKey("challenge_keys_at")
     private val onboardingKey = stringPreferencesKey("onboarding_step")
 
     val me: Flow<MeDto?> = context.appPrefs.data.map { p -> p[meKey]?.let { runCatching { WakeMeApiJson.decodeFromString(MeDto.serializer(), it) }.getOrNull() } }
@@ -50,7 +52,12 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
 
     suspend fun trustedChallengeKeys(): Map<String, String> =
         context.appPrefs.data.first()[trustedKeysKey]?.let { WakeMeJson.decodeFromString<Map<String, String>>(it) } ?: emptyMap()
-    suspend fun setTrustedChallengeKeys(keys: Map<String, String>) = context.appPrefs.edit { it[trustedKeysKey] = WakeMeJson.encodeToString(keys) }
+    /** When the key list was last fetched (epoch ms), 0 if never. */
+    suspend fun trustedChallengeKeysAt(): Long = context.appPrefs.data.first()[trustedKeysAtKey] ?: 0L
+    suspend fun setTrustedChallengeKeys(keys: Map<String, String>, at: Long = System.currentTimeMillis()) = context.appPrefs.edit {
+        it[trustedKeysKey] = WakeMeJson.encodeToString(keys)
+        it[trustedKeysAtKey] = at
+    }
 
     val onboardingStep: Flow<String?> = context.appPrefs.data.map { it[onboardingKey] }
     suspend fun setOnboardingStep(step: String?) = context.appPrefs.edit { if (step == null) it.remove(onboardingKey) else it[onboardingKey] = step }

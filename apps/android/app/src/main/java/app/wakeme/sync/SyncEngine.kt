@@ -40,6 +40,7 @@ import app.wakeme.receipts.ReceiptQueue
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.sync.Mutex
@@ -50,15 +51,31 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val KEY_LIST_MAX_AGE_MS = 24 * 60 * 60 * 1000L
+
+/** The server returns at most this many grants per direction (`GET /v1/grants`). */
+private const val GRANT_LIST_LIMIT = 200
+
 /** Downloads, verifies and stores signed challenge revisions for offline use. */
 @Singleton
 class ChallengeInstaller @Inject constructor(private val api: ApiClient, private val db: LocalDb, private val prefs: Prefs) {
-    /** The cached key list, or the server's published list when [refresh] is set or nothing is cached. */
+    /**
+     * The server's published key list, cached for a day so a key removed after a
+     * compromise stops being trusted. [refresh] forces a fetch; when a routine
+     * refresh fails, the cached list is used.
+     */
     suspend fun trustedKeys(refresh: Boolean = false): Map<String, String> {
         val cached = prefs.trustedChallengeKeys()
-        if (cached.isNotEmpty() && !refresh) return cached
-        val cfg = api.get("/v1/config", PublicConfigDto.serializer())
-        val keys = cfg.challengeSigningKeys.associate { it.keyId to it.spki }
+        val stale = System.currentTimeMillis() - prefs.trustedChallengeKeysAt() > KEY_LIST_MAX_AGE_MS
+        if (cached.isNotEmpty() && !stale && !refresh) return cached
+        val keys = try {
+            api.get("/v1/config", PublicConfigDto.serializer()).challengeSigningKeys.associate { it.keyId to it.spki }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (cached.isNotEmpty() && !refresh) return cached
+            throw e
+        }
         prefs.setTrustedChallengeKeys(keys)
         return keys
     }
@@ -118,9 +135,15 @@ class SyncEngine @Inject constructor(
         val head = api.get("/v1/sync", SyncDto.serializer()).cursor
         val me = api.get("/v1/me", MeDto.serializer())
         prefs.saveMe(me)
+        val listed = mutableSetOf<String>()
+        var complete = true
         for (dir in listOf("given", "received")) {
-            for (g in api.get("/v1/grants?direction=$dir&includeRevoked=true", GrantsDto.serializer()).grants) storeGrant(g)
+            val grants = api.get("/v1/grants?direction=$dir&includeRevoked=true", GrantsDto.serializer()).grants
+            if (grants.size >= GRANT_LIST_LIMIT) complete = false
+            for (g in grants) { storeGrant(g); listed += g.id }
         }
+        // After a server restore, a grant this phone saw may be gone: it must not stay live here.
+        if (complete) for (id in db.grants().liveIds()) if (id !in listed) db.grants().markRevoked(id)
         reinstallAll(me)
         prefs.setCursor(head)
         _changes.tryEmit("all")
@@ -159,6 +182,13 @@ class SyncEngine @Inject constructor(
     private suspend fun reinstallAll(me: MeDto) {
         val plans = api.get("/v1/alarm-plans?includeEnded=true", PlansDto.serializer())
         for (p in plans.mine) applyPlan(p, me.id, me)
+        // Routines are stored only from server data, so one the server no longer lists
+        // (possible only after a server restore) stops ringing here.
+        val listed = plans.mine.map { it.id }.toSet()
+        for (r in db.routines().all()) if (r.planId !in listed) {
+            scheduler.cancelPlan(r.planId)
+            db.routines().delete(r.planId)
+        }
     }
 
     private suspend fun applyPlan(plan: PlanDto, myId: String, me: MeDto? = null) {
