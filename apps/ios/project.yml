@@ -38,8 +38,11 @@ targets:
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         NSSupportsLiveActivities: true
         NSAlarmKitUsageDescription: Wake Me schedules the wake-ups you set or accept, so they ring even in silent mode or Focus.
-        # Background app refresh tops up armed routines and catches up on changes (SyncEngine).
-        UIBackgroundModes: [fetch]
+        # fetch: background app refresh tops up armed routines and catches up on changes (SyncEngine).
+        # location: a safety share the person started keeps sending while the app is in the
+        # background, with iOS's location indicator showing; it ends with the session (LocationSharer).
+        UIBackgroundModes: [fetch, location]
+        NSLocationWhenInUseUsageDescription: Wake Me shares your location only when you start a check-in, location share or SOS, only with the friends you pick, and only until it ends or you stop it.
         BGTaskSchedulerPermittedIdentifiers: [app.wakeme.ios.sync]
         ITSAppUsesNonExemptEncryption: false
         # Non-secret configuration, set per build (e.g. xcodebuild WAKEME_API_BASE_URL=https://api.example).

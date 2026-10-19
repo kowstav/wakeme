@@ -225,6 +225,38 @@ final class LaunchTests: XCTestCase {
         published.buttons["OK"].tap()
         try must(app.buttons["Thursday quiz"].waitForExistence(timeout: 10), "the published quiz can be practised")
         shot(app, "25-challenge-published")
+
+        // Safety: Alex sends Sam an SOS (no location); Sam sees it and confirms, then starts a
+        // check-in with Alex and checks in.
+        let alexFriends = try await http("GET", "/v1/friends", alex)["friends"] as? [[String: Any]] ?? []
+        let samId = try XCTUnwrap(alexFriends.compactMap { $0["user"] as? [String: Any] }.first { $0["displayName"] as? String == "Sam" }?["id"] as? String)
+        _ = try await http("POST", "/v1/sos", alex, ["viewerIds": [samId], "shareLocation": false])
+        app.tabBars.buttons["You"].tap()
+        let safety = app.buttons["Safety check-ins and location"]
+        for _ in 0..<3 where !safety.isHittable { app.swipeUp() }
+        safety.tap()
+        try must(app.staticTexts["SOS from Alex"].waitForExistence(timeout: 20), "Sam sees Alex's SOS")
+        try must(app.staticTexts["Check-in only · no location shared"].exists, "no location is shown as none, not as live")
+        shot(app, "26-sos-received")
+        let seen = app.buttons["I've seen this"]
+        for _ in 0..<3 where !seen.isHittable { app.swipeUp() }
+        seen.tap()
+        for _ in 0..<3 where !app.buttons["Check in with friends later"].isHittable { app.swipeDown() }
+        app.buttons["Check in with friends later"].tap()
+        let alexSwitch = app.switches["Alex"]
+        try must(alexSwitch.waitForExistence(timeout: 10), "pick who can see it")
+        alexSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        try must(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Alex will be notified'")).firstMatch.waitForExistence(timeout: 5), "the summary names who is told")
+        shot(app, "27-check-in-sheet")
+        app.navigationBars["Check in later"].buttons["Start"].tap()
+        let ok = app.buttons["I'm OK — check in now"]
+        try must(ok.waitForExistence(timeout: 20), "the check-in is running")
+        shot(app, "28-check-in-running")
+        ok.tap()
+        try must(app.staticTexts["You're not sharing anything"].waitForExistence(timeout: 20), "checking in ends it")
+        let sessions = try await http("GET", "/v1/location-sessions", alex)
+        let sos = (sessions["mine"] as? [[String: Any]])?.first { $0["purpose"] as? String == "sos" }
+        try must((sos?["viewers"] as? [[String: Any]])?.first?["acknowledgedAt"] is String, "Alex is told that Sam saw the SOS")
     }
 
     /// The challenge runner checks answers on the phone: a wrong answer is a calm retry, the

@@ -110,4 +110,60 @@ final class DevBackendTests: XCTestCase {
             XCTAssertNotNil(fromTemplate.latest?.definition, "template \(t.id) runs on this phone")
         }
     }
+
+    func testSafetyShareCheckInAndSosBetweenFriends() async throws {
+        guard let raw = ProcessInfo.processInfo.environment["WAKEME_DEV_BACKEND"], let base = URL(string: raw) else {
+            throw XCTSkip("set WAKEME_DEV_BACKEND to run against the dev backend")
+        }
+        // Sam shares from this phone; Alex is the friend who watches.
+        let samToken = Token(), alexToken = Token(), signer = Signer()
+        let sam = WakeMeAPI(client: APIClient(baseURL: base, tokens: samToken, signer: signer))
+        let alex = WakeMeAPI(client: APIClient(baseURL: base, tokens: alexToken, signer: nil))
+        samToken.value = try await devToken(base)
+        alexToken.value = try await devToken(base)
+        _ = try await sam.createAccount(name: "Sam", timeZone: "UTC", locale: "en-US")
+        let alexMe = try await alex.createAccount(name: "Alex", timeZone: "UTC", locale: "en-US")
+        let device = try await sam.registerDevice(
+            installId: "i_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased(),
+            osVersion: "26.0", appBuild: "1",
+            publicKeySPKIBase64: signer.key.publicKey.derRepresentation.base64EncodedString(),
+            push: nil, capabilities: .init(notificationsAuthorized: false, alarmAuthorized: true), makePrimary: true
+        )
+        signer.id = device.id
+        let invite = try await sam.createInvite()
+        _ = try await alex.redeemInvite(token: invite.token, code: nil)
+
+        // A location share: Alex sees when it was captured and how accurate, never "live".
+        let share = try await sam.startSafety(purpose: "share", viewerIds: [alexMe.id], minutes: 30, shareLocation: true, checkinDueAt: nil, message: "Walking home")
+        XCTAssertTrue(share.active)
+        XCTAssertEqual(share.viewers.map(\.displayName), ["Alex"], "the sharer sees who can see it")
+        let before = try await alex.latestLocation(share.id)
+        XCTAssertEqual(LocationLabel(before).text, "No location available")
+        try await sam.postLocation(sessionId: share.id, capturedAt: Date().addingTimeInterval(-90), latitude: 52.52, longitude: 13.405, accuracyMeters: 35)
+        let seen = try await alex.latestLocation(share.id)
+        XCTAssertEqual(seen.status, "available")
+        XCTAssertEqual(seen.latitude ?? 0, 52.52, accuracy: 0.0001)
+        XCTAssertEqual(LocationLabel(seen).text, "Captured 1 minute ago · accuracy about 35 m")
+        let alexSees = try await alex.safetySessions().sharedWithMe
+        XCTAssertEqual(alexSees.first { $0.id == share.id }?.message, "Walking home")
+        let ended = try await sam.endSafety(share.id)
+        XCTAssertFalse(ended.active)
+
+        // A check-in: "I'm OK" completes and ends it.
+        let checkin = try await sam.startSafety(purpose: "checkin", viewerIds: [alexMe.id], minutes: 60, shareLocation: false, checkinDueAt: Date().addingTimeInterval(1800), message: nil)
+        XCTAssertNotNil(checkin.checkinDueAt)
+        let done = try await sam.checkIn(checkin.id)
+        XCTAssertNotNil(done.checkedInAt)
+        XCTAssertFalse(done.active)
+
+        // SOS without location; Alex confirms seeing it and Sam is told who did.
+        let sos = try await sam.sos(viewerIds: [alexMe.id], shareLocation: false)
+        XCTAssertEqual(sos.purpose, "sos")
+        let sosLocation = try await alex.latestLocation(sos.id)
+        XCTAssertEqual(LocationLabel(sosLocation, shared: sos.shareLocation).text, "Check-in only · no location shared")
+        try await alex.acknowledgeSafety(sos.id)
+        let mine = try await sam.safetySessions().mine.first { $0.id == sos.id }
+        XCTAssertNotNil(mine?.viewers.first?.acknowledgedAt, "the sender sees that Alex saw it")
+        _ = try await sam.endSafety(sos.id)
+    }
 }

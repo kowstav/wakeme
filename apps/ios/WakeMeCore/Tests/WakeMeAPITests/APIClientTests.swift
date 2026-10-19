@@ -204,4 +204,34 @@ final class APIClientTests: XCTestCase {
         let report = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(t.requests[3].httpBody)) as? [String: Any])
         XCTAssertEqual(Set(report.keys), ["targetKind", "targetId", "reason"], "no null note (the server rejects null fields)")
     }
+
+    func testSafetyBodiesAndSignedLocationSamples() async throws {
+        let session = #"{"id":"s1","owner":{"id":"u1","displayName":"Sam"},"purpose":"share","shareLocation":true,"message":null,"active":true,"startedAt":"2026-10-19T08:00:00Z","endsAt":"2026-10-19T09:00:00Z","endedAt":null,"checkinDueAt":null,"checkedInAt":null,"viewers":[{"id":"u2","displayName":"Alex","revoked":false,"acknowledgedAt":null}]}"#
+        let t = FakeTransport([(201, session, [:]), (200, #"{"ok":true}"#, [:])])
+        let api = WakeMeAPI(client: client(t, signer: TestSigner()))
+        let s = try await api.startSafety(purpose: "share", viewerIds: ["u2"], minutes: 60, shareLocation: true, checkinDueAt: nil, message: nil)
+        XCTAssertEqual(s.viewers.first?.displayName, "Alex")
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(t.requests[0].httpBody)) as? [String: Any])
+        XCTAssertEqual(Set(body.keys), ["purpose", "viewerIds", "durationMinutes", "shareLocation"], "no null fields (the server rejects them)")
+        try await api.postLocation(sessionId: "s1", capturedAt: Date(timeIntervalSince1970: 0), latitude: 1, longitude: 2, accuracyMeters: 250_000)
+        let sample = t.requests[1]
+        XCTAssertEqual(sample.url?.path, "/v1/location-sessions/s1/samples")
+        XCTAssertNotNil(sample.value(forHTTPHeaderField: "x-wakeme-signature"), "samples are signed by this phone")
+        let sampleBody = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(sample.httpBody)) as? [String: Any])
+        XCTAssertEqual(sampleBody["accuracyMeters"] as? Int, 100_000, "clamped to what the server accepts")
+        XCTAssertEqual(sampleBody["capturedAt"] as? String, "1970-01-01T00:00:00Z")
+    }
+
+    func testLocationLabelsNeverReadAsLive() {
+        func latest(_ status: String, age: Int? = nil, accuracy: Int? = nil) -> LatestLocationDTO {
+            LatestLocationDTO(status: status, capturedAt: nil, receivedAt: nil, ageSeconds: age, accuracyMeters: accuracy, latitude: nil, longitude: nil)
+        }
+        XCTAssertEqual(LocationLabel(nil), LocationLabel(text: "Checking for a location…", tone: .neutral))
+        XCTAssertEqual(LocationLabel(latest("no_location")).tone, .warning)
+        XCTAssertEqual(LocationLabel(latest("available", age: 20, accuracy: 12)), LocationLabel(text: "Captured less than a minute ago · accuracy about 12 m", tone: .info))
+        XCTAssertEqual(LocationLabel(latest("available", age: 60)).text, "Captured 1 minute ago")
+        XCTAssertEqual(LocationLabel(latest("available", age: 11 * 60)), LocationLabel(text: "Captured 11 minutes ago", tone: .warning))
+        XCTAssertEqual(LocationLabel(latest("available", age: 3 * 3600 + 5 * 60)).text, "Captured 3 h 5 min ago")
+        XCTAssertEqual(LocationLabel(latest("available", age: 5), shared: false).text, "Check-in only · no location shared")
+    }
 }

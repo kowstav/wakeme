@@ -260,7 +260,42 @@ public struct WakeMeAPI: Sendable {
     // MARK: safety
     public func safetySessions() async throws -> SafetySessionsDTO { try await client.get("/v1/location-sessions") }
     public func endSafety(_ id: String) async throws -> SafetySessionDTO { try await client.post("/v1/location-sessions/\(id)/end", body: Optional<Empty>.none) }
+    /// "I'm OK": completes the check-in and ends the session; viewers are told.
     public func checkIn(_ id: String) async throws -> SafetySessionDTO { try await client.post("/v1/location-sessions/\(id)/check-in", body: Empty()) }
+
+    struct NewSafetySession: Encodable {
+        let purpose: String
+        let viewerIds: [String]
+        let durationMinutes: Int
+        let shareLocation: Bool
+        let checkinDueAt: String?
+        let message: String?
+    }
+    /// A check-in ("checkin", needs `checkinDueAt`) or a location share ("share") with friends you
+    /// name, for 5 minutes to 8 hours. It ends on its own; viewers are listed to you.
+    public func startSafety(purpose: String, viewerIds: [String], minutes: Int, shareLocation: Bool, checkinDueAt: Date?, message: String?) async throws -> SafetySessionDTO {
+        try await client.post("/v1/location-sessions", body: NewSafetySession(
+            purpose: purpose, viewerIds: viewerIds, durationMinutes: minutes, shareLocation: shareLocation,
+            checkinDueAt: checkinDueAt.map(Instant.format), message: message
+        ))
+    }
+    struct NewSos: Encodable { let viewerIds: [String]; let shareLocation: Bool }
+    /// Alerts the friends you pick; shares location for 2 hours if you allow it.
+    public func sos(viewerIds: [String], shareLocation: Bool) async throws -> SafetySessionDTO {
+        try await client.post("/v1/sos", body: NewSos(viewerIds: viewerIds, shareLocation: shareLocation))
+    }
+    struct LocationSample: Encodable { let capturedAt: String; let latitude: Double; let longitude: Double; let accuracyMeters: Int }
+    /// This phone's latest position for a session it shares, signed by the device key. The server
+    /// keeps only the latest sample and refuses old ones.
+    public func postLocation(sessionId: String, capturedAt: Date, latitude: Double, longitude: Double, accuracyMeters: Int) async throws {
+        let _: OkDTO = try await client.post("/v1/location-sessions/\(sessionId)/samples", body: LocationSample(
+            capturedAt: Instant.format(capturedAt), latitude: latitude, longitude: longitude, accuracyMeters: max(0, min(100_000, accuracyMeters))
+        ), signed: true)
+    }
+    /// What a viewer can see: when it was captured and how accurate, never presented as live.
+    public func latestLocation(_ sessionId: String) async throws -> LatestLocationDTO { try await client.get("/v1/location-sessions/\(sessionId)/latest") }
+    /// A viewer confirms they saw an SOS or check-in, so the sender knows.
+    public func acknowledgeSafety(_ sessionId: String) async throws { let _: OkDTO = try await client.post("/v1/location-sessions/\(sessionId)/acknowledge", body: Optional<Empty>.none) }
 
     // MARK: config, sync, challenges
     public func config() async throws -> PublicConfigDTO { try await client.get("/v1/config") }

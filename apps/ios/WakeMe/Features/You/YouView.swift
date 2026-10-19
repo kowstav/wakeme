@@ -23,6 +23,9 @@ struct YouView: View {
                 Section("This phone") {
                     NavigationLink("Make this phone ready") { ReadyView() }
                 }
+                Section("Safety") {
+                    NavigationLink("Safety check-ins and location") { SafetyView() }
+                }
                 Section("When friends can reach you") {
                     Toggle("Quiet hours (\(me.settings.quietHours.start)–\(me.settings.quietHours.end))", isOn: Binding(
                         get: { me.settings.quietHours.enabled },
