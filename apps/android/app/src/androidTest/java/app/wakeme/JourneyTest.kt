@@ -108,7 +108,9 @@ class JourneyTest {
         check(!sos.getJSONArray("viewers").getJSONObject(0).isNull("acknowledgedAt")) { "Alex is told that Sam saw the SOS" }
 
         // Challenges: write a quiz with two wrong options, try it and publish it; then edit it,
-        // add a question, try the new version and publish it as version 2.
+        // add a question, try the new version and publish it as version 2. The tab bar shows only
+        // on tab screens, so leave Safety first.
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         tap("Challenges")
         tap("Create a challenge")
         type("Title", "HQ quiz")
