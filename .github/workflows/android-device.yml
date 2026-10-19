@@ -63,6 +63,7 @@ jobs:
           emulator -accel-check || true
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" --force
           nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none -memory 4096 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          sleep 20 # let QEMU start before checking that its process is alive
           booted=0
           for i in $(seq 1 120); do
             if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then booted=1; break; fi
