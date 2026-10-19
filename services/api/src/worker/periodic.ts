@@ -5,9 +5,12 @@ import { syncEntitlement } from '../modules/billing/routes.ts';
 
 // Retention follows the engineering blueprint's proposals, pending legal
 // review: minimal command metadata 30 days, latest location only and only
-// until the session ends, sync feed 45 days, audit records 365 days.
+// until the session ends, sync feed 45 days, audit records 365 days. What
+// people typed to draft an AI challenge is removed after 30 days; the token
+// and cost record stays for credit accounting.
 export const RETENTION = {
   commandsDays: 30,
+  aiPromptDays: 30,
   syncEventsDays: 45,
   outboxDays: 7,
   inviteAttemptsDays: 7,
@@ -17,6 +20,9 @@ export const RETENTION = {
 } as const;
 
 const DAY = 86_400_000;
+
+/** Stands in for a removed AI prompt (the column keeps its length check). */
+export const PROMPT_REMOVED = '[removed after retention period]';
 
 export async function expireCommands(deps: Deps): Promise<number> {
   const now = deps.now();
@@ -72,6 +78,11 @@ export async function retention(deps: Deps): Promise<void> {
   await deps.db.query('delete from invites where expires_at < $1', [at(RETENTION.expiredInvitesDays)]);
   await deps.db.query('delete from audit_events where created_at < $1', [at(RETENTION.auditDays)]);
   await deps.db.query('delete from location_access_log where accessed_at < $1', [at(RETENTION.commandsDays)]);
+  await deps.db.query(
+    `update challenge_generations set prompt = $2, facts = '[]'::jsonb, rejection = null
+      where coalesce(completed_at, created_at) < $1 and prompt <> $2`,
+    [at(RETENTION.aiPromptDays), PROMPT_REMOVED],
+  );
   const cutoff = at(RETENTION.syncEventsDays);
   await deps.db.query(
     `insert into sync_floor (user_id, floor_seq) select user_id, max(seq) from sync_events where created_at < $1 group by user_id

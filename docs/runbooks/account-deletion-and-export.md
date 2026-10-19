@@ -60,6 +60,7 @@ not built yet.
 |---|---|
 | Location samples | Only the latest, only until the session ends (at most 8 hours) |
 | Request metadata (`commands`), location access log | 30 days |
+| Text typed to draft an AI challenge (prompt, facts) | 30 days; token and cost record kept for credit accounting |
 | Sync feed | 45 days (older cursors re-fetch) |
 | Processed background jobs, invite attempts | 7 days |
 | Expired invites | 30 days |
