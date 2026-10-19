@@ -53,6 +53,7 @@ import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
 import app.wakeme.ui.onboarding.playQuackPreview
+import app.wakeme.ui.soundName
 
 @Composable
 fun FriendsScreen(onOpen: (String) -> Unit, vm: FriendsViewModel = hiltViewModel()) {
@@ -190,7 +191,7 @@ fun FriendDetailScreen(
             val sounds = f.theyAllowMe?.limits?.nudge?.sounds.orEmpty()
             if (sounds.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                    sounds.take(4).forEach { id -> FilterChip(selected = sound == id, onClick = { sound = id }, label = { Text(id.removePrefix("bundled:").replace('.', ' ')) }) }
+                    sounds.take(4).forEach { id -> FilterChip(selected = sound == id, onClick = { sound = id }, label = { Text(soundName(id)) }) }
                 }
                 QuietButton("Preview on my phone", onClick = { playQuackPreview(context) })
             }

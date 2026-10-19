@@ -49,6 +49,7 @@ import app.wakeme.designsystem.SettingRow
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
+import app.wakeme.ui.soundName
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -256,7 +257,7 @@ private fun SoundPicker(selected: List<String>, onChange: (List<String>) -> Unit
     FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
         BUNDLED.forEach { id ->
             val on = id in selected
-            FilterChip(selected = on, onClick = { onChange(if (on) (selected - id).ifEmpty { listOf(id) } else selected + id) }, label = { Text(id.removePrefix("bundled:").replace('.', ' ')) })
+            FilterChip(selected = on, onClick = { onChange(if (on) (selected - id).ifEmpty { listOf(id) } else selected + id) }, label = { Text(soundName(id)) })
         }
     }
 }

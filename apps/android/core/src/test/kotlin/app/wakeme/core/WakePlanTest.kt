@@ -46,6 +46,19 @@ class WakePlanTest {
     }
 
     @Test
+    fun wallClockWindowsForAFriend() {
+        val weekdayMornings = listOf(LocalWindow(listOf(1, 2, 3, 4, 5), "06:00", "10:00"))
+        assertTrue(isWithinAnyWindow("07:00", 1, weekdayMornings))
+        assertFalse("the end is exclusive", isWithinAnyWindow("10:00", 1, weekdayMornings))
+        assertFalse(isWithinAnyWindow("07:00", 6, weekdayMornings))
+        // Overnight windows continue into the next day, as on the server.
+        val fridayNight = listOf(LocalWindow(listOf(5), "22:00", "02:00"))
+        assertTrue(isWithinAnyWindow("23:00", 5, fridayNight))
+        assertTrue(isWithinAnyWindow("01:00", 6, fridayNight))
+        assertFalse(isWithinAnyWindow("01:00", 5, fridayNight))
+    }
+
+    @Test
     fun pausedRoutinesInstallNothing() {
         assertTrue(scheduleFor(routine.copy(paused = true), Instant.parse("2026-10-18T12:00:00Z"), ZoneId.of("UTC")).isEmpty())
     }

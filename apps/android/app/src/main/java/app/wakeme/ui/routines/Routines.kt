@@ -1,5 +1,6 @@
 package app.wakeme.ui.routines
 
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,10 +31,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.wakeme.alarm.AlarmScheduler
+import app.wakeme.core.AlarmLimits
+import app.wakeme.core.Capability
 import app.wakeme.core.LocalWindow
 import app.wakeme.core.Recurrence
+import app.wakeme.core.isWithinAnyWindow
 import app.wakeme.data.PlanTerms
 import app.wakeme.data.WakeMeApi
+import app.wakeme.data.local.LocalDb
 import app.wakeme.data.local.Prefs
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.ChallengeDto
@@ -58,7 +63,9 @@ import app.wakeme.sync.SyncEngine
 import app.wakeme.sync.SyncWorker
 import app.wakeme.ui.grants.DayChips
 import app.wakeme.ui.grants.TimeOfDayButton
+import app.wakeme.ui.soundName
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -97,7 +104,14 @@ fun daysText(r: Recurrence): String = if (r.kind == "once") "Once on ${r.date}" 
 data class RoutinesState(val mine: List<PlanDto> = emptyList(), val helping: List<PlanDto> = emptyList(), val myId: String? = null, val exactAlarmsOk: Boolean = true, val error: String? = null)
 
 @HiltViewModel
-class RoutinesViewModel @Inject constructor(private val api: WakeMeApi, private val prefs: Prefs, private val scheduler: AlarmScheduler, sync: SyncEngine) : ViewModel() {
+class RoutinesViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val api: WakeMeApi,
+    private val prefs: Prefs,
+    private val scheduler: AlarmScheduler,
+    private val db: LocalDb,
+    sync: SyncEngine,
+) : ViewModel() {
     private val _s = MutableStateFlow(RoutinesState())
     val state: StateFlow<RoutinesState> = _s
 
@@ -115,9 +129,15 @@ class RoutinesViewModel @Inject constructor(private val api: WakeMeApi, private 
 
     fun get(id: String): PlanDto? = (_s.value.mine + _s.value.helping).firstOrNull { it.id == id }
 
-    fun act(block: suspend WakeMeApi.() -> Unit) = viewModelScope.launch {
+    /**
+     * Runs a routine action on the server, then [onDone] on this phone, then a sync so the
+     * phone arms or removes it now rather than at the next periodic sync.
+     */
+    fun act(block: suspend WakeMeApi.() -> Unit, onDone: suspend () -> Unit = {}) = viewModelScope.launch {
         try {
             api.block()
+            onDone()
+            SyncWorker.runNow(context)
         } catch (e: OfflineException) {
             _s.value = _s.value.copy(error = "You're offline. Nothing was changed.")
         } catch (e: ApiException) {
@@ -126,10 +146,17 @@ class RoutinesViewModel @Inject constructor(private val api: WakeMeApi, private 
         load()
     }
 
-    /** Local cancellation first, so the phone stops ringing for it even if offline. */
+    /** Stops ringing here at once, even offline; once the server confirms, nothing is left for a top-up to re-arm. */
     fun cancel(plan: PlanDto) = viewModelScope.launch {
         scheduler.cancelPlan(plan.id)
-        act { cancelPlan(plan.id) }
+        act({ cancelPlan(plan.id) }) { removeLocally(plan.id) }
+    }
+
+    fun pause(plan: PlanDto, paused: Boolean) = act({ pausePlan(plan.id, paused) }) { if (paused) removeLocally(plan.id) }
+
+    private suspend fun removeLocally(planId: String) {
+        scheduler.cancelPlan(planId)
+        db.routines().delete(planId)
     }
 
     fun clearError() {
@@ -196,12 +223,12 @@ fun RoutineDetailScreen(planId: String, onBack: () -> Unit, vm: RoutinesViewMode
             VersionCard(if (p.accepted == null) "Proposed by ${p.creator.displayName}" else "Proposed change from ${p.creator.displayName}", pending)
             if (mine) {
                 Body("Nothing changes until you accept. You can change your mind anytime.")
-                PrimaryButton("Accept this version", onClick = { vm.act { acceptPlan(p.id, pending.version) } })
-                SecondaryButton(if (p.accepted == null) "Decline" else "Keep the current version", onClick = { vm.act { declinePlan(p.id, pending.version) } })
+                PrimaryButton("Accept this version", onClick = { vm.act({ acceptPlan(p.id, pending.version) }) })
+                SecondaryButton(if (p.accepted == null) "Decline" else "Keep the current version", onClick = { vm.act({ declinePlan(p.id, pending.version) }) })
             }
         }
         if (mine && p.state in setOf("active", "paused")) {
-            SecondaryButton(if (p.state == "paused") "Resume" else "Pause", onClick = { vm.act { pausePlan(p.id, p.state != "paused") } })
+            SecondaryButton(if (p.state == "paused") "Resume" else "Pause", onClick = { vm.pause(p, p.state != "paused") })
         }
         if (p.state !in setOf("cancelled", "declined")) DangerButton("End this routine", onClick = { vm.cancel(p); onBack() })
     }
@@ -212,7 +239,7 @@ private fun VersionCard(title: String, v: PlanVersionDto) {
     WMCard {
         Text(title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
         Body("${v.localTime} · ${daysText(v.recurrence)} · ${v.timeZone}${if (v.timeZonePolicy == "device") " (follows your phone when travelling)" else ""}")
-        Body("Rings for up to ${v.ringSeconds} seconds with ${v.soundId.removePrefix("bundled:").replace('.', ' ')}")
+        Body("Rings for up to ${v.ringSeconds} seconds with ${soundName(v.soundId).lowercase()}")
         v.followUpDelaySeconds?.let { Body("One follow-up alarm ${it / 60} min later unless you finish the challenge") }
         (v.challengePreview as? JsonObject)?.let { pv ->
             Body("Challenge: ${pv["title"]?.jsonPrimitive?.content} · about ${pv["estimatedSeconds"]?.jsonPrimitive?.content}s · ${pv["verificationLabel"]?.jsonPrimitive?.content}")
@@ -221,7 +248,16 @@ private fun VersionCard(title: String, v: PlanVersionDto) {
     }
 }
 
-data class EditorState(val saving: Boolean = false, val error: String? = null, val done: Boolean = false, val challenges: List<ChallengeDto> = emptyList())
+data class EditorState(
+    val saving: Boolean = false,
+    val error: String? = null,
+    val done: Boolean = false,
+    val challenges: List<ChallengeDto> = emptyList(),
+    /** For a suggestion: the friend's name and what they allowed (wake hours, sounds, ring length, follow-up). */
+    val friendName: String? = null,
+    val limits: AlarmLimits? = null,
+    val canAssignChallenges: Boolean = true,
+)
 
 @HiltViewModel
 class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, private val readiness: Readiness) : ViewModel() {
@@ -247,6 +283,14 @@ class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, pri
 
     fun exactAlarmsAllowed() = readiness.state().readyForWake
 
+    /** A suggestion stays inside what the friend allowed; their grant says what that is. */
+    fun loadFriend(ownerId: String) = viewModelScope.launch {
+        runCatching { api.friends() }.getOrNull()?.firstOrNull { it.user.id == ownerId }?.let { f ->
+            val grant = f.theyAllowMe
+            _s.value = _s.value.copy(friendName = f.user.displayName, limits = grant?.limits?.alarm, canAssignChallenges = grant?.capabilities?.contains(Capability.CHALLENGE_ASSIGN) == true)
+        }
+    }
+
     fun clearError() {
         _s.value = _s.value.copy(error = null)
     }
@@ -257,6 +301,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, vm: RoutineEditorV
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     LaunchedEffect(s.done) { if (s.done) onDone() }
+    LaunchedEffect(ownerId) { ownerId?.let(vm::loadFriend) }
     var window by remember { mutableStateOf(LocalWindow(listOf(1, 2, 3, 4, 5), "07:00", "07:01")) }
     var label by remember { mutableStateOf("") }
     var sound by remember { mutableStateOf("bundled:rise.gentle") }
@@ -264,24 +309,47 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, vm: RoutineEditorV
     var followUp by remember { mutableStateOf(false) }
     var followTravel by remember { mutableStateOf(false) }
     var challengeRevision by remember { mutableStateOf<String?>(null) }
+    val limits = s.limits
+    val sounds = if (ownerId == null) listOf("bundled:rise.gentle", "bundled:bell.bright", "bundled:pulse.wake", "bundled:quack.double") else limits?.sounds.orEmpty()
+    val rings = listOf(30, 60, 90, 120).filter { ownerId == null || limits == null || it <= limits.maxAlarmSeconds }.ifEmpty { listOfNotNull(limits?.maxAlarmSeconds) }
+    val followUpDelay = minOf(180, if (ownerId == null) 180 else limits?.followUp?.maxDelaySeconds ?: 180)
+    val canFollowUp = ownerId == null || limits?.followUp?.allowed == true
+    // A suggestion must ring inside the friend's wake hours on every chosen day (the server checks too).
+    val outsideHours = ownerId != null && limits != null && !window.days.all { isWithinAnyWindow(window.start, it, limits.windows) }
+    // Start from choices inside what they allowed.
+    LaunchedEffect(limits) {
+        if (ownerId == null || limits == null) return@LaunchedEffect
+        limits.sounds.firstOrNull()?.let { sound = it }
+        if (ring !in rings) ring = rings.last()
+        limits.windows.firstOrNull()?.let { w ->
+            val days = window.days.filter { it in w.days }.ifEmpty { w.days }
+            window = window.copy(days = days)
+            if (!days.all { isWithinAnyWindow(window.start, it, limits.windows) }) window = window.copy(start = w.start, end = w.start)
+        }
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        if (ownerId != null) Body("Your friend sees exactly this and decides. It must fit the wake hours, sounds and limits they allowed.")
+        if (ownerId != null) Body("${s.friendName ?: "Your friend"} sees exactly this and decides. Nothing changes on their phone until they accept.")
         Body("Time and days")
         DayChips(window.days) { window = window.copy(days = it) }
         TimeOfDayButton("Rings at", window.start) { window = window.copy(start = it, end = it) }
+        if (limits != null && ownerId != null) {
+            Body("${s.friendName ?: "They"} allow wake-ups: " + limits.windows.joinToString("; ") { "${daysText(Recurrence.weekly(it.days))} ${it.start}–${it.end}" } + ". It rings at this time in their time zone.")
+            if (outsideHours) StatusPill("That's outside the wake hours ${s.friendName ?: "they"} chose.", Tone.Warning)
+        }
         OutlinedTextField(label, { label = it.take(40) }, label = { Text("Label (optional), e.g. 9am class") }, singleLine = true)
         Text("Sound", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            listOf("bundled:rise.gentle", "bundled:bell.bright", "bundled:pulse.wake", "bundled:quack.double").forEach { id ->
-                FilterChip(selected = sound == id, onClick = { sound = id }, label = { Text(id.removePrefix("bundled:").replace('.', ' ')) })
+            sounds.forEach { id ->
+                FilterChip(selected = sound == id, onClick = { sound = id }, label = { Text(soundName(id)) })
             }
         }
         Text("Ring for", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            listOf(30, 60, 90, 120).forEach { v -> FilterChip(selected = ring == v, onClick = { ring = v }, label = { Text("${v}s") }) }
+            rings.forEach { v -> FilterChip(selected = ring == v, onClick = { ring = v }, label = { Text("${v}s") }) }
         }
-        if (s.challenges.isNotEmpty()) {
+        if (ownerId != null) Body("Only the sounds and ring length ${s.friendName ?: "they"} approved.")
+        if (s.challenges.isNotEmpty() && (ownerId == null || s.canAssignChallenges)) {
             Text("Challenge (optional)", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                 FilterChip(selected = challengeRevision == null, onClick = { challengeRevision = null }, label = { Text("None") })
@@ -290,11 +358,11 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, vm: RoutineEditorV
                     FilterChip(selected = challengeRevision == rev, onClick = { challengeRevision = rev }, label = { Text(c.title) })
                 }
             }
-            SettingRow("One follow-up alarm", "Rings 3 minutes later unless the challenge is finished. You can always end the session.", followUp) { followUp = it }
+            if (canFollowUp) SettingRow("One follow-up alarm", "Rings ${followUpDelay / 60} min later unless the challenge is finished. You can always end the session.", followUp) { followUp = it }
         }
         if (ownerId == null) SettingRow("Follow my phone when I travel", "Off keeps the time in your home time zone.", followTravel) { followTravel = it }
         if (!vm.exactAlarmsAllowed()) StatusPill("This phone can't ring alarms on time yet. Allow “Alarms & reminders” first.", Tone.Warning)
-        PrimaryButton(if (s.saving) "Saving…" else if (ownerId == null) "Save wake-up" else "Send suggestion", enabled = !s.saving, onClick = {
+        PrimaryButton(if (s.saving) "Saving…" else if (ownerId == null) "Save wake-up" else "Send suggestion", enabled = !s.saving && !outsideHours && sound in sounds, onClick = {
             vm.save(
                 ownerId,
                 PlanTerms(
@@ -306,7 +374,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, vm: RoutineEditorV
                     soundId = sound,
                     ringSeconds = ring,
                     challengeRevisionId = challengeRevision,
-                    followUpDelaySeconds = if (followUp && challengeRevision != null) 180 else null,
+                    followUpDelaySeconds = if (followUp && canFollowUp && challengeRevision != null) followUpDelay else null,
                 ),
                 context,
             )
