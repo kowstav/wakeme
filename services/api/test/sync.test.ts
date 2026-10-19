@@ -26,6 +26,19 @@ const seqOf = (cursor: string) => Number(Buffer.from(cursor, 'base64url').toStri
 const rename = (user: TestUser, displayName: string) => h.req('PATCH', '/v1/me', { user, body: { displayName } });
 
 describe('sync feed', () => {
+  it('tells every phone when the primary phone changes, and promotes one when it signs out', async () => {
+    const maya = await h.createUser('Maya');
+    const first = maya.device!;
+    const start = (await sync(maya)).cursor;
+    const second = await h.addDevice(maya, { makePrimary: true });
+    const moved = (await sync(maya, start)).changes.find((c) => c.entity === 'me');
+    assert.equal(moved?.data.primaryDeviceId, second.id, 'the old phone learns it no longer rings');
+    const head = (await sync(maya)).cursor;
+    assert.equal((await h.req('DELETE', `/v1/devices/${second.id}`, { user: maya })).status, 200);
+    const promoted = (await sync(maya, head)).changes.find((c) => c.entity === 'me');
+    assert.equal(promoted?.data.primaryDeviceId, first.id, 'the remaining phone rings, not every phone');
+  });
+
   it('starts a fresh phone at the head, then delivers each later change once, latest state only', async () => {
     const maya = await h.createUser('Maya');
     const boot = await sync(maya);

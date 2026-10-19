@@ -152,8 +152,12 @@ export interface InstallationRow {
 
 /**
  * "Ready" only when the owner's current primary phone reported the accepted
- * version as scheduled with the expected next fire time. Saving on the server
- * is never presented as "scheduled".
+ * version as scheduled and still has the next occurrence armed. Saving on the
+ * server is never presented as "scheduled".
+ *
+ * Phones arm a rolling window of occurrences and report every instant they
+ * armed (ADR 0011). Once all of them have passed, nothing is armed any more,
+ * whatever the time-zone policy.
  */
 export function planReadiness(plan: PlanRow, accepted: PlanVersionRow | null, install: InstallationRow | null, primaryDeviceId: string | null, grantOk: boolean, now: Date): Readiness {
   if (plan.state === 'cancelled') return 'cancelled';
@@ -166,11 +170,15 @@ export function planReadiness(plan: PlanRow, accepted: PlanVersionRow | null, in
   if (!install || !primaryDeviceId || install.device_id !== primaryDeviceId || install.version !== accepted.version) return 'awaiting_installation';
   if (install.result === 'failed') return 'install_failed';
   if (install.result !== 'scheduled') return 'awaiting_installation';
-  if (accepted.time_zone_policy === 'fixed') {
-    if (!install.next_fire_at || Math.abs(install.next_fire_at.getTime() - next.instant.getTime()) > 120_000) {
-      // The phone's schedule is stale (e.g. it last synced before an occurrence passed).
-      if (!install.next_fire_at || install.next_fire_at.getTime() < now.getTime()) return 'awaiting_installation';
-    }
-  }
+  const armed = armedInstants(install);
+  if (!armed.some((t) => t >= now.getTime())) return 'awaiting_installation';
+  // With a fixed zone the server knows the exact next instant; the phone must have armed it.
+  if (accepted.time_zone_policy === 'fixed' && !armed.some((t) => Math.abs(t - next.instant.getTime()) <= 120_000)) return 'awaiting_installation';
   return plan.pending_version ? 'ready_edit_pending' : 'ready';
+}
+
+function armedInstants(install: InstallationRow): number[] {
+  const reported = Array.isArray(install.scheduled_instants) ? install.scheduled_instants.map((s) => Date.parse(s)) : [];
+  if (install.next_fire_at) reported.push(install.next_fire_at.getTime());
+  return reported.filter((t) => Number.isFinite(t));
 }
