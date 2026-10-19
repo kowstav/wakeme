@@ -2,6 +2,7 @@ package app.wakeme
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -59,7 +60,7 @@ class JourneyTest {
         DeviceEvidence.screenshot("22-invite")
         tap("Close")
 
-        friendRedeems(code, "Alex")
+        val alex = friendRedeems(code, "Alex")
         SyncWorker.runNow(InstrumentationRegistry.getInstrumentation().targetContext)
         tap("Alex", timeout = 30_000)
         tap("Choose what Alex can do")
@@ -78,6 +79,30 @@ class JourneyTest {
         // Readiness is what this phone reported to the server after AlarmManager accepted it.
         waitFor("Ready on this phone", timeout = 60_000)
         DeviceEvidence.screenshot("26-routine-saved")
+
+        // Safety (same steps as the iOS journey): Alex sends Sam an SOS without location; Sam
+        // sees it first, confirms seeing it, then starts a check-in with Alex and checks in.
+        val alexFriends = get("/v1/friends", alex).getJSONArray("friends")
+        val samId = (0 until alexFriends.length()).map { alexFriends.getJSONObject(it).getJSONObject("user") }
+            .first { it.getString("displayName") == "Sam" }.getString("id")
+        post("/v1/sos", alex, JSONObject().put("viewerIds", org.json.JSONArray().put(samId)).put("shareLocation", false))
+        tap("You")
+        tap("Safety check-ins and location")
+        waitFor("SOS from Alex", timeout = 30_000)
+        waitFor("Check-in only · no location shared")
+        DeviceEvidence.screenshot("27-sos-received")
+        tap("I've seen this")
+        waitFor("Alex knows you've seen this", timeout = 30_000, substring = true)
+        tap("Check in with friends later")
+        tap("Alex") // the friend chip in the start dialog
+        waitFor("Alex will be notified", substring = true)
+        DeviceEvidence.screenshot("28-check-in-dialog")
+        // "Start" is also the section title behind the dialog; tap the dialog's button.
+        compose.onAllNodes(hasText("Start") and hasClickAction())[0].performClick()
+        tap("I'm OK — check in now", timeout = 30_000)
+        waitFor("You're not sharing anything", timeout = 30_000)
+        val sos = get("/v1/location-sessions", alex).getJSONArray("mine").let { a -> (0 until a.length()).map { a.getJSONObject(it) } }.first { it.getString("purpose") == "sos" }
+        check(!sos.getJSONArray("viewers").getJSONObject(0).isNull("acknowledgedAt")) { "Alex is told that Sam saw the SOS" }
     }
 
     private fun waitFor(text: String, timeout: Long = 20_000, substring: Boolean = false) {
@@ -102,11 +127,21 @@ class JourneyTest {
         }
     }.getOrElse { it.toString() }
 
-    /** A second account on the dev backend, made over HTTP, that redeems the invite code. */
-    private fun friendRedeems(code: String, name: String) {
+    /** A second account on the dev backend, made over HTTP, that redeems the invite code; returns its token. */
+    private fun friendRedeems(code: String, name: String): String {
         val token = post("/dev/token", null, JSONObject()).getString("accessToken")
         post("/v1/account", token, JSONObject().put("displayName", name).put("timeZone", "UTC").put("locale", "en-US").put("ageAttestation", true))
         post("/v1/invites/redeem", token, JSONObject().put("code", code))
+        return token
+    }
+
+    private fun get(path: String, token: String): JSONObject {
+        val c = URL(backend + path).openConnection() as HttpURLConnection
+        c.setRequestProperty("authorization", "Bearer $token")
+        val status = c.responseCode
+        val text = (if (status in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.readText().orEmpty()
+        check(status in 200..299) { "GET $path -> $status: $text" }
+        return JSONObject(text)
     }
 
     private fun post(path: String, token: String?, body: JSONObject): JSONObject {

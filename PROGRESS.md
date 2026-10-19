@@ -61,7 +61,7 @@ Physical-device soak matrix (iOS 26/27, Android 17 on Pixel/Samsung/one aggressi
 
 ## Next step
 
-1. Next runs: after "I've seen this", both apps show "Alex knows you've seen this (time)" instead of the button (iOS journey checks it).
+1. Next Android run: the journey's new safety steps (SOS received → "I've seen this" → "Alex knows you've seen this" → check-in → "I'm OK"), as on iOS. iOS run 25 passed with the acknowledgement shown.
 2. Install the APK on a real Android 17 phone and run the Stage 0 alarm experiment (exact alarm + systemExempted service + USAGE_ALARM, locked and idle, with and without earbuds; a routine left for several days), recording device/OS/build/settings.
 3. iOS on a real phone (needs the owner's Apple developer account): AlarmKit with a full window, `stopIntent` after Stop, background refresh frequency; then APNs.
 4. Legal review of the privacy policy and terms drafts; store listings.
