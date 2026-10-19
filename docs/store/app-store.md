@@ -20,9 +20,10 @@ Not collected: contacts, browsing/search history, health, financial info beyond 
 sensitive info, advertising data, crash or performance diagnostics (no SDK yet; revisit if one
 is added).
 
-Privacy manifest (`PrivacyInfo.xcprivacy`): **to add before submission**, declaring the
-required-reason APIs actually used (e.g. `UserDefaults` — reason CA92.1) and the data types
-above. Not yet in the project.
+Privacy manifest: `apps/ios/WakeMe/PrivacyInfo.xcprivacy` declares no tracking, the only
+required-reason API used (`UserDefaults`, reason CA92.1, the app's own data) and the data types
+above except Audio Data (no uploads from iOS yet). CI checks it is in the app bundle. Keep it in
+step with this table and with any SDK added later (SDKs bring their own manifests).
 
 ## Age rating
 
