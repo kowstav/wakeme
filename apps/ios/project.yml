@@ -26,6 +26,9 @@ targets:
         product: WakeMeCore
       - package: WakeMeCore
         product: WakeMeAPI
+      # Linked explicitly so Xcode extracts App Intents metadata (the alarm's challenge and stop
+      # intents); with only `import AppIntents` the build skipped it.
+      - sdk: AppIntents.framework
     info:
       path: WakeMe/Info.plist
       properties:

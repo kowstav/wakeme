@@ -241,6 +241,22 @@ public struct WakeMeAPI: Sendable {
         try await client.post("/v1/conversations/\(conversationId)/messages", body: NewMessage(body: text, clientId: "c_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")), idempotent: true)
     }
 
+    public func markRead(_ conversationId: String) async throws { let _: OkDTO = try await client.post("/v1/conversations/\(conversationId)/read", body: Optional<Empty>.none) }
+    struct Reaction: Encodable { let emoji: String }
+    /// One of the server's small emoji set; replaces your previous reaction.
+    public func react(_ messageId: String, emoji: String) async throws { let _: OkDTO = try await client.post("/v1/messages/\(messageId)/reactions", body: Reaction(emoji: emoji)) }
+    public func removeReaction(_ messageId: String) async throws { let _: OkDTO = try await client.delete("/v1/messages/\(messageId)/reactions") }
+    /// Deletes a message you sent; its text is erased.
+    public func deleteMessage(_ messageId: String) async throws { let _: OkDTO = try await client.delete("/v1/messages/\(messageId)") }
+
+    // MARK: reports
+    struct NewReport: Encodable { let targetKind: String; let targetId: String; let reason: String; let note: String? }
+    struct ReportCreated: Decodable { let id: String }
+    /// Reports a person, message, challenge, sound or request; the reported person isn't told who.
+    public func report(targetKind: String, targetId: String, reason: String, note: String? = nil) async throws {
+        let _: ReportCreated = try await client.post("/v1/reports", body: NewReport(targetKind: targetKind, targetId: targetId, reason: reason, note: note))
+    }
+
     // MARK: safety
     public func safetySessions() async throws -> SafetySessionsDTO { try await client.get("/v1/location-sessions") }
     public func endSafety(_ id: String) async throws -> SafetySessionDTO { try await client.post("/v1/location-sessions/\(id)/end", body: Optional<Empty>.none) }

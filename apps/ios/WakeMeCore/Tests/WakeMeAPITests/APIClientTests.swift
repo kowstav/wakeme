@@ -169,4 +169,19 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual((blocked["report"] as? [String: Any])?["reason"] as? String, "unwanted_alerts")
         XCTAssertEqual(t.requests[2].url?.path, "/v1/friendships/fs1/block")
     }
+
+    func testMessagingAndReportRequests() async throws {
+        let t = FakeTransport([(200, #"{"ok":true}"#, [:]), (200, #"{"ok":true}"#, [:]), (200, #"{"ok":true}"#, [:]), (201, #"{"id":"r1"}"#, [:])])
+        let api = WakeMeAPI(client: client(t))
+        try await api.react("m1", emoji: "🦆")
+        try await api.deleteMessage("m1")
+        try await api.markRead("c1")
+        try await api.report(targetKind: "message", targetId: "m1", reason: "harassment")
+        XCTAssertEqual(t.requests.map { "\($0.httpMethod ?? "") \($0.url?.path ?? "")" },
+                       ["POST /v1/messages/m1/reactions", "DELETE /v1/messages/m1", "POST /v1/conversations/c1/read", "POST /v1/reports"])
+        let reaction = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(t.requests[0].httpBody)) as? [String: Any])
+        XCTAssertEqual(reaction["emoji"] as? String, "🦆")
+        let report = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(t.requests[3].httpBody)) as? [String: Any])
+        XCTAssertEqual(Set(report.keys), ["targetKind", "targetId", "reason"], "no null note (the server rejects null fields)")
+    }
 }

@@ -44,24 +44,41 @@ final class LaunchTests: XCTestCase {
         shot(app, "01-welcome")
     }
 
-    /// A second account on the dev backend, made over HTTP, that redeems an invite code.
+    /// The dev backend over HTTP, for a second test account acting as its own app would.
     @MainActor
-    private func friendRedeems(code: String, name: String) async throws {
-        func call(_ path: String, _ token: String?, _ body: [String: Any]) async throws -> [String: Any] {
-            var r = URLRequest(url: URL(string: "http://127.0.0.1:8787" + path)!)
-            r.httpMethod = "POST"
+    private func http(_ method: String, _ path: String, _ token: String?, _ body: [String: Any]? = nil) async throws -> [String: Any] {
+        var r = URLRequest(url: URL(string: "http://127.0.0.1:8787" + path)!)
+        r.httpMethod = method
+        if let token { r.setValue("Bearer \(token)", forHTTPHeaderField: "authorization") }
+        if let body {
             r.setValue("application/json", forHTTPHeaderField: "content-type")
-            if let token { r.setValue("Bearer \(token)", forHTTPHeaderField: "authorization") }
             r.httpBody = try JSONSerialization.data(withJSONObject: body)
-            let (data, response) = try await URLSession.shared.data(for: r)
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            XCTAssertTrue((200..<300).contains(status), "POST \(path) -> \(status): \(String(decoding: data, as: UTF8.self))")
-            return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         }
-        let issued = try await call("/dev/token", nil, [:])
-        let token = try XCTUnwrap(issued["accessToken"] as? String)
-        _ = try await call("/v1/account", token, ["displayName": name, "timeZone": "UTC", "locale": "en-US", "ageAttestation": true])
-        _ = try await call("/v1/invites/redeem", token, ["code": code])
+        let (data, response) = try await URLSession.shared.data(for: r)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        try must((200..<300).contains(status), "\(method) \(path) -> \(status): \(String(decoding: data, as: UTF8.self))")
+        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+    }
+
+    /// A second account that redeems an invite code; returns its token.
+    @MainActor
+    private func friendRedeems(code: String, name: String) async throws -> String {
+        let token = try XCTUnwrap(try await http("POST", "/dev/token", nil, [:])["accessToken"] as? String)
+        _ = try await http("POST", "/v1/account", token, ["displayName": name, "timeZone": "UTC", "locale": "en-US", "ageAttestation": true])
+        _ = try await http("POST", "/v1/invites/redeem", token, ["code": code])
+        return token
+    }
+
+    /// That account makes `friendName` a wake buddy with the Wake buddy preset (weekday
+    /// mornings 06:00-10:00 in its zone), as its own permission editor would.
+    @MainActor
+    private func grantWakeBuddy(token: String, to friendName: String) async throws {
+        let friends = try await http("GET", "/v1/friends", token)["friends"] as? [[String: Any]] ?? []
+        let user = friends.compactMap { $0["user"] as? [String: Any] }.first { $0["displayName"] as? String == friendName }
+        let granteeId = try XCTUnwrap(user?["id"] as? String, "\(friendName) is a friend")
+        let presets = try await http("GET", "/v1/grants/presets", token)["presets"] as? [[String: Any]] ?? []
+        let preset = try XCTUnwrap(presets.first { $0["id"] as? String == "wake_buddy" })
+        _ = try await http("POST", "/v1/grants", token, ["granteeId": granteeId, "capabilities": preset["capabilities"] ?? [], "limits": preset["limits"] ?? [:], "validUntil": preset["validUntil"] ?? ""])
     }
 
     /// Doc 03 §5 route B: self-setup → sign-in → profile (18+) → alarm readiness → Friends,
@@ -99,7 +116,7 @@ final class LaunchTests: XCTestCase {
         shot(app, "06-invite")
         let code = app.staticTexts["inviteCode"].label
         app.buttons["Close"].tap()
-        try await friendRedeems(code: code, name: "Alex")
+        let alex = try await friendRedeems(code: code, name: "Alex")
 
         app.tabBars.buttons["Routines"].tap()
         try must(app.staticTexts["No alarms yet. Set one for yourself, or let a friend suggest one."].waitForExistence(timeout: 15), "step failed")
@@ -141,6 +158,7 @@ final class LaunchTests: XCTestCase {
         let choose = app.buttons["Choose what Alex can do"]
         try must(choose.waitForExistence(timeout: 15), "step failed")
         shot(app, "13-friend")
+        for _ in 0..<3 where !choose.isHittable { app.swipeUp() }
         choose.tap()
         let gentle = app.buttons["Gentle nudges"]
         try must(gentle.waitForExistence(timeout: 15), "step failed")
@@ -150,9 +168,39 @@ final class LaunchTests: XCTestCase {
         try must(app.staticTexts["Alex can send quacks."].waitForExistence(timeout: 15), "the grant is saved and shown in words")
         shot(app, "15-friend-granted")
 
+        // The other direction: Alex makes Sam a wake buddy, so Sam can send a wake alarm
+        // (inside Alex's hours), suggest a wake-up for Alex, and message Alex.
+        try await grantWakeBuddy(token: alex, to: "Sam")
+        app.navigationBars.buttons.element(boundBy: 0).tap() // back to the list; the page reloads when opened
+        try must(app.staticTexts["Alex"].waitForExistence(timeout: 10), "step failed")
+        app.staticTexts["Alex"].tap()
+        try must(app.staticTexts["Wake alarm"].waitForExistence(timeout: 15), "Alex's permission reached Sam")
+        try must(app.staticTexts["Rings Alex's phone for up to 120 seconds, inside the wake hours they chose."].exists, "the limits Alex chose are shown")
+        shot(app, "16-friend-wake-buddy")
+        let suggest = app.buttons["Suggest a wake-up routine"]
+        for _ in 0..<3 where !suggest.isHittable { app.swipeUp() }
+        try must(suggest.exists, "Alex allowed suggested wake-ups")
+        suggest.tap()
+        try must(app.navigationBars["Suggest a wake-up"].waitForExistence(timeout: 10), "step failed")
+        shot(app, "17-suggest")
+        app.navigationBars["Suggest a wake-up"].buttons["Suggest"].tap()
+        try must(app.staticTexts["Waiting for Alex to accept"].waitForExistence(timeout: 15), "the suggestion is sent and changes nothing until Alex accepts")
+        try must(app.staticTexts["07:00 · Weekdays"].exists, "step failed")
+        shot(app, "18-suggested")
+        let messages = app.buttons["Messages"]
+        for _ in 0..<3 where !messages.isHittable { app.swipeUp() }
+        messages.tap()
+        let field = app.descendants(matching: .any)["messageField"].firstMatch
+        try must(field.waitForExistence(timeout: 10), "the conversation opens")
+        field.tap()
+        field.typeText("Morning, Alex!")
+        app.buttons["Send"].tap()
+        try must(app.staticTexts["Morning, Alex!"].waitForExistence(timeout: 10), "the message is sent and listed")
+        shot(app, "19-messages")
+
         app.tabBars.buttons["Challenges"].tap()
         try must(app.staticTexts["No challenges yet. Quizzes and puzzles made on Android, or shared in your circles, appear here."].waitForExistence(timeout: 15), "the Challenges tab lists what can be practised")
-        shot(app, "16-challenges")
+        shot(app, "22-challenges")
     }
 
     /// The challenge runner checks answers on the phone: a wrong answer is a calm retry, the

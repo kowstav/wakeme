@@ -68,6 +68,18 @@ final class WakePlanTests: XCTestCase {
         XCTAssertEqual(Instant.format(try zonedToInstant(LocalDate("2026-11-01"), "01:30", ny)), "2026-11-01T05:30:00Z")
     }
 
+    func testWallClockWindowsForAFriend() throws {
+        let weekdayMornings = [LocalWindow(days: [1, 2, 3, 4, 5], start: "06:00", end: "10:00")]
+        XCTAssertTrue(try isWithinAnyWindow(localTime: "07:00", weekday: 1, weekdayMornings))
+        XCTAssertFalse(try isWithinAnyWindow(localTime: "10:00", weekday: 1, weekdayMornings), "the end is exclusive")
+        XCTAssertFalse(try isWithinAnyWindow(localTime: "07:00", weekday: 6, weekdayMornings))
+        // Overnight windows continue into the next day, as on the server.
+        let fridayNight = [LocalWindow(days: [5], start: "22:00", end: "02:00")]
+        XCTAssertTrue(try isWithinAnyWindow(localTime: "23:00", weekday: 5, fridayNight))
+        XCTAssertTrue(try isWithinAnyWindow(localTime: "01:00", weekday: 6, fridayNight))
+        XCTAssertFalse(try isWithinAnyWindow(localTime: "01:00", weekday: 5, fridayNight))
+    }
+
     func testLocalDateArithmetic() throws {
         XCTAssertEqual(try LocalDate("2026-10-19").isoWeekday, 1) // Monday
         XCTAssertEqual(try LocalDate("2028-02-28").adding(days: 1).description, "2028-02-29")

@@ -53,6 +53,24 @@ public func isWithinAnyWindow(_ instant: Date, _ zone: TimeZone, _ windows: [Loc
     return false
 }
 
+/// Whether a wall-clock time on an ISO weekday falls inside one of the windows: the same rule as
+/// `isWithinWindow`, without a zone, for a time that will ring in someone else's zone (a wake-up
+/// suggested for a friend, whose zone stays private).
+public func isWithinAnyWindow(localTime: String, weekday: Int, _ windows: [LocalWindow]) throws -> Bool {
+    let now = try minuteOfDay(localTime)
+    let previousDay = weekday == 1 ? 7 : weekday - 1
+    for w in windows {
+        let start = try minuteOfDay(w.start)
+        let end = try minuteOfDay(w.end)
+        if start < end {
+            if w.days.contains(weekday) && now >= start && now < end { return true }
+        } else if (w.days.contains(weekday) && now >= start) || (w.days.contains(previousDay) && now < end) {
+            return true
+        }
+    }
+    return false
+}
+
 public func isQuietTime(_ instant: Date, _ zone: TimeZone, _ quiet: QuietHours) throws -> Bool {
     guard quiet.enabled else { return false }
     return try isWithinWindow(instant, zone, LocalWindow(days: Array(1...7), start: quiet.start, end: quiet.end))
