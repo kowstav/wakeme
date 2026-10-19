@@ -128,22 +128,38 @@ private fun FriendCard(f: FriendDto, onOpen: () -> Unit) {
     WMCard(Modifier.clickable(onClick = onOpen)) {
         Text(f.user.displayName, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
         val allowed = f.theyAllowMe?.capabilities.orEmpty()
-        Body(if (allowed.isEmpty()) "${f.user.displayName} hasn't allowed anything yet." else "You can: " + allowed.joinToString(", ") { capabilityLabel(it) })
+        Body(if (allowed.isEmpty()) "${f.user.displayName} hasn't allowed anything yet." else "You can " + wordList(allowed.map(::capabilityLabelForThem)) + ".")
         if (quack?.availableNow == true) StatusPill("Quack available now", Tone.Success)
         else if (quack?.granted == true) StatusPill(reasonText(f.user.displayName, quack.reason), Tone.Neutral)
     }
 }
 
+/** What a friend may do on your phone, as words after "Alex can" (same wording as iOS). */
 fun capabilityLabel(c: String) = when (c) {
-    Capability.NUDGE -> "quack"
-    Capability.ALARM_REQUEST -> "wake now"
-    Capability.ALARM_SCHEDULE -> "set wake-ups"
+    Capability.NUDGE -> "send quacks"
+    Capability.ALARM_REQUEST -> "wake you now"
+    Capability.ALARM_SCHEDULE -> "suggest wake-up routines"
     Capability.CHALLENGE_ASSIGN -> "assign challenges"
-    Capability.FOCUS -> "ask to focus"
-    Capability.CHECKIN -> "check in"
+    Capability.FOCUS -> "ask you to focus"
+    Capability.CHECKIN -> "ask you to check in"
     Capability.LOCATION -> "ask where you are"
     else -> c
 }
+
+/** What you may do on a friend's phone, as words after "You can". */
+fun capabilityLabelForThem(c: String) = when (c) {
+    Capability.NUDGE -> "send quacks"
+    Capability.ALARM_REQUEST -> "wake them now"
+    Capability.ALARM_SCHEDULE -> "suggest wake-up routines"
+    Capability.CHALLENGE_ASSIGN -> "assign challenges"
+    Capability.FOCUS -> "ask them to focus"
+    Capability.CHECKIN -> "ask them to check in"
+    Capability.LOCATION -> "ask where they are"
+    else -> c
+}
+
+/** "a, b and c" */
+fun wordList(items: List<String>): String = if (items.size < 2) items.joinToString("") else items.dropLast(1).joinToString(", ") + " and " + items.last()
 
 @Composable
 fun FriendDetailScreen(
@@ -221,7 +237,7 @@ fun FriendDetailScreen(
         WMCard {
             SectionTitle("What $name can do on your phone")
             val mine = f.iAllowThem
-            Body(if (mine == null) "Nothing yet. Being friends doesn't allow anything by itself." else mine.capabilities.joinToString(", ") { capabilityLabel(it) } + if (mine.paused) " (paused)" else "")
+            Body(if (mine == null) "Nothing yet. Being friends doesn't allow anything by itself." else "$name can " + wordList(mine.capabilities.map(::capabilityLabel)) + "." + if (mine.paused) " Paused for now." else "")
             PrimaryButton(if (mine == null) "Choose what $name can do" else "Change permissions", onClick = { onEditPermissions(friendshipId) })
             mine?.let { QuietButton(if (it.paused) "Resume $name's permissions" else "Pause $name's permissions", onClick = { vm.pause(!it.paused) }) }
             Body("Circles you share don't change these settings.")

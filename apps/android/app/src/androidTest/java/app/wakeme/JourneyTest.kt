@@ -73,7 +73,9 @@ class JourneyTest {
         tap("New wake-up")
         DeviceEvidence.screenshot("25-new-wake-up")
         tap("Save wake-up")
-        waitFor("07:00", substring = true, timeout = 30_000)
+        waitFor("07:00 · Weekdays", timeout = 30_000) // the routines list, not the editor
+        // Readiness is what this phone reported to the server after AlarmManager accepted it.
+        waitFor("Ready on this phone", timeout = 60_000)
         DeviceEvidence.screenshot("26-routine-saved")
     }
 

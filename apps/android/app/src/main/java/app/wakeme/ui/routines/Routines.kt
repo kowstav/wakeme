@@ -39,6 +39,7 @@ import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.ChallengeDto
 import app.wakeme.data.net.PlanDto
 import app.wakeme.data.net.PlanVersionDto
+import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
@@ -55,7 +56,8 @@ import app.wakeme.designsystem.WakeMeTokens
 import app.wakeme.readiness.Readiness
 import app.wakeme.sync.SyncEngine
 import app.wakeme.sync.SyncWorker
-import app.wakeme.ui.grants.WindowEditor
+import app.wakeme.ui.grants.DayChips
+import app.wakeme.ui.grants.TimeOfDayButton
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -116,6 +118,8 @@ class RoutinesViewModel @Inject constructor(private val api: WakeMeApi, private 
     fun act(block: suspend WakeMeApi.() -> Unit) = viewModelScope.launch {
         try {
             api.block()
+        } catch (e: OfflineException) {
+            _s.value = _s.value.copy(error = "You're offline. Nothing was changed.")
         } catch (e: ApiException) {
             _s.value = _s.value.copy(error = e.message)
         }
@@ -234,6 +238,8 @@ class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, pri
             api.createPlan(ownerId, terms)
             SyncWorker.runNow(context)
             _s.value = _s.value.copy(saving = false, done = true)
+        } catch (e: OfflineException) {
+            _s.value = _s.value.copy(saving = false, error = "You're offline. The wake-up wasn't saved.")
         } catch (e: ApiException) {
             _s.value = _s.value.copy(saving = false, error = e.message)
         }
@@ -262,7 +268,8 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, vm: RoutineEditorV
         Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         if (ownerId != null) Body("Your friend sees exactly this and decides. It must fit the wake hours, sounds and limits they allowed.")
         Body("Time and days")
-        WindowEditor(window) { window = it.copy(end = it.start) }
+        DayChips(window.days) { window = window.copy(days = it) }
+        TimeOfDayButton("Rings at", window.start) { window = window.copy(start = it, end = it) }
         OutlinedTextField(label, { label = it.take(40) }, label = { Text("Label (optional), e.g. 9am class") }, singleLine = true)
         Text("Sound", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {

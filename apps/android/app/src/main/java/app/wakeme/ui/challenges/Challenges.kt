@@ -36,6 +36,7 @@ import app.wakeme.data.WakeMeApi
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.ChallengeDto
 import app.wakeme.data.net.TemplateDto
+import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -92,6 +93,8 @@ class ChallengesViewModel @Inject constructor(private val api: WakeMeApi) : View
         _s.value = _s.value.copy(busy = label)
         try {
             block()
+        } catch (e: OfflineException) {
+            _s.value = _s.value.copy(error = "You're offline. Nothing was changed.")
         } catch (e: ApiException) {
             val details = (e.code == "challenge_invalid")
             _s.value = _s.value.copy(error = if (details) "${e.message} Check answers, lengths and that it's safe and gentle." else e.message, needsPlus = e.code == "credits_exhausted")

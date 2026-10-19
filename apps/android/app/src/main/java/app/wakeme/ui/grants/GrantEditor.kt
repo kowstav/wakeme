@@ -39,6 +39,7 @@ import app.wakeme.data.WakeMeApi
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.PresetDto
+import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
@@ -134,6 +135,8 @@ class GrantEditorViewModel @Inject constructor(private val api: WakeMeApi) : Vie
             if (existing == null) api.createGrant(f.user.id, s.draft.caps.toList(), s.draft.limits(), until)
             else api.updateGrant(existing.id, existing.version, s.draft.caps.toList(), s.draft.limits(), until, existing.paused)
             _s.value = _s.value.copy(saving = false, saved = true)
+        } catch (e: OfflineException) {
+            _s.value = _s.value.copy(saving = false, error = "You're offline. Nothing was changed.")
         } catch (e: ApiException) {
             val msg = if (e.code == "reauth_required") "For your safety, sign in again to allow wake alarms or location requests." else e.message
             _s.value = _s.value.copy(saving = false, error = msg)
@@ -258,29 +261,40 @@ private fun SoundPicker(selected: List<String>, onChange: (List<String>) -> Unit
     }
 }
 
+/** Seven day chips, Monday first; at least one stays selected. */
 @Composable
-fun WindowEditor(window: LocalWindow, onChange: (LocalWindow) -> Unit) {
-    val context = LocalContext.current
+fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
     val names = listOf("M", "T", "W", "T", "F", "S", "S")
     val full = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
         ALL_DAYS.forEach { day ->
-            val on = day in window.days
+            val on = day in days
             FilterChip(
                 selected = on,
-                onClick = { onChange(window.copy(days = if (on) (window.days - day).ifEmpty { listOf(day) } else (window.days + day).sorted())) },
+                onClick = { onChange(if (on) (days - day).ifEmpty { listOf(day) } else (days + day).sorted()) },
                 label = { Text(names[day - 1]) },
                 modifier = Modifier.semantics { contentDescription = full[day - 1] },
             )
         }
     }
-    fun pick(current: String, set: (String) -> Unit) {
-        val (h, m) = current.split(":").map { it.toInt() }
-        TimePickerDialog(context, { _, hh, mm -> set("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
-    }
+}
+
+/** A time of day ("HH:MM") that opens the system time picker. */
+@Composable
+fun TimeOfDayButton(label: String, time: String, onPick: (String) -> Unit) {
+    val context = LocalContext.current
+    TextButton(onClick = {
+        val (h, m) = time.split(":").map { it.toInt() }
+        TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
+    }) { Text("$label $time") }
+}
+
+@Composable
+fun WindowEditor(window: LocalWindow, onChange: (LocalWindow) -> Unit) {
+    DayChips(window.days) { onChange(window.copy(days = it)) }
     Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = { pick(window.start) { s -> if (s != window.end) onChange(window.copy(start = s)) } }) { Text("From ${window.start}") }
-        TextButton(onClick = { pick(window.end) { e -> if (e != window.start) onChange(window.copy(end = e)) } }) { Text("Until ${window.end}") }
+        TimeOfDayButton("From", window.start) { s -> if (s != window.end) onChange(window.copy(start = s)) }
+        TimeOfDayButton("Until", window.end) { e -> if (e != window.start) onChange(window.copy(end = e)) }
     }
     if (window.end <= window.start) Body("Ends the next morning.")
 }

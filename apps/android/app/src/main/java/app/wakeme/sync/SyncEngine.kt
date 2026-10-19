@@ -117,6 +117,11 @@ class SyncEngine @Inject constructor(
     /** Entity names that changed, for screens to refresh. */
     val changes: SharedFlow<String> = _changes
 
+    /** Something outside sync changed what the server shows (e.g. a receipt was accepted). */
+    fun notifyChanged(entity: String) {
+        _changes.tryEmit(entity)
+    }
+
     suspend fun sync() = mutex.withLock {
         // Local first: keep routines armed over the window even when the server can't be reached.
         arming.topUpAll()

@@ -3,8 +3,10 @@ package app.wakeme.data.net
 import app.wakeme.config.AppConfig
 import app.wakeme.data.auth.SessionManager
 import app.wakeme.data.device.DeviceIdentity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -46,6 +48,12 @@ suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
 }
 
 /**
+ * The body as text. Reading can wait on the socket, so it never runs on the caller's thread
+ * (screens call from the main thread; a large response there threw NetworkOnMainThreadException).
+ */
+suspend fun Response.bodyText(): String = withContext(Dispatchers.IO) { body.string() }
+
+/**
  * Typed HTTP client for the Wake Me API.
  *  - Bearer access token from [SessionManager], refreshed once on 401.
  *  - Phone-affecting writes are signed by this device's Keystore key.
@@ -74,8 +82,8 @@ class ApiClient @Inject constructor(
         var refreshed = false
         while (true) {
             attempt++
-            val bodyText = body?.let { WakeMeApiJson.encodeToString(JsonElement.serializer(), it) }
-            val request = buildRequest(method, path, bodyText, signed)
+            val requestText = body?.let { WakeMeApiJson.encodeToString(JsonElement.serializer(), it) }
+            val request = buildRequest(method, path, requestText, signed)
             val response = try {
                 http.newCall(request).await()
             } catch (e: IOException) {
@@ -86,7 +94,7 @@ class ApiClient @Inject constructor(
                 throw OfflineException(e)
             }
             response.use { res ->
-                val text = res.body.string()
+                val text = res.bodyText()
                 if (res.isSuccessful) return WakeMeApiJson.decodeFromString(out, text.ifBlank { "{}" })
                 val err = runCatching { WakeMeApiJson.decodeFromString(ErrorBody.serializer(), text).error }.getOrNull()
                 val retryAfter = res.header("retry-after")?.toIntOrNull() ?: err?.retryAfterSeconds

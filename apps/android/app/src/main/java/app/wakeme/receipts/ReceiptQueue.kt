@@ -16,6 +16,7 @@ import app.wakeme.data.net.ApiClient
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.OkDto
 import app.wakeme.data.net.WakeMeApiJson
+import app.wakeme.sync.SyncEngine
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -73,6 +74,7 @@ class ReceiptWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val api: ApiClient,
+    private val sync: SyncEngine,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val raw = inputData.getString("receipt") ?: return Result.failure()
@@ -102,7 +104,10 @@ class ReceiptWorker @AssistedInject constructor(
                     },
                     JsonElement.serializer(),
                     signed = true,
-                )
+                ).also {
+                    // The server's readiness line changed: screens showing routines reload it.
+                    sync.notifyChanged("alarm_plan")
+                }
             }
             Result.success()
         } catch (e: ApiException) {
