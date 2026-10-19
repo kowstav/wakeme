@@ -57,12 +57,21 @@ jobs:
       - name: Build app and test APKs
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Start emulator
+        timeout-minutes: 15
         run: |
           mkdir -p "$RUNNER_TEMP/evidence"
+          emulator -accel-check || true
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n wakeme -k "$SYSTEM_IMAGE" --force
-          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none > "$RUNNER_TEMP/emulator.log" 2>&1 &
-          adb wait-for-device
-          for i in $(seq 1 120); do [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break; sleep 5; done
+          nohup emulator -avd wakeme -no-window -no-snapshot -no-boot-anim -gpu swiftshader_indirect -camera-back none -camera-front none -memory 4096 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          booted=0
+          for i in $(seq 1 120); do
+            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then booted=1; break; fi
+            if ! pgrep -f "qemu-system" > /dev/null; then echo "emulator process exited"; break; fi
+            sleep 5
+          done
+          if [ "$booted" != "1" ]; then
+            echo "--- emulator did not boot; emulator.log ---"; tail -n 120 "$RUNNER_TEMP/emulator.log"; adb devices; exit 1
+          fi
           adb shell getprop ro.build.version.release
           adb shell getprop ro.build.version.sdk
           adb shell settings put global window_animation_scale 0

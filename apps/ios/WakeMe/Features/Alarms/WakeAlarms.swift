@@ -1,5 +1,5 @@
 import ActivityKit
-import AlarmKit
+@preconcurrency import AlarmKit
 import AppIntents
 import Foundation
 import SwiftUI
@@ -59,8 +59,9 @@ enum InstallResult: Equatable {
 /// version, so ringing never needs the network. The system Stop control is kept as is
 /// (current `Alert` initializer without a custom stop button). The secondary button opens
 /// the challenge. Completing the challenge cancels the follow-up; stopping does not.
-@MainActor
-final class WakeAlarms {
+/// Not main-actor isolated: AlarmManager is a thread-safe system service and isn't Sendable,
+/// so its async calls must stay in this type's own (nonisolated) context.
+final class WakeAlarms: @unchecked Sendable {
     static let shared = WakeAlarms()
     private let manager = AlarmManager.shared
     private let installedKey = "wakeme.installedAlarms" // planId → [alarm UUID]
