@@ -133,6 +133,17 @@ class ConversationViewModel @Inject constructor(private val api: WakeMeApi, priv
         }
     }
 
+    /** Replaces my previous reaction; tapping my current one removes it. */
+    fun react(m: MessageDto, emoji: String) = viewModelScope.launch {
+        val mine = m.reactions.firstOrNull { it.userId == _s.value.myId }?.emoji
+        try {
+            if (mine == emoji) api.unreact(m.id) else api.react(m.id, emoji)
+            refresh(markRead = false)
+        } catch (e: Exception) {
+            _s.value = _s.value.copy(notice = "Couldn't react right now.")
+        }
+    }
+
     fun report(m: MessageDto, reason: String) = viewModelScope.launch {
         try {
             api.report("message", m.id, reason, null)
@@ -149,6 +160,9 @@ class ConversationViewModel @Inject constructor(private val api: WakeMeApi, priv
 
 private val timeFmt = DateTimeFormatter.ofPattern("EEE HH:mm").withZone(ZoneId.systemDefault())
 
+/** Mirrors REACTIONS in services/api/src/modules/conversations/routes.ts. */
+private val reactions = listOf("👍", "❤️", "😂", "🦆", "🙌", "😴", "☀️")
+
 private val reportReasons = listOf("harassment" to "Harassment", "spam" to "Spam", "inappropriate_content" to "Inappropriate", "other" to "Something else")
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -156,6 +170,7 @@ private val reportReasons = listOf("harassment" to "Harassment", "spam" to "Spam
 fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     var draft by remember { mutableStateOf("") }
+    var acting by remember { mutableStateOf<MessageDto?>(null) }
     var reporting by remember { mutableStateOf<MessageDto?>(null) }
     LaunchedEffect(conversationId) { vm.open(conversationId) }
     DisposableEffect(conversationId) {
@@ -169,7 +184,7 @@ fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltV
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
             items(s.messages.asReversed(), key = { it.id }) { m ->
                 val mine = m.senderId != null && m.senderId == s.myId
-                Bubble(m, mine, onLongPress = { if (!mine && m.state == "visible") reporting = m })
+                Bubble(m, mine, onLongPress = { if (m.state == "visible") acting = m })
             }
             if (s.messages.isEmpty() && !s.loading) item { Body("No messages yet. Say hi, or send a quack from their profile.") }
         }
@@ -183,6 +198,27 @@ fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltV
         PrimaryButton(if (s.sending) "Sending…" else "Send", onClick = { vm.send(draft) { draft = "" } }, enabled = draft.isNotBlank() && !s.sending)
     }
 
+    acting?.let { m ->
+        val mineMsg = m.senderId != null && m.senderId == s.myId
+        val myReaction = m.reactions.firstOrNull { it.userId == s.myId }?.emoji
+        AlertDialog(
+            onDismissRequest = { acting = null },
+            title = { Text("React") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                        reactions.forEach { e ->
+                            FilterChip(selected = e == myReaction, onClick = { vm.react(m, e); acting = null }, label = { Text(e) })
+                        }
+                    }
+                    if (myReaction != null) Body("Tap your reaction again to remove it.")
+                    if (!mineMsg) TextButton(onClick = { reporting = m; acting = null }) { Text("Report message", color = WM.colors.danger) }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { acting = null }) { Text("Cancel") } },
+        )
+    }
     reporting?.let { m ->
         AlertDialog(
             onDismissRequest = { reporting = null },
@@ -216,7 +252,7 @@ private fun Bubble(m: MessageDto, mine: Boolean, onLongPress: () -> Unit) {
             Modifier
                 .widthIn(max = 320.dp)
                 .background(if (mine) WM.colors.accent else WM.colors.surfaceRaised, RoundedCornerShape(WakeMeTokens.radiusMd))
-                .combinedClickable(onClick = {}, onLongClick = onLongPress, onLongClickLabel = if (mine) null else "Report message")
+                .combinedClickable(onClick = {}, onLongClick = onLongPress, onLongClickLabel = "React or report")
                 .padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceSm)
                 .semantics(mergeDescendants = true) { contentDescription = (if (mine) "You" else "Them") + ", $time: $text" },
         ) {

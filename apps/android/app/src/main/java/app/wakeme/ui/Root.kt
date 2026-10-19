@@ -1,6 +1,11 @@
 package app.wakeme.ui
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Alarm
@@ -40,6 +45,7 @@ import app.wakeme.ui.onboarding.ProfileScreen
 import app.wakeme.ui.onboarding.SignInScreen
 import app.wakeme.ui.onboarding.WelcomeScreen
 import app.wakeme.ui.paywall.PaywallScreen
+import app.wakeme.ui.readiness.ReadyScreen
 import app.wakeme.ui.routines.RoutineEditorScreen
 import app.wakeme.ui.routines.RoutineDetailScreen
 import app.wakeme.ui.routines.RoutinesScreen
@@ -56,6 +62,7 @@ fun WakeMeRoot(app: AppViewModel) {
         Gate.SignIn -> SignInScreen(app)
         Gate.Profile -> ProfileScreen(onCreate = app::createProfile)
         is Gate.Invite -> InviteScreen(g.preview, onAccept = { app.acceptInvite(g.token) }, onDecline = app::declineInvite)
+        Gate.Ready -> ReadyScreen(onContinue = { app.finishSelfSetup(openRoutineEditor = true) }, onSkip = { app.finishSelfSetup(openRoutineEditor = false) })
         Gate.Main -> MainTabs(app)
     }
     error?.let {
@@ -109,7 +116,13 @@ private fun MainTabs(app: AppViewModel) {
 
 @Composable
 private fun NavGraph(nav: NavHostController, app: AppViewModel, modifier: Modifier) {
-    NavHost(nav, startDestination = "friends", modifier = modifier) {
+    // Large screens, split screen and foldables (API 37 resizability): content keeps a
+    // readable column instead of stretching controls; no orientation lock.
+    NavHost(
+        nav,
+        startDestination = "friends",
+        modifier = modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp),
+    ) {
         composable("friends") { FriendsScreen(onOpen = { nav.navigate("friend/$it") }) }
         composable("friend/{id}", listOf(navArgument("id") { type = NavType.StringType })) {
             FriendDetailScreen(
@@ -124,7 +137,7 @@ private fun NavGraph(nav: NavHostController, app: AppViewModel, modifier: Modifi
         composable("grant/{id}", listOf(navArgument("id") { type = NavType.StringType })) { GrantEditorScreen(friendshipId = it.arguments!!.getString("id")!!, onDone = { nav.popBackStack() }) }
         composable("conversation/{id}", listOf(navArgument("id") { type = NavType.StringType })) { ConversationScreen(conversationId = it.arguments!!.getString("id")!!) }
         composable("command/{id}") { FriendsScreen(onOpen = { id -> nav.navigate("friend/$id") }) }
-        composable("routines") { RoutinesScreen(onNew = { nav.navigate("routine-new") }, onOpen = { nav.navigate("routine/$it") }) }
+        composable("routines") { RoutinesScreen(onNew = { nav.navigate("routine-new") }, onOpen = { nav.navigate("routine/$it") }, onFixReadiness = { nav.navigate("ready") }) }
         composable("routine/{id}", listOf(navArgument("id") { type = NavType.StringType })) { RoutineDetailScreen(planId = it.arguments!!.getString("id")!!, onBack = { nav.popBackStack() }) }
         composable("routine-new?owner={owner}", listOf(navArgument("owner") { type = NavType.StringType; nullable = true; defaultValue = null })) {
             RoutineEditorScreen(ownerId = it.arguments?.getString("owner"), onDone = { nav.popBackStack() })
@@ -134,6 +147,7 @@ private fun NavGraph(nav: NavHostController, app: AppViewModel, modifier: Modifi
         composable("safety") { SafetyScreen() }
         composable("safety/{id}", listOf(navArgument("id") { type = NavType.StringType })) { SafetyScreen(focusSessionId = it.arguments?.getString("id")) }
         composable("you") { YouScreen(app = app, onPaywall = { nav.navigate("paywall") }, onSafety = { nav.navigate("safety") }) }
+        composable("ready") { ReadyScreen(onContinue = { nav.popBackStack() }, continueLabel = "Done", onSkip = { nav.popBackStack() }) }
         composable("paywall") { PaywallScreen(onClose = { nav.popBackStack() }) }
     }
 }

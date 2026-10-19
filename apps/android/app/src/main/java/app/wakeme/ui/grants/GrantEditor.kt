@@ -55,6 +55,10 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
+import app.wakeme.designsystem.Tone
+import app.wakeme.designsystem.StatusPill
+import java.time.format.DateTimeFormatter
+import java.time.ZoneId
 
 private val BUNDLED = listOf("bundled:quack.classic", "bundled:quack.double", "bundled:chime.soft", "bundled:bell.bright", "bundled:rise.gentle", "bundled:pulse.wake")
 private val ALL_DAYS = listOf(1, 2, 3, 4, 5, 6, 7)
@@ -156,6 +160,17 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         Text("What can $name do?", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         Body("You're giving $name permission to help you, within limits you set. You can change or remove this anytime. It only works one way: it doesn't give you anything on $name's phone.")
+        Body("Being in a circle together doesn't change these settings. Only you can change them.")
+        f.iAllowThem?.let { g ->
+            val day = DateTimeFormatter.ofPattern("d MMM yyyy").withZone(ZoneId.systemDefault())
+            fun fmt(iso: String?) = iso?.let { runCatching { day.format(Instant.parse(it)) }.getOrNull() }
+            StatusPill(
+                (if (g.paused) "Paused" else "Active") + " · version ${g.version} · until ${fmt(g.validUntil) ?: "—"}",
+                if (g.paused) Tone.Warning else Tone.Info,
+            )
+            Body((fmt(g.lastUsedAt)?.let { "Last used $it." } ?: "$name hasn't used these yet.") +
+                " Saved to your account and kept on this phone, so a change or removal applies here even when you're offline.")
+        }
         Text("Start from", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             s.presets.filter { it.id != "focus_buddy" }.forEach { p ->

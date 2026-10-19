@@ -6,6 +6,7 @@ import app.wakeme.data.net.ChallengesDto
 import app.wakeme.data.net.CommandDto
 import app.wakeme.data.net.CommandsDto
 import app.wakeme.data.net.ConversationsDto
+import app.wakeme.data.net.DevicesDto
 import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.FriendsDto
 import app.wakeme.data.net.GenerationDto
@@ -49,6 +50,8 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     suspend fun deleteAccount() = api.delete("/v1/account", JsonObject.serializer())
     suspend fun cancelDeletion() = api.post("/v1/account/deletion/cancel", null, MeDto.serializer())
     suspend fun exportAccount() = api.get("/v1/account/export", JsonObject.serializer())
+
+    suspend fun devices() = api.get("/v1/devices", DevicesDto.serializer()).devices
 
     // ------------------------------------------------------------- friends
     suspend fun friends() = api.get("/v1/friends", FriendsDto.serializer()).friends
@@ -135,6 +138,9 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     suspend fun messages(conversationId: String) = api.get("/v1/conversations/$conversationId/messages", MessagesDto.serializer()).messages
     suspend fun sendMessage(conversationId: String, text: String) =
         api.post("/v1/conversations/$conversationId/messages", buildJsonObject { put("body", text); put("clientId", "c_" + UUID.randomUUID().toString().replace("-", "")) }, MessageDto.serializer(), idempotent = true)
+    /** One of the server's REACTIONS; replaces this user's previous reaction. */
+    suspend fun react(messageId: String, emoji: String) = api.post("/v1/messages/$messageId/reactions", buildJsonObject { put("emoji", emoji) }, JsonObject.serializer())
+    suspend fun unreact(messageId: String) = api.delete("/v1/messages/$messageId/reactions", JsonObject.serializer())
     suspend fun markRead(conversationId: String) = api.post("/v1/conversations/$conversationId/read", null, OkDto.serializer())
     suspend fun report(kind: String, id: String, reason: String, note: String?) =
         api.post("/v1/reports", buildJsonObject { put("targetKind", kind); put("targetId", id); put("reason", reason); note?.let { put("note", it) } }, JsonObject.serializer())

@@ -24,14 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
-import app.wakeme.R
-import app.wakeme.alarm.AlarmAudio
 import app.wakeme.billing.Billing
 import app.wakeme.data.WakeMeApi
 import app.wakeme.data.net.ApiException
@@ -52,15 +49,16 @@ import app.wakeme.designsystem.Tone
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
-import app.wakeme.readiness.Readiness
-import app.wakeme.readiness.ReadinessItem
-import app.wakeme.readiness.ReadinessState
+import app.wakeme.data.device.DeviceIdentity
+import app.wakeme.data.net.DeviceDto
+import app.wakeme.sync.DeviceRegistrar
+import app.wakeme.sync.SyncEngine
+import app.wakeme.ui.readiness.ReadinessSection
 import app.wakeme.ui.AppViewModel
 import app.wakeme.ui.paywall.billingStatusText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -77,27 +75,10 @@ import javax.inject.Inject
 
 private val HH_MM = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
 
-private fun readinessCopy(item: ReadinessItem): Int = when (item) {
-    ReadinessItem.NOTIFICATIONS -> R.string.ready_notifications
-    ReadinessItem.EXACT_ALARMS -> R.string.ready_exact_alarm
-    ReadinessItem.FULL_SCREEN -> R.string.ready_full_screen
-    ReadinessItem.BATTERY -> R.string.ready_battery
-    ReadinessItem.ALARM_VOLUME -> R.string.ready_volume
-}
-
-private fun routeText(route: String): String = when (route) {
-    "speaker" -> "It played through the phone's speaker."
-    "bluetooth" -> "It played through a Bluetooth device, not the phone's speaker. Alarms may do the same while it's connected."
-    "wired" -> "It played through wired headphones."
-    "none" -> "It didn't play."
-    else -> "It played, but the output couldn't be identified."
-}
-
 data class YouState(
-    val readiness: ReadinessState = ReadinessState(emptyList()),
     val billing: BillingStatusDto? = null,
-    val testing: Boolean = false,
-    val testResult: String? = null,
+    val devices: List<DeviceDto> = emptyList(),
+    val thisDeviceId: String? = null,
     val busy: Boolean = false,
     val notice: String? = null,
     val exportJson: String? = null,
@@ -107,8 +88,10 @@ data class YouState(
 class YouViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val api: WakeMeApi,
-    private val readiness: Readiness,
     private val billing: Billing,
+    private val registrar: DeviceRegistrar,
+    private val device: DeviceIdentity,
+    private val sync: SyncEngine,
 ) : ViewModel() {
     private val _s = MutableStateFlow(YouState())
     val state: StateFlow<YouState> = _s
@@ -117,34 +100,18 @@ class YouViewModel @Inject constructor(
         refresh()
     }
 
-    /** Re-read on every resume: the user may have just changed a permission in system settings. */
     fun refresh() {
-        _s.value = _s.value.copy(readiness = readiness.state())
         viewModelScope.launch {
-            readiness.reportCapabilities()
             runCatching { billing.status() }.onSuccess { _s.value = _s.value.copy(billing = it) }
+            runCatching { api.devices() }.onSuccess { _s.value = _s.value.copy(devices = it, thisDeviceId = device.deviceId()) }
         }
     }
 
-    fun settingsIntent(item: ReadinessItem) = readiness.settingsIntent(item)
-
-    /** A real test with a bundled sound on the alarm stream, reporting the route actually used. */
-    fun testSound() = viewModelScope.launch {
-        if (_s.value.testing) return@launch
-        _s.value = _s.value.copy(testing = true, testResult = null)
-        val audio = AlarmAudio(context)
-        val report = audio.start("bundled:rise.gentle")
-        val result = when {
-            report.failure == "audio_focus_denied" -> "Another app (for example a call) is using audio, so the test didn't play. A real alarm would vibrate and show on screen."
-            !report.started -> "The sound didn't start. Check the alarm volume and try again."
-            else -> {
-                delay(4_000)
-                val route = audio.currentRoute()
-                routeText(route) + if (readiness.state().missing.contains(ReadinessItem.ALARM_VOLUME)) " Your alarm volume is at zero." else ""
-            }
-        }
-        audio.stop()
-        _s.value = _s.value.copy(testing = false, testResult = result)
+    /** Wake alarms ring on one primary phone; other signed-in devices get passive updates. */
+    fun makeThisPhonePrimary() = act {
+        registrar.makePrimary()
+        runCatching { sync.sync() } // installs this phone's alarms now; the other phone removes its copy on its next sync
+        _s.value = _s.value.copy(devices = api.devices(), thisDeviceId = device.deviceId())
     }
 
     fun update(body: JsonObject, onDone: (MeDto) -> Unit) = act { onDone(api.updateMe(body)) }
@@ -213,7 +180,7 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, vm
     val saveExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> if (uri != null) vm.writeExport(uri) else vm.clearExport() }
 
     LifecycleResumeEffect(Unit) {
-        vm.refresh()
+        vm.refresh() // billing and devices; ReadinessSection refreshes itself
         onPauseOrDispose { }
     }
     s.exportJson?.let {
@@ -237,26 +204,11 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, vm
             }
         }
 
-        // ---------------------------------------------------------- readiness
         item {
             Gap(WakeMeTokens.spaceSm)
-            SectionTitle(stringResource(R.string.ready_title))
-            if (s.readiness.missing.isEmpty()) StatusPill(stringResource(R.string.ready_all_good), Tone.Success)
-            else if (!s.readiness.readyForWake) StatusPill("Wake-ups can't ring reliably on this phone yet", Tone.Danger)
+            ReadinessSection()
         }
-        s.readiness.missing.forEach { r ->
-            item(key = "r$r") {
-                WMCard {
-                    Body(stringResource(readinessCopy(r)), color = WM.colors.textPrimary)
-                    SecondaryButton("Open settings", onClick = { runCatching { context.startActivity(vm.settingsIntent(r)) } })
-                }
-            }
-        }
-        item {
-            SecondaryButton(if (s.testing) "Playing…" else stringResource(R.string.ready_test_sound), onClick = { vm.testSound() }, enabled = !s.testing)
-            Body(stringResource(R.string.ready_test_note))
-            s.testResult?.let { Body(it, color = WM.colors.textPrimary) }
-        }
+        item { PhonesSection(s.devices, s.thisDeviceId, busy = s.busy, onMakePrimary = vm::makeThisPhonePrimary) }
 
         // ------------------------------------------------------ consent settings
         me?.let { m ->
@@ -359,6 +311,25 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, vm
         )
     }
     s.notice?.let { AlertDialog(onDismissRequest = vm::clearNotice, confirmButton = { TextButton(onClick = vm::clearNotice) { Text("OK") } }, text = { Text(it) }) }
+}
+
+@Composable
+private fun PhonesSection(devices: List<DeviceDto>, thisDeviceId: String?, busy: Boolean, onMakePrimary: () -> Unit) {
+    if (devices.isEmpty()) return
+    val thisIsPrimary = devices.any { it.id == thisDeviceId && it.isPrimary }
+    WMCard {
+        Text("Phone for wake alarms", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+        devices.forEach { d ->
+            val label = (if (d.id == thisDeviceId) "This phone" else d.platform.replaceFirstChar { it.uppercase() } + (d.osVersion?.let { " $it" } ?: "")) +
+                (if (d.isPrimary) " · rings for wake alarms" else " · gets updates only")
+            StatusPill(label, if (d.isPrimary) Tone.Success else Tone.Neutral)
+            if (d.readinessIssues.isNotEmpty() && d.id != thisDeviceId) Body("Needs setup on that device before alarms are reliable there.")
+        }
+        if (!thisIsPrimary) {
+            Body("Only one phone rings, so you don't get woken twice. Your routines move to the phone you choose; the other phone removes them the next time it syncs.")
+            SecondaryButton("Ring wake alarms on this phone", onClick = onMakePrimary, enabled = !busy)
+        }
+    }
 }
 
 @Composable

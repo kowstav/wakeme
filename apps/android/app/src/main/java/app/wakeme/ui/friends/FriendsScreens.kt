@@ -1,6 +1,11 @@
 package app.wakeme.ui.friends
 
 import android.content.Intent
+import android.provider.Settings
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import app.wakeme.ui.permissions.notificationsAllowed
+import app.wakeme.ui.permissions.notificationsAsked
+import app.wakeme.ui.permissions.rememberNotificationAsk
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -54,6 +59,12 @@ fun FriendsScreen(onOpen: (String) -> Unit, vm: FriendsViewModel = hiltViewModel
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     var code by remember { mutableStateOf("") }
+    val askNotifications = rememberNotificationAsk()
+    var notificationsOn by remember { mutableStateOf(notificationsAllowed(context)) }
+    LifecycleResumeEffect(Unit) {
+        notificationsOn = notificationsAllowed(context)
+        onPauseOrDispose { }
+    }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
             Gap()
@@ -65,6 +76,20 @@ fun FriendsScreen(onOpen: (String) -> Unit, vm: FriendsViewModel = hiltViewModel
                 WMCard {
                     Text("Invite someone you trust", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                     Body("Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
+                }
+            }
+        }
+        if (s.friends.isNotEmpty() && !notificationsOn) {
+            item {
+                WMCard {
+                    Body("Notifications are off, so quacks from friends can't reach you.", color = WM.colors.textPrimary)
+                    SecondaryButton("Turn on notifications", onClick = {
+                        if (notificationsAsked(context)) {
+                            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                        } else {
+                            askNotifications("So quacks and requests from your friends can reach you.") { notificationsOn = notificationsAllowed(context) }
+                        }
+                    })
                 }
             }
         }
@@ -137,6 +162,7 @@ fun FriendDetailScreen(
     var sound by remember(f.theyAllowMe?.version) { mutableStateOf(f.theyAllowMe?.limits?.nudge?.sounds?.firstOrNull()) }
     var confirmBlock by remember { mutableStateOf(false) }
     val name = f.user.displayName
+    val askNotifications = rememberNotificationAsk()
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         Text(name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
@@ -152,7 +178,11 @@ fun FriendDetailScreen(
                 }
                 QuietButton("Preview on my phone", onClick = { playQuackPreview(context) })
             }
-            ActionButton("Send quack", quack, name, s.sending == Capability.NUDGE) { vm.send(Capability.NUDGE, mapOf("soundId" to (sound ?: "bundled:quack.classic"))) }
+            ActionButton("Send quack", quack, name, s.sending == Capability.NUDGE) {
+                askNotifications("So you can see when $name replies, and hear quacks you've allowed.") {
+                    vm.send(Capability.NUDGE, mapOf("soundId" to (sound ?: "bundled:quack.classic")))
+                }
+            }
         }
 
         // ---- Escalation only if they enabled it; never automatic.

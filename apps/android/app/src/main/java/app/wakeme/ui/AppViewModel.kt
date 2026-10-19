@@ -21,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.util.Locale
@@ -32,6 +33,8 @@ sealed class Gate {
     data object SignIn : Gate()
     data object Profile : Gate()
     data class Invite(val token: String, val preview: InvitePreviewDto?) : Gate()
+    /** Self-setup route: make this phone ready for alarms before the first wake-up (doc 03 §5 steps 7–9). */
+    data object Ready : Gate()
     data object Main : Gate()
 }
 
@@ -55,7 +58,6 @@ class AppViewModel @Inject constructor(
     val error: StateFlow<String?> = _error
     private val _route = MutableStateFlow<String?>(null)
     val route: StateFlow<String?> = _route
-    private var wantsSelfSetup = false
 
     init {
         viewModelScope.launch {
@@ -80,8 +82,15 @@ class AppViewModel @Inject constructor(
     }
 
     fun chooseSelfSetup() {
-        wantsSelfSetup = true
+        viewModelScope.launch { prefs.setOnboardingStep(STEP_SELF_SETUP) }
         _gate.value = Gate.SignIn
+    }
+
+    /** Leaves self-setup; opens the routine editor when the phone is ready. */
+    fun finishSelfSetup(openRoutineEditor: Boolean) = viewModelScope.launch {
+        prefs.setOnboardingStep(null)
+        _gate.value = Gate.Main
+        if (openRoutineEditor) _route.value = "routine-new"
     }
 
     fun chooseInviteFlow() {
@@ -114,7 +123,11 @@ class AppViewModel @Inject constructor(
         SyncWorker.schedulePeriodic(context)
         runCatching { sync.sync() }
         val invite = prefs.pendingInvite()
-        _gate.value = if (invite != null) Gate.Invite(invite, runCatching { api.previewInvite(invite, null) }.getOrNull()) else Gate.Main
+        _gate.value = when {
+            invite != null -> Gate.Invite(invite, runCatching { api.previewInvite(invite, null) }.getOrNull())
+            prefs.onboardingStep.first() == STEP_SELF_SETUP -> Gate.Ready
+            else -> Gate.Main
+        }
     }
 
     fun requestCode(email: String, onSent: () -> Unit) = launchCatching { session.requestEmailCode(email); onSent() }
@@ -179,6 +192,10 @@ class AppViewModel @Inject constructor(
     }
 
     val devAuth: Boolean get() = AppConfig.useDevAuth
+
+    private companion object {
+        const val STEP_SELF_SETUP = "self_setup"
+    }
 
     private fun launchCatching(block: suspend () -> Unit) = viewModelScope.launch {
         try {

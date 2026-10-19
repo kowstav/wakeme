@@ -34,7 +34,8 @@ val WakeMeApiJson: Json = Json {
     val limits: LimitsDto,
 )
 
-@Serializable data class DeviceDto(val id: String, val platform: String, val isPrimary: Boolean, val pushRegistered: Boolean, val readinessIssues: List<String>)
+@Serializable data class DeviceDto(val id: String, val platform: String, val isPrimary: Boolean, val pushRegistered: Boolean, val readinessIssues: List<String>, val osVersion: String? = null, val lastSeenAt: String? = null)
+@Serializable data class DevicesDto(val devices: List<DeviceDto>)
 
 @Serializable data class PublicUser(val id: String, val displayName: String)
 @Serializable data class GrantDto(

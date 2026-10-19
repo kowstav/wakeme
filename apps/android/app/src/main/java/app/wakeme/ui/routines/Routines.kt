@@ -134,13 +134,16 @@ class RoutinesViewModel @Inject constructor(private val api: WakeMeApi, private 
 }
 
 @Composable
-fun RoutinesScreen(onNew: () -> Unit, onOpen: (String) -> Unit, vm: RoutinesViewModel = hiltViewModel()) {
+fun RoutinesScreen(onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: () -> Unit = {}, vm: RoutinesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
             Gap()
             Text("Routines", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-            if (!s.exactAlarmsOk) StatusPill("Alarms aren't allowed to ring on time. Allow “Alarms & reminders” in You → Make this phone ready.", Tone.Danger)
+            if (!s.exactAlarmsOk) {
+                StatusPill("Alarms aren't allowed to ring on time yet", Tone.Danger)
+                SecondaryButton("Make this phone ready", onClick = onFixReadiness)
+            }
         }
         val proposals = s.mine.filter { it.pending != null }
         if (proposals.isNotEmpty()) item { SectionTitle("Waiting for you") }

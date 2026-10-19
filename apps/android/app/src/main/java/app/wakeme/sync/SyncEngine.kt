@@ -18,6 +18,7 @@ import app.wakeme.core.ChallengeEnvelopes
 import app.wakeme.core.InstalledRoutine
 import app.wakeme.core.SignedEnvelope
 import app.wakeme.core.WakeMeJson
+import app.wakeme.data.device.DeviceIdentity
 import app.wakeme.data.local.GrantEntity
 import app.wakeme.data.local.LocalDb
 import app.wakeme.data.local.Prefs
@@ -84,6 +85,7 @@ class SyncEngine @Inject constructor(
     private val scheduler: AlarmScheduler,
     private val receipts: ReceiptQueue,
     private val challenges: ChallengeInstaller,
+    private val device: DeviceIdentity,
 ) {
     private val mutex = Mutex()
     private val _changes = MutableSharedFlow<String>(extraBufferCapacity = 32)
@@ -114,8 +116,7 @@ class SyncEngine @Inject constructor(
         for (dir in listOf("given", "received")) {
             for (g in api.get("/v1/grants?direction=$dir&includeRevoked=true", GrantsDto.serializer()).grants) storeGrant(g)
         }
-        val plans = api.get("/v1/alarm-plans?includeEnded=true", PlansDto.serializer())
-        for (p in plans.mine) applyPlan(p, me.id)
+        reinstallAll(me)
         prefs.setCursor(head)
         _changes.tryEmit("all")
     }
@@ -123,7 +124,13 @@ class SyncEngine @Inject constructor(
     private suspend fun apply(entity: String, id: String, op: String, data: kotlinx.serialization.json.JsonElement?) {
         when (entity) {
             "grant" -> data?.let { storeGrant(WakeMeApiJson.decodeFromJsonElement<GrantDto>(it)) }
-            "me" -> data?.let { prefs.saveMe(WakeMeApiJson.decodeFromJsonElement<MeDto>(it)) }
+            "me" -> data?.let {
+                val before = prefs.currentMe()
+                val me = WakeMeApiJson.decodeFromJsonElement<MeDto>(it)
+                prefs.saveMe(me)
+                // The primary phone changed: move the alarms so exactly one phone rings.
+                if (before != null && isPrimary(before) != isPrimary(me)) reinstallAll(me)
+            }
             "alarm_plan" -> {
                 val me = prefs.currentMe() ?: return
                 if (data != null) applyPlan(WakeMeApiJson.decodeFromJsonElement<PlanDto>(data), me.id)
@@ -137,8 +144,29 @@ class SyncEngine @Inject constructor(
     }
 
     /** Install, replace or remove the native alarms for one routine owned by this user. */
-    private suspend fun applyPlan(plan: PlanDto, myId: String) {
+    /**
+     * Wake alarms ring only on the owner's primary phone; other signed-in devices
+     * get passive updates. No primary yet (first registration in progress) counts
+     * as primary, so a single phone never silently skips its alarms.
+     */
+    private suspend fun isPrimary(me: MeDto): Boolean = me.primaryDeviceId == null || me.primaryDeviceId == device.deviceId()
+
+    private suspend fun reinstallAll(me: MeDto) {
+        val plans = api.get("/v1/alarm-plans?includeEnded=true", PlansDto.serializer())
+        for (p in plans.mine) applyPlan(p, me.id, me)
+    }
+
+    private suspend fun applyPlan(plan: PlanDto, myId: String, me: MeDto? = null) {
         if (plan.owner.id != myId) return
+        val current = me ?: prefs.currentMe()
+        if (current != null && !isPrimary(current)) {
+            // Not the ringing phone: remove any local copy silently; the primary reports installation.
+            if (db.routines().get(plan.id) != null) {
+                scheduler.cancelPlan(plan.id)
+                db.routines().delete(plan.id)
+            }
+            return
+        }
         val accepted = plan.accepted
         val active = plan.state == "active" && accepted != null
         if (!active) {
