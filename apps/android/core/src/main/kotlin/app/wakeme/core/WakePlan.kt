@@ -4,6 +4,12 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 
+/** Wake-ups set up before signing in live only on this phone, under ids with this prefix. They
+ * never produce server receipts and move to the account when the person signs in. */
+const val LOCAL_PLAN_PREFIX = "local-"
+
+fun isLocalPlan(planId: String): Boolean = planId.startsWith(LOCAL_PLAN_PREFIX)
+
 /**
  * An installed routine version as the phone keeps it: everything needed to
  * ring and run the challenge with no network at ring time.

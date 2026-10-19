@@ -10,7 +10,7 @@ import WakeMeCore
 @MainActor
 @Observable
 final class AppModel {
-    enum Gate: Equatable { case loading, welcome, signIn, profile, ready, main }
+    enum Gate: Equatable { case loading, welcome, signIn, profile, ready, main, guest }
 
     var gate: Gate = .loading
     var me: MeDTO?
@@ -20,6 +20,7 @@ final class AppModel {
     let api = WakeMeAPI.app
     private let defaults = UserDefaults.standard
     private let selfSetupKey = "onboarding.selfSetup"
+    private let guestKey = "onboarding.guest"
     /// The profile cache, also read by push handling when iOS wakes the app in the background.
     static let meCacheKey = "cache.me"
     private var meCacheKey: String { Self.meCacheKey }
@@ -37,14 +38,25 @@ final class AppModel {
         gate = .signIn
     }
 
+    /// Doc 03 §5 step 2: a personal wake-up needs no account (doc 02 §9 guest alarms).
     func chooseSelfSetup() {
-        defaults.set(true, forKey: selfSetupKey)
+        defaults.set(true, forKey: guestKey)
+        gate = .guest
+    }
+
+    /// From guest use: sign in to add friends; wake-ups on this phone move to the account.
+    func signInFromGuest() {
         gate = .signIn
+    }
+
+    /// Back from sign-in to where it came from.
+    func backFromSignIn() {
+        gate = defaults.bool(forKey: guestKey) ? .guest : .welcome
     }
 
     func route() async {
         guard await Session.shared.isSignedIn else {
-            gate = gate == .signIn ? .signIn : .welcome
+            gate = gate == .signIn ? .signIn : defaults.bool(forKey: guestKey) ? .guest : .welcome
             return
         }
         do {
@@ -68,6 +80,10 @@ final class AppModel {
             return
         }
         await registerDevice()
+        // Wake-ups set up before signing in become this account's routines (sync installs them).
+        // Tried on every signed-in start, so any left by an offline sign-in move later.
+        await LocalRoutines.shared.moveToAccount(api: api)
+        defaults.set(false, forKey: guestKey)
         Task { await SyncEngine.shared.sync(self) } // routines changed elsewhere, outcomes recorded offline
         gate = defaults.bool(forKey: selfSetupKey) ? .ready : .main
     }
@@ -142,6 +158,8 @@ final class AppModel {
         await ChallengeStore.shared.clear()
         await ReceiptQueue.shared.clear()
         await GrantStore.shared.clear()
+        LocalRoutines.shared.clear()
+        defaults.removeObject(forKey: guestKey)
         PushCenter.forget()
         await Session.shared.signOut()
         DeviceKey.shared.setDeviceId(nil)

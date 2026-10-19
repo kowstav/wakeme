@@ -41,6 +41,8 @@ struct SignInView: View {
                 if AppConfig.useDevAuth {
                     SecondaryButton(title: "Use a local test account (debug build)") { Task { await app.devSignIn() } }
                 }
+                Button("Back") { app.backFromSignIn() }
+                    .frame(minHeight: WMSize.minTouchTarget)
             }
             .padding(WMSpacing.md).frame(maxWidth: 640).frame(maxWidth: .infinity)
         }

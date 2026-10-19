@@ -36,6 +36,8 @@ sealed class Gate {
     /** Self-setup route: make this phone ready for alarms before the first wake-up (doc 03 §5 steps 7–9). */
     data object Ready : Gate()
     data object Main : Gate()
+    /** Personal wake-ups on this phone without an account (doc 02 §9); sign in to add friends. */
+    data object Guest : Gate()
 }
 
 /** App-level routing: signed in? profile? pending invite? Invites never auto-accept. */
@@ -49,6 +51,7 @@ class AppViewModel @Inject constructor(
     private val sync: SyncEngine,
     private val device: DeviceIdentity,
     private val billing: Billing,
+    private val localRoutines: app.wakeme.alarm.LocalRoutines,
 ) : ViewModel() {
     private val _gate = MutableStateFlow<Gate>(Gate.Loading)
     val gate: StateFlow<Gate> = _gate
@@ -81,10 +84,19 @@ class AppViewModel @Inject constructor(
         _route.value = null
     }
 
+    /** Doc 03 §5 step 2: a personal alarm needs no account. */
     fun chooseSelfSetup() {
-        viewModelScope.launch { prefs.setOnboardingStep(STEP_SELF_SETUP) }
+        viewModelScope.launch { prefs.setGuest(true) }
+        _gate.value = Gate.Guest
+    }
+
+    /** From guest use: sign in to add friends; local wake-ups move to the account. */
+    fun signInFromGuest() {
         _gate.value = Gate.SignIn
     }
+
+    /** Back from the sign-in screen to wake-ups on this phone, when that's where it came from. */
+    fun backToGuest() = viewModelScope.launch { if (prefs.guest.first()) _gate.value = Gate.Guest else _gate.value = Gate.Welcome }
 
     /** Leaves self-setup; opens the routine editor when the phone is ready. */
     fun finishSelfSetup(openRoutineEditor: Boolean) = viewModelScope.launch {
@@ -99,7 +111,11 @@ class AppViewModel @Inject constructor(
 
     private suspend fun route() {
         if (session.state.value !is AuthState.SignedIn) {
-            _gate.value = if (_gate.value == Gate.SignIn) Gate.SignIn else Gate.Welcome
+            _gate.value = when {
+                _gate.value == Gate.SignIn -> Gate.SignIn
+                prefs.guest.first() -> Gate.Guest
+                else -> Gate.Welcome
+            }
             return
         }
         val me = try {
@@ -119,6 +135,10 @@ class AppViewModel @Inject constructor(
         runCatching {
             if (device.deviceId() == null) registrar.register(makePrimary = me.primaryDeviceId == null)
         }
+        // Wake-ups set up before signing in become this account's routines (sync installs them).
+        // Tried on every signed-in start, so any left behind by an offline sign-in move later.
+        runCatching { localRoutines.moveToAccount(api) }
+        prefs.setGuest(false)
         runCatching { billing.configure(me.id) }
         SyncWorker.schedulePeriodic(context)
         runCatching { sync.sync() }

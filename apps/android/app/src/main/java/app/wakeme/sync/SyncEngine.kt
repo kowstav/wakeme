@@ -15,6 +15,7 @@ import androidx.work.WorkerParameters
 import app.wakeme.alarm.AlarmScheduler
 import app.wakeme.alarm.ArmingWindow
 import app.wakeme.alarm.ScheduleResult
+import app.wakeme.core.isLocalPlan
 import app.wakeme.core.AlarmRole
 import app.wakeme.core.ChallengeEnvelopes
 import app.wakeme.core.InstalledRoutine
@@ -195,7 +196,7 @@ class SyncEngine @Inject constructor(
         // Routines are stored only from server data, so one the server no longer lists
         // (possible only after a server restore) stops ringing here.
         val listed = plans.mine.map { it.id }.toSet()
-        for (r in db.routines().all()) if (r.planId !in listed) {
+        for (r in db.routines().all()) if (r.planId !in listed && !isLocalPlan(r.planId)) {
             scheduler.cancelPlan(r.planId)
             db.routines().delete(r.planId)
         }

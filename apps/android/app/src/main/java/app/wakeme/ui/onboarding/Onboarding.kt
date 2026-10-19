@@ -141,6 +141,7 @@ fun SignInScreen(app: AppViewModel) {
             }
         }
         if (app.devAuth) QuietButton("Use a local test account (debug build)", onClick = app::devSignIn)
+        QuietButton("Back", onClick = { app.backToGuest() })
     }
 }
 

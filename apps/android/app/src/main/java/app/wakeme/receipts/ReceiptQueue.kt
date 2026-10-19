@@ -1,6 +1,7 @@
 package app.wakeme.receipts
 
 import android.content.Context
+import app.wakeme.core.isLocalPlan
 import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -59,6 +60,9 @@ sealed class Receipt {
 @Singleton
 class ReceiptQueue @Inject constructor(@ApplicationContext private val context: Context) {
     fun enqueue(receipt: Receipt) {
+        // Wake-ups set up before signing in exist only on this phone: nothing to report.
+        val planId = when (receipt) { is Receipt.Occurrence -> receipt.planId; is Receipt.Installation -> receipt.planId; else -> null }
+        if (planId != null && isLocalPlan(planId)) return
         val req = OneTimeWorkRequestBuilder<ReceiptWorker>()
             .setInputData(workDataOf("receipt" to WakeMeApiJson.encodeToString(Receipt.serializer(), receipt)))
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())

@@ -170,7 +170,7 @@ final class SyncEngine {
         // Alarms are installed only from server data, so a routine the server no longer
         // lists (possible only after a server restore) stops ringing here.
         let listed = Set(mine.map(\.id))
-        for id in WakeAlarms.shared.installedPlanIds() where !listed.contains(id) { WakeAlarms.shared.cancel(planId: id) }
+        for id in WakeAlarms.shared.installedPlanIds() where !listed.contains(id) && !isLocalPlan(id) { WakeAlarms.shared.cancel(planId: id) }
         var reported = false
         for plan in mine {
             if await apply(plan, primary: primary, api: api) { reported = true }
@@ -232,6 +232,7 @@ final class SyncEngine {
         for planId in WakeAlarms.shared.installedPlanIds() {
             guard await WakeAlarms.shared.topUp(planId: planId), !signedOutMeanwhile(planId, since: started),
                   let armed = WakeAlarms.shared.armedRoutine(planId: planId) else { continue }
+            if isLocalPlan(planId) { continue } // guest wake-ups have no server copy to report to
             _ = await report(planId, version: armed.routine.version, errorCode: armed.errorCode, api: api)
         }
     }

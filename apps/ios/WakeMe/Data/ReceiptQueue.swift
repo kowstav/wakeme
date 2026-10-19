@@ -1,5 +1,6 @@
 import Foundation
 import WakeMeAPI
+import WakeMeCore
 
 /// Wake-session outcomes wait here until the server confirms them, so a session finished
 /// offline is still reported later. Outcomes only move forward on the server, so a retry is
@@ -33,6 +34,7 @@ actor ReceiptQueue {
 
     /// Keeps the outcome for the next flush without touching the network.
     func record(_ receipt: Occurrence) {
+        guard !isLocalPlan(receipt.planId) else { return } // guest wake-ups exist only on this phone
         var pending = load()
         if !pending.contains(receipt) { pending.append(receipt) }
         save(pending)

@@ -1,6 +1,7 @@
 package app.wakeme.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -30,6 +31,11 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
     private val trustedKeysAtKey = longPreferencesKey("challenge_keys_at")
     private val onboardingKey = stringPreferencesKey("onboarding_step")
     private val installErrorsKey = stringPreferencesKey("install_errors")
+    private val guestKey = booleanPreferencesKey("guest")
+
+    /** Using Wake Me for personal wake-ups without an account (doc 02 §9). */
+    val guest: Flow<Boolean> = context.appPrefs.data.map { it[guestKey] == true }
+    suspend fun setGuest(on: Boolean) = context.appPrefs.edit { if (on) it[guestKey] = true else it.remove(guestKey) }
 
     val me: Flow<MeDto?> = context.appPrefs.data.map { p -> p[meKey]?.let { runCatching { WakeMeApiJson.decodeFromString(MeDto.serializer(), it) }.getOrNull() } }
 

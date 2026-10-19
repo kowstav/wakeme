@@ -260,7 +260,7 @@ data class EditorState(
 )
 
 @HiltViewModel
-class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, private val readiness: Readiness) : ViewModel() {
+class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, private val readiness: Readiness, private val local: app.wakeme.alarm.LocalRoutines) : ViewModel() {
     private val _s = MutableStateFlow(EditorState())
     val state: StateFlow<EditorState> = _s
 
@@ -281,6 +281,13 @@ class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, pri
         }
     }
 
+    /** Guest use: stored and armed on this phone only; no account, no server. */
+    fun saveLocal(terms: PlanTerms) = viewModelScope.launch {
+        _s.value = _s.value.copy(saving = true)
+        local.save(terms)
+        _s.value = _s.value.copy(saving = false, done = true)
+    }
+
     fun exactAlarmsAllowed() = readiness.state().readyForWake
 
     /** A suggestion stays inside what the friend allowed; their grant says what that is. */
@@ -297,7 +304,7 @@ class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, pri
 }
 
 @Composable
-fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, vm: RoutineEditorViewModel = hiltViewModel()) {
+fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = false, vm: RoutineEditorViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     LaunchedEffect(s.done) { if (s.done) onDone() }
@@ -363,8 +370,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, vm: RoutineEditorV
         if (ownerId == null) SettingRow("Follow my phone when I travel", "Off keeps the time in your home time zone.", followTravel) { followTravel = it }
         if (!vm.exactAlarmsAllowed()) StatusPill("This phone can't ring alarms on time yet. Allow “Alarms & reminders” first.", Tone.Warning)
         PrimaryButton(if (s.saving) "Saving…" else if (ownerId == null) "Save wake-up" else "Send suggestion", enabled = !s.saving && !outsideHours && sound in sounds, onClick = {
-            vm.save(
-                ownerId,
+            val terms =
                 PlanTerms(
                     label = label,
                     localTime = window.start,
@@ -375,9 +381,8 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, vm: RoutineEditorV
                     ringSeconds = ring,
                     challengeRevisionId = challengeRevision,
                     followUpDelaySeconds = if (followUp && canFollowUp && challengeRevision != null) followUpDelay else null,
-                ),
-                context,
-            )
+                )
+            if (guest) vm.saveLocal(terms) else vm.save(ownerId, terms, context)
         })
         QuietButton("Cancel", onClick = onDone)
     }

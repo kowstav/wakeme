@@ -11,6 +11,8 @@ struct RoutineEditorView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
     var friend: FriendDTO? = nil
+    /// Guest use: saved and armed on this phone only (no account, no server).
+    var guest = false
     let onSaved: () async -> Void
 
     @State private var time = Calendar.current.date(bySettingHour: 7, minute: 0, second: 0, of: Date()) ?? Date()
@@ -119,7 +121,7 @@ struct RoutineEditorView: View {
             .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
             .task {
                 prepare()
-                challenges = (try? await app.api.challenges()) ?? []
+                if !guest { challenges = (try? await app.api.challenges()) ?? [] }
             }
         }
     }
@@ -156,6 +158,14 @@ struct RoutineEditorView: View {
             challengeRevisionId: challengeRevision,
             followUpDelaySeconds: challengeRevision != nil && followUp && canFollowUp ? followUpDelay : nil
         )
+        if guest {
+            // Alarm access is needed to arm it on this phone; asked for here, at wake setup.
+            if WakeAlarms.shared.authorization == .notDetermined { _ = await WakeAlarms.shared.requestAuthorization() }
+            _ = await LocalRoutines.shared.save(terms)
+            await onSaved()
+            dismiss()
+            return
+        }
         do {
             _ = try await app.api.createPlan(terms)
         } catch {

@@ -64,6 +64,7 @@ fun WakeMeRoot(app: AppViewModel) {
         is Gate.Invite -> InviteScreen(g.preview, onAccept = { app.acceptInvite(g.token) }, onDecline = app::declineInvite)
         Gate.Ready -> ReadyScreen(onContinue = { app.finishSelfSetup(openRoutineEditor = true) }, onSkip = { app.finishSelfSetup(openRoutineEditor = false) })
         Gate.Main -> MainTabs(app)
+        Gate.Guest -> app.wakeme.ui.routines.GuestHome(onSignIn = app::signInFromGuest)
     }
     error?.let {
         AlertDialog(

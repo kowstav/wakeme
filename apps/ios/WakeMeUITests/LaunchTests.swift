@@ -130,6 +130,29 @@ final class LaunchTests: XCTestCase {
         try must(app.buttons["Set up my own wake-up"].waitForExistence(timeout: 20), "step failed")
         app.buttons["Set up my own wake-up"].tap()
 
+        // Doc 03 §5 step 2: a personal wake-up first, with no account; it is armed on this phone.
+        try must(app.navigationBars["Your wake-ups"].waitForExistence(timeout: 15), "guest use without an account")
+        shot(app, "02-guest")
+        app.buttons["Make this phone ready"].tap()
+        try must(app.staticTexts["Let's make sure your alarm rings"].waitForExistence(timeout: 10), "step failed")
+        try must(app.buttons["Allow alarms"].exists, "alarm access is asked here, at wake setup")
+        shot(app, "04-ready")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["New wake-up"].tap()
+        try must(app.navigationBars["New wake-up"].waitForExistence(timeout: 10), "step failed")
+        try must(app.staticTexts["Weekdays"].exists, "step failed")
+        shot(app, "08-new-wake-up")
+        app.navigationBars["New wake-up"].buttons["Save"].tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        if springboard.buttons["Allow"].waitForExistence(timeout: 8) { springboard.buttons["Allow"].tap() }
+        try must(app.staticTexts["07:00 · Weekdays"].waitForExistence(timeout: 20), "the guest wake-up is listed")
+        try must(app.staticTexts["Ready on this phone"].waitForExistence(timeout: 10), "AlarmKit armed it on this phone")
+        shot(app, "09-guest-wake-up")
+        // Friends need an account; the wake-up moves to it.
+        let signIn = app.buttons["Sign in to add friends"]
+        for _ in 0..<3 where !signIn.isHittable { app.swipeUp() }
+        signIn.tap()
+
         let dev = app.buttons["Use a local test account (debug build)"]
         try must(dev.waitForExistence(timeout: 10), "step failed")
         shot(app, "02-sign-in")
@@ -145,11 +168,6 @@ final class LaunchTests: XCTestCase {
         shot(app, "03-profile")
         app.buttons["Continue"].firstMatch.tap()
 
-        try must(app.staticTexts["Let's make sure your alarm rings"].waitForExistence(timeout: 20), "step failed")
-        try must(app.buttons["Allow alarms"].exists, "alarm access is asked here, at wake setup")
-        shot(app, "04-ready")
-        app.navigationBars.buttons["Continue"].tap()
-
         try must(app.staticTexts["Invite someone you trust"].waitForExistence(timeout: 20), "step failed")
         shot(app, "05-friends-empty")
         app.buttons["Invite a friend"].tap()
@@ -160,22 +178,12 @@ final class LaunchTests: XCTestCase {
         let alex = try await friendRedeems(code: code, name: "Alex")
 
         app.tabBars.buttons["Routines"].tap()
-        try must(app.staticTexts["No alarms yet. Set one for yourself, or let a friend suggest one."].waitForExistence(timeout: 15), "step failed")
-        shot(app, "07-routines")
-
-        // Doc 03 §5 step 7: set your own wake-up; alarm access is asked for when it's saved.
-        app.buttons["Set a wake-up"].tap()
-        try must(app.navigationBars["New wake-up"].waitForExistence(timeout: 10), "step failed")
-        try must(app.staticTexts["Weekdays"].exists, "step failed")
-        shot(app, "08-new-wake-up")
-        app.navigationBars["New wake-up"].buttons["Save"].tap()
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        if springboard.buttons["Allow"].waitForExistence(timeout: 8) { springboard.buttons["Allow"].tap() }
-        try must(app.staticTexts["07:00 · Weekdays"].waitForExistence(timeout: 20), "the saved routine is listed")
+        // The guest wake-up is now the account's routine: listed by the server and armed again here.
+        try must(app.staticTexts["07:00 · Weekdays"].waitForExistence(timeout: 20), "the guest wake-up moved to the account")
         // Readiness reflects what this phone reported to the server, not just that it was saved.
         let ready = app.staticTexts["Ready on this phone"].waitForExistence(timeout: 15)
         try must(ready || app.staticTexts["Couldn't schedule on this phone. Check alarm permission."].exists, "this phone's installation receipt reached the server")
-        shot(app, "09-routine-saved")
+        shot(app, "09b-moved-to-account")
 
         app.tabBars.buttons["You"].tap()
         try must(app.staticTexts["Sam"].waitForExistence(timeout: 15), "step failed")

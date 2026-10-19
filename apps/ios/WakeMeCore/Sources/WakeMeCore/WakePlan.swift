@@ -39,6 +39,12 @@ public struct InstalledRoutine: Codable, Equatable, Sendable {
 
 public enum AlarmRole: String, Codable, Sendable { case main = "MAIN", followUp = "FOLLOW_UP" }
 
+/// Wake-ups set up before signing in live only on this phone, under ids with this prefix. They
+/// never produce server receipts and move to the account at sign-in (same rule as Android).
+public let localPlanPrefix = "local-"
+
+public func isLocalPlan(_ planId: String) -> Bool { planId.hasPrefix(localPlanPrefix) }
+
 /// ADR 0007: only the primary phone installs and rings routines. With no primary
 /// recorded yet, the registering phone counts as primary so a lone phone never
 /// skips its alarms. Same rule as Android `installsRoutines`.

@@ -72,6 +72,8 @@ struct RootView: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity).background(WMColor.surface)
             case .welcome:
                 WelcomeView(onInvite: { app.chooseInvite() }, onSelfSetup: { app.chooseSelfSetup() })
+            case .guest:
+                GuestView()
             case .signIn:
                 SignInView()
             case .profile:

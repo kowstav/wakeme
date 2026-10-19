@@ -42,17 +42,24 @@ class JourneyTest {
         val unreachable = backendProblem()
         assumeTrue("dev backend not reachable: $unreachable", unreachable == null)
 
+        // Doc 03 §5 step 2: a personal wake-up first, with no account; it is armed on this phone.
         tap("Set up my own wake-up")
+        waitFor("Your wake-ups")
+        DeviceEvidence.screenshot("21-guest-home")
+        tap("New wake-up")
+        DeviceEvidence.screenshot("25-new-wake-up")
+        tap("Save wake-up")
+        waitFor("07:00 · Weekdays", timeout = 30_000) // the guest list, not the editor
+        waitFor("Ready on this phone", timeout = 30_000)
+        DeviceEvidence.screenshot("26-guest-wake-up")
+        // Friends need an account; the wake-up moves to it.
+        tap("Sign in to add friends")
         tap("Use a local test account (debug build)")
         waitFor("Display name")
         compose.onNodeWithText("Display name").performTextInput("Sam")
         compose.onNode(isToggleable()).performClick()
         DeviceEvidence.screenshot("20-profile")
         tap("Continue")
-
-        waitFor("Let's make sure your alarm rings")
-        DeviceEvidence.screenshot("21-ready")
-        tap("Do this later")
 
         tap("Invite a friend", timeout = 30_000)
         waitFor("Share your invite")
@@ -75,13 +82,11 @@ class JourneyTest {
 
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         tap("Routines", timeout = 15_000)
-        tap("New wake-up")
-        DeviceEvidence.screenshot("25-new-wake-up")
-        tap("Save wake-up")
-        waitFor("07:00 · Weekdays", timeout = 30_000) // the routines list, not the editor
-        // Readiness is what this phone reported to the server after AlarmManager accepted it.
+        // The guest wake-up is now the account's routine: the server lists it, and readiness is what
+        // this phone reported to the server after AlarmManager armed the server version.
+        waitFor("07:00 · Weekdays", timeout = 30_000)
         waitFor("Ready on this phone", timeout = 60_000)
-        DeviceEvidence.screenshot("26-routine-saved")
+        DeviceEvidence.screenshot("26b-moved-to-account")
 
         // Safety (same steps as the iOS journey): Alex sends Sam an SOS without location; Sam
         // sees it first, confirms seeing it, then starts a check-in with Alex and checks in.
