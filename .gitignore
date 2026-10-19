@@ -35,3 +35,5 @@ Thumbs.db
 
 # Local dev backend data
 services/api/.devdata/
+apps/android/tools/core-only/.gradle/
+apps/android/tools/core-only/build/

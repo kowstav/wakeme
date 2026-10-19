@@ -20,6 +20,8 @@ object Channels {
     const val REQUESTS_SILENT = "requests_silent"
     const val MESSAGES = "messages"
     const val SAFETY = "safety"
+    /** The ongoing "you are sharing your location" indicator: visible, but silent. */
+    const val SHARING = "sharing"
     const val UPDATES = "updates"
     private const val GROUP_FRIENDS = "friends"
 
@@ -60,6 +62,7 @@ object Channels {
         nm.createNotificationChannel(NotificationChannel(REQUESTS_SILENT, context.getString(R.string.channel_requests), NotificationManager.IMPORTANCE_LOW).apply { setSound(null, null); group = GROUP_FRIENDS })
         nm.createNotificationChannel(NotificationChannel(MESSAGES, context.getString(R.string.channel_messages), NotificationManager.IMPORTANCE_DEFAULT).apply { description = context.getString(R.string.channel_messages_desc); group = GROUP_FRIENDS })
         nm.createNotificationChannel(NotificationChannel(SAFETY, context.getString(R.string.channel_safety), NotificationManager.IMPORTANCE_HIGH).apply { description = context.getString(R.string.channel_safety_desc) })
+        nm.createNotificationChannel(NotificationChannel(SHARING, context.getString(R.string.channel_sharing), NotificationManager.IMPORTANCE_LOW).apply { description = context.getString(R.string.channel_sharing_desc); setSound(null, null) })
         nm.createNotificationChannel(NotificationChannel(UPDATES, context.getString(R.string.channel_updates), NotificationManager.IMPORTANCE_DEFAULT).apply { description = context.getString(R.string.channel_updates_desc) })
     }
 }

@@ -132,7 +132,7 @@ private fun NavGraph(nav: NavHostController, app: AppViewModel, modifier: Modifi
         composable("challenges") { ChallengesScreen(onNew = { nav.navigate("challenge-new") }, onUpgrade = { nav.navigate("paywall") }) }
         composable("challenge-new") { ChallengeEditorScreen(onDone = { nav.popBackStack() }, onUpgrade = { nav.navigate("paywall") }) }
         composable("safety") { SafetyScreen() }
-        composable("safety/{id}") { SafetyScreen() }
+        composable("safety/{id}", listOf(navArgument("id") { type = NavType.StringType })) { SafetyScreen(focusSessionId = it.arguments?.getString("id")) }
         composable("you") { YouScreen(app = app, onPaywall = { nav.navigate("paywall") }, onSafety = { nav.navigate("safety") }) }
         composable("paywall") { PaywallScreen(onClose = { nav.popBackStack() }) }
     }

@@ -95,6 +95,15 @@
     <string name="ready_exact_alarm">Allow “Alarms &amp; reminders” so wake-ups ring on time.</string>
     <string name="ready_full_screen">Allow full-screen alarms so a wake-up can show over the lock screen.</string>
     <string name="ready_battery">Battery optimisation may delay wake-ups on some phones. You can exempt Wake Me.</string>
+    <string name="ready_volume">Your alarm volume is at zero, so alarms would be silent. Turn it up in sound settings.</string>
     <string name="ready_test_sound">Test my alarm sound</string>
     <string name="ready_test_note">Plays here only, at alarm volume, through the speaker when the phone allows it.</string>
+    <string name="channel_sharing">Location sharing</string>
+    <string name="channel_sharing_desc">Shown while you are sharing your location, with a Stop button.</string>
+    <string name="sharing_title">Sharing your location with %1$s</string>
+    <string name="sharing_viewers_fallback">the friends you chose</string>
+    <string name="sharing_until">Until %1$s</string>
+    <string name="sharing_last_sent">last sent, accuracy about %1$d m</string>
+    <string name="sharing_waiting_for_fix">waiting for a location fix</string>
+    <string name="sharing_stop">Stop sharing</string>
 </resources>

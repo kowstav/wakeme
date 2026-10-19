@@ -71,13 +71,14 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          # 17 is the Kotlin/Java toolchain the modules compile with; 21 runs Gradle.
+          java-version: |
+            17
+            21
       - uses: android-actions/setup-android@v3
+      # setup-gradle also validates gradle/wrapper/gradle-wrapper.jar against Gradle's published checksums.
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.8.1"
-      # The repository has no binary wrapper jar yet; run `gradle wrapper --gradle-version 9.8.1` once on a dev machine and commit it.
-      - run: gradle --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
       - uses: actions/upload-artifact@v4
         if: always()
         with:
