@@ -291,7 +291,10 @@ private fun ViewerSession(v: SafetySessionDto, loc: LatestLocationDto?, highligh
         }
         if (v.purpose == "sos") {
             Body("Try calling ${v.owner.displayName}. If you think they're in danger, call your local emergency number.")
-            PrimaryButton("I've seen this", onClick = onAck)
+            // A viewer's list holds only themselves; their acknowledgement is shown back to them.
+            val seen = v.viewers.firstOrNull()?.acknowledgedAt
+            if (seen != null) StatusPill("${v.owner.displayName} knows you've seen this (${timeText(seen)})", Tone.Success)
+            else PrimaryButton("I've seen this", onClick = onAck)
         }
     }
 }

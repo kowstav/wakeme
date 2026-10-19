@@ -241,6 +241,7 @@ final class LaunchTests: XCTestCase {
         let seen = app.buttons["I've seen this"]
         for _ in 0..<3 where !seen.isHittable { app.swipeUp() }
         seen.tap()
+        try must(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH \"Alex knows you've seen this\"")).firstMatch.waitForExistence(timeout: 15), "Sam sees that Alex was told")
         // Start is below what friends share, under the floating tab bar: scroll it up, and wait
         // until the acknowledgement has finished (buttons are disabled while it runs).
         let checkIn = app.buttons["Check in with friends later"]

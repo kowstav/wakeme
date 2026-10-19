@@ -159,7 +159,12 @@ struct SafetyView: View {
             }
             if s.purpose == "sos" {
                 Text("Try calling \(name). If you think they're in danger, call your local emergency number.").foregroundStyle(WMColor.textPrimary)
-                PrimaryButton(title: "I've seen this") { Task { await act { try await app.api.acknowledgeSafety(s.id) } } }
+                // A viewer's list holds only themselves; their acknowledgement is shown back to them.
+                if let seen = s.viewers.first?.acknowledgedAt {
+                    StatusPill(text: "\(name) knows you've seen this (\(time(seen)))", tone: .success)
+                } else {
+                    PrimaryButton(title: "I've seen this") { Task { await act { try await app.api.acknowledgeSafety(s.id) } } }
+                }
             }
         }
         .padding(.vertical, WMSpacing.xs)
