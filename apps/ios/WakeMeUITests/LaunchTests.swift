@@ -207,11 +207,11 @@ final class LaunchTests: XCTestCase {
         // Doc 03: write a one-question quiz; every draft is tried before it can be published.
         app.buttons["Create a challenge"].tap()
         try must(app.navigationBars["Create a challenge"].waitForExistence(timeout: 10), "step failed")
-        func field(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
+        func quizField(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
         for (id, text) in [("quizTitle", "Thursday quiz"), ("quizQuestion", "What do we call our Thursday dinner?"), ("quizAnswer", "Chaos curry"), ("quizWrong", "Brunch, Pasta night")] {
-            try must(field(id).waitForExistence(timeout: 5), "field \(id)")
-            field(id).tap()
-            field(id).typeText(text)
+            try must(quizField(id).waitForExistence(timeout: 5), "field \(id)")
+            quizField(id).tap()
+            quizField(id).typeText(text)
         }
         shot(app, "23-create-challenge")
         app.navigationBars["Create a challenge"].buttons["Create"].tap()

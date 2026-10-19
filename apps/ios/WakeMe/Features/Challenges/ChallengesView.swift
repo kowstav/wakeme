@@ -26,6 +26,8 @@ struct ChallengesView: View {
         let revision: Int
         let draft: Bool
         let definition: ChallengeDefinition
+        /// What the AI author said about its draft, if it wrote one.
+        var notes: String?
         var id: String { "\(challengeId):\(revision)" }
     }
 
@@ -86,8 +88,7 @@ struct ChallengesView: View {
             }
         }) {
             ChallengeCreatorView { detail, notes in
-                if let notes { message = notes }
-                pendingTryOut = tryOutFor(detail)
+                pendingTryOut = tryOutFor(detail, notes: notes)
                 creating = false
             }
         }
@@ -139,9 +140,9 @@ struct ChallengesView: View {
         }
     }
 
-    private func tryOutFor(_ detail: WakeMeAPI.ChallengeDetail) -> TryOut? {
+    private func tryOutFor(_ detail: WakeMeAPI.ChallengeDetail, notes: String? = nil) -> TryOut? {
         guard let latest = detail.latest, let definition = latest.definition else { return nil }
-        return TryOut(challengeId: detail.id, revision: latest.revision, draft: latest.state == "draft", definition: definition)
+        return TryOut(challengeId: detail.id, revision: latest.revision, draft: latest.state == "draft", definition: definition, notes: notes)
     }
 
     private func finish(_ t: TryOut, publish: Bool) async {
@@ -169,6 +170,9 @@ private struct TryOutView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: WMSpacing.md) {
                     Text(tryOut.definition.title).font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                    if let notes = tryOut.notes {
+                        Text("About this draft: \(notes)").foregroundStyle(WMColor.textPrimary)
+                    }
                     if tryOut.draft {
                         Text("Publishing freezes this version. Friends who accept it get exactly this; later edits become a new version they must accept.")
                             .foregroundStyle(WMColor.textSecondary)
