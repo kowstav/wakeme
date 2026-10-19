@@ -8,6 +8,7 @@
     "start": "node src/entrypoints/api.ts",
     "worker": "node src/entrypoints/worker.ts",
     "migrate": "node src/entrypoints/migrate.ts",
+    "resign-challenges": "node src/entrypoints/resign-challenges.ts",
     "dev": "node src/entrypoints/dev.ts",
     "openapi": "node src/entrypoints/openapi.ts",
     "test": "node --test --test-concurrency=1 --test-timeout=120000 \"test/**/*.test.ts\"",
