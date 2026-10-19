@@ -59,7 +59,7 @@ Physical-device soak matrix (iOS 26/27, Android 17 on Pixel/Samsung/one aggressi
 
 ## Next step
 
-1. Next CI runs: Safety lists what friends share first (an SOS before anything else) on both apps; Android switch track colour.
+1. Next iOS run: the journey's check-in step after the Safety reorder (run 22: the reordered screen showed the SOS first as intended; the test tapped Start while it was still disabled or under the tab bar; test fixed). Android run 16 passed with the reorder.
 2. Install the APK on a real Android 17 phone and run the Stage 0 alarm experiment (exact alarm + systemExempted service + USAGE_ALARM, locked and idle, with and without earbuds; a routine left for several days), recording device/OS/build/settings.
 3. iOS on a real phone (needs the owner's Apple developer account): AlarmKit with a full window, `stopIntent` after Stop, background refresh frequency; then APNs.
 4. Legal review of the privacy policy and terms drafts; store listings.

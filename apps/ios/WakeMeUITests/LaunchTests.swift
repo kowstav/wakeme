@@ -241,8 +241,14 @@ final class LaunchTests: XCTestCase {
         let seen = app.buttons["I've seen this"]
         for _ in 0..<3 where !seen.isHittable { app.swipeUp() }
         seen.tap()
-        for _ in 0..<3 where !app.buttons["Check in with friends later"].isHittable { app.swipeUp() } // below what friends share
-        app.buttons["Check in with friends later"].tap()
+        // Start is below what friends share, under the floating tab bar: scroll it up, and wait
+        // until the acknowledgement has finished (buttons are disabled while it runs).
+        let checkIn = app.buttons["Check in with friends later"]
+        app.swipeUp()
+        try must(checkIn.waitForExistence(timeout: 10), "Start is shown")
+        let enabled = expectation(for: NSPredicate(format: "enabled == true AND hittable == true"), evaluatedWith: checkIn)
+        await fulfillment(of: [enabled], timeout: 15)
+        checkIn.tap()
         let alexSwitch = app.switches["Alex"]
         try must(alexSwitch.waitForExistence(timeout: 10), "pick who can see it")
         alexSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
