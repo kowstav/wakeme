@@ -101,7 +101,7 @@ actor Session: TokenProvider {
     }
 
     private func gotrue(_ path: String, _ body: [String: Any]) async throws -> TokenResponse {
-        try JSONDecoder().decode(TokenResponse.self, from: gotrueRaw(path, body))
+        try JSONDecoder().decode(TokenResponse.self, from: await gotrueRaw(path, body))
     }
 
     private func gotrueRaw(_ path: String, _ body: [String: Any]) async throws -> Data {
