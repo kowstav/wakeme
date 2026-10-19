@@ -3,12 +3,14 @@ package app.wakeme
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -105,12 +107,21 @@ class JourneyTest {
         check(!sos.getJSONArray("viewers").getJSONObject(0).isNull("acknowledgedAt")) { "Alex is told that Sam saw the SOS" }
     }
 
+    private fun found(text: String) = compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
+
     private fun waitFor(text: String, timeout: Long = 20_000, substring: Boolean = false) {
         compose.waitUntil(timeout) { compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
     }
 
     /** Waits for the text, scrolls it into view when it's in a scrolling container, then taps it. */
     private fun tap(text: String, timeout: Long = 20_000) {
+        // Lazy lists compose only what is on screen: if the text isn't there yet, ask each
+        // scrollable container to scroll to it.
+        runCatching { compose.waitUntil(3_000) { found(text) } }
+        if (!found(text)) {
+            val lists = compose.onAllNodes(hasScrollToNodeAction())
+            for (i in 0 until lists.fetchSemanticsNodes().size) runCatching { lists[i].performScrollToNode(hasText(text)) }
+        }
         waitFor(text, timeout)
         val node = compose.onAllNodes(hasText(text))[0]
         runCatching { node.performScrollTo() }
