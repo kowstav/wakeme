@@ -17,7 +17,7 @@ final class AppModel {
     var error: String?
     var offline = false
 
-    let api = WakeMeAPI(client: APIClient(baseURL: AppConfig.apiBaseURL, tokens: Session.shared, signer: DeviceKey.shared))
+    let api = WakeMeAPI.app
     private let defaults = UserDefaults.standard
     private let selfSetupKey = "onboarding.selfSetup"
     private let meCacheKey = "cache.me"
@@ -43,10 +43,8 @@ final class AppModel {
             return
         }
         do {
-            let fresh = try await api.me()
-            me = fresh
+            updateMe(try await api.me())
             offline = false
-            if let data = try? JSONEncoder().encode(fresh) { defaults.set(data, forKey: meCacheKey) }
         } catch let e as APIError where e.code == "profile_required" {
             gate = .profile
             return
@@ -65,8 +63,7 @@ final class AppModel {
             return
         }
         await registerDevice()
-        let api = self.api
-        Task { await ReceiptQueue.shared.flush(api: api) } // outcomes recorded while offline
+        Task { await SyncEngine.shared.sync(self) } // routines changed elsewhere, outcomes recorded offline
         gate = defaults.bool(forKey: selfSetupKey) ? .ready : .main
     }
 
@@ -117,10 +114,25 @@ final class AppModel {
     }
 
     func refreshMe() async {
-        if let fresh = try? await api.me() { me = fresh }
+        if let fresh = try? await api.me() { updateMe(fresh) }
+    }
+
+    /// The profile as the server last confirmed it, kept for offline use.
+    func updateMe(_ fresh: MeDTO) {
+        me = fresh
+        if let data = try? JSONEncoder().encode(fresh) { defaults.set(data, forKey: meCacheKey) }
+    }
+
+    /// iOS can launch the app in the background (app refresh, an alarm's stop button) without
+    /// showing it: restore the session and cached profile so sync can run.
+    func prepareForBackgroundWork() async {
+        guard gate == .loading, me == nil else { return }
+        await Session.shared.restore()
+        me = defaults.data(forKey: meCacheKey).flatMap { try? JSONDecoder().decode(MeDTO.self, from: $0) }
     }
 
     func signOut() async {
+        SyncEngine.shared.reset()
         for planId in WakeAlarms.shared.installedPlanIds() { WakeAlarms.shared.cancel(planId: planId) }
         await ChallengeStore.shared.clear()
         await ReceiptQueue.shared.clear()
@@ -161,7 +173,7 @@ final class AppModel {
                 makePrimary: me?.primaryDeviceId == nil
             )
             DeviceKey.shared.setDeviceId(device.id)
-            if me?.primaryDeviceId == nil, let fresh = try? await api.me() { me = fresh }
+            if me?.primaryDeviceId == nil, let fresh = try? await api.me() { updateMe(fresh) }
         } catch {
             // Registration is retried on the next launch; personal alarms don't depend on it.
         }

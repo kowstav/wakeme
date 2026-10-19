@@ -18,10 +18,15 @@ actor ReceiptQueue {
     private var flushing = false
 
     func enqueue(_ receipt: Occurrence, api: WakeMeAPI) async {
+        record(receipt)
+        await flush(api: api)
+    }
+
+    /// Keeps the outcome for the next flush without touching the network.
+    func record(_ receipt: Occurrence) {
         var pending = load()
         if !pending.contains(receipt) { pending.append(receipt) }
         save(pending)
-        await flush(api: api)
     }
 
     /// Sends what's waiting, oldest first; stops at the first network failure and keeps the rest.

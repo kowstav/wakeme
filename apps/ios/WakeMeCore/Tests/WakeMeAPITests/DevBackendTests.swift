@@ -46,6 +46,7 @@ final class DevBackendTests: XCTestCase {
         let api = WakeMeAPI(client: APIClient(baseURL: base, tokens: token, signer: signer))
         token.value = try await devToken(base)
         _ = try await api.createAccount(name: "Sam", timeZone: "UTC", locale: "en-US")
+        let head = try await api.sync(cursor: nil).cursor
         let device = try await api.registerDevice(
             installId: "i_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased(),
             osVersion: "26.0", appBuild: "1",
@@ -59,14 +60,23 @@ final class DevBackendTests: XCTestCase {
         let plan = try await api.createPlan(.init(label: "", localTime: "07:00", timeZone: "UTC", timeZonePolicy: "fixed", recurrence: .weekly([1, 2, 3, 4, 5]), soundId: "bundled:rise.gentle", ringSeconds: 90))
         XCTAssertEqual(plan.state, "active")
         let version = try XCTUnwrap(plan.accepted?.version)
-        let next = Date().addingTimeInterval(3600)
-        try await api.reportInstallation(planId: plan.id, .init(version: version, result: "scheduled", nextFireAt: Instant.format(next), scheduledInstants: [Instant.format(next)]))
+        // What the app arms for it (ADR 0011), computed by the same code the app uses.
+        let routine = InstalledRoutine(planId: plan.id, version: version, label: "", localTime: "07:00", timeZone: "UTC", timeZonePolicy: "fixed", recurrence: .weekly([1, 2, 3, 4, 5]),
+                                       soundId: "bundled:rise.gentle", ringSeconds: 90, challengeRevisionId: nil, followUpDelaySeconds: nil, paused: false)
+        let armed = try scheduleFor(routine, now: Date(), deviceZone: .current)
+        XCTAssertGreaterThan(armed.count, 1, "a weekday routine is armed for more than its next occurrence")
+        try await api.reportInstallation(planId: plan.id, .init(version: version, result: "scheduled", nextFireAt: Instant.format(armed[0].fireAt), scheduledInstants: armed.map { Instant.format($0.fireAt) }))
 
         let mine = try await api.plans().mine
         XCTAssertEqual(mine.first { $0.id == plan.id }?.readiness, "ready", "the server counts this phone's receipt")
 
+        // The sync feed carries the routine itself, as the sync engine applies it.
+        let feed = try await api.sync(cursor: head)
+        XCTAssertEqual(feed.changes.first { $0.entity == "alarm_plan" && $0.id == plan.id }?.plan?.readiness, "ready")
+        XCTAssertEqual(feed.changes.first { $0.entity == "me" }?.me?.primaryDeviceId, device.id, "phones learn which one rings from the profile")
+
         // The wake session's outcome, as the challenge screen reports it (signed by this phone).
-        let occurrence = String(Instant.format(next).prefix(10))
+        let occurrence = armed[0].occurrenceKey
         try await api.reportOccurrence(planId: plan.id, occurrenceKey: occurrence, version: version, outcome: "challenge_completed")
         try await api.reportOccurrence(planId: plan.id, occurrenceKey: occurrence, version: version, outcome: "rang") // late, lower rank: ignored, not an error
     }

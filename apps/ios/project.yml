@@ -35,6 +35,9 @@ targets:
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         NSSupportsLiveActivities: true
         NSAlarmKitUsageDescription: Wake Me schedules the wake-ups you set or accept, so they ring even in silent mode or Focus.
+        # Background app refresh tops up armed routines and catches up on changes (SyncEngine).
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [app.wakeme.ios.sync]
         ITSAppUsesNonExemptEncryption: false
         # Non-secret configuration, set per build (e.g. xcodebuild WAKEME_API_BASE_URL=https://api.example).
         WakeMeAPIBaseURL: $(WAKEME_API_BASE_URL)

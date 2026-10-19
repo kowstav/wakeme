@@ -154,4 +154,27 @@ final class LaunchTests: XCTestCase {
         try must(app.staticTexts["No challenges yet. Quizzes and puzzles made on Android, or shared in your circles, appear here."].waitForExistence(timeout: 15), "the Challenges tab lists what can be practised")
         shot(app, "16-challenges")
     }
+
+    /// The challenge runner checks answers on the phone: a wrong answer is a calm retry, the
+    /// escape is always visible, and the right answers complete it (debug demo, no backend).
+    @MainActor
+    func testChallengeRunnerChecksAnswersOnThePhone() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestReset", "-uiTestChallengeDemo"]
+        app.launch()
+        try must(app.staticTexts["Morning warm-up"].waitForExistence(timeout: 20), "the runner opens")
+        try must(app.buttons["End this wake session"].exists, "the escape is always on screen")
+        try must(app.buttons["Use the simple check-in instead"].exists, "the check-in is offered")
+        app.buttons["Brunch"].tap()
+        try must(app.staticTexts["Not quite. Take your time and try again."].waitForExistence(timeout: 5), "a wrong answer is a calm retry")
+        shot(app, "20-challenge-retry")
+        app.buttons["Chaos curry"].tap()
+        try must(app.staticTexts["7 + 8 = ?"].waitForExistence(timeout: 5), "the next step")
+        let answer = app.textFields["Your answer"]
+        answer.tap()
+        answer.typeText("15")
+        shot(app, "21-challenge-math")
+        app.buttons["Check"].tap()
+        try must(app.staticTexts["Challenge complete"].waitForExistence(timeout: 5), "the right answers complete it")
+    }
 }

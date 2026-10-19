@@ -152,7 +152,29 @@ public struct BillingStatusDTO: Codable, Equatable, Sendable { public var plan: 
 public struct ConfigKeyDTO: Codable, Sendable { public var keyId: String; public var alg: String; public var spki: String }
 public struct PublicConfigDTO: Codable, Sendable { public var apiVersion: String; public var challengeSigningKeys: [ConfigKeyDTO]; public var features: [String: Bool] }
 
-public struct SyncChangeDTO: Decodable, Sendable { public var entity: String; public var id: String; public var op: String }
+/// One change in the sync feed. Routines and the profile carry their current state, which the
+/// app applies directly; other entities are re-fetched from their lists when a screen needs them.
+public struct SyncChangeDTO: Decodable, Sendable {
+    public var entity: String
+    public var id: String
+    public var op: String
+    public var plan: PlanDTO?
+    public var me: MeDTO?
+
+    enum CodingKeys: String, CodingKey { case entity, id, op, data }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        entity = try c.decode(String.self, forKey: .entity)
+        id = try c.decode(String.self, forKey: .id)
+        op = try c.decode(String.self, forKey: .op)
+        switch entity {
+        case "alarm_plan": plan = try c.decodeIfPresent(PlanDTO.self, forKey: .data)
+        case "me": me = try c.decodeIfPresent(MeDTO.self, forKey: .data)
+        default: break
+        }
+    }
+}
 public struct SyncDTO: Decodable, Sendable { public var changes: [SyncChangeDTO]; public var cursor: String; public var hasMore: Bool; public var bootstrap: Bool; public var resetRequired: Bool? }
 
 public struct OkDTO: Codable, Sendable { public var ok: Bool? }

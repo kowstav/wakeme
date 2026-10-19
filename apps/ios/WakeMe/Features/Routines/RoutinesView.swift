@@ -75,6 +75,8 @@ struct RoutinesView: View {
         .navigationTitle("Routines")
         .refreshable { await load() }
         .task { await load() }
+        // A sync applied a change from elsewhere (a friend's proposal accepted on another phone, a restore).
+        .onChange(of: SyncEngine.shared.routinesRevision) { Task { await load() } }
         .sheet(isPresented: $editing) { RoutineEditorView(onSaved: { await load() }) }
         .confirmationDialog("End this routine?", isPresented: Binding(get: { ending != nil }, set: { if !$0 { ending = nil } }), presenting: ending) { p in
             Button("End routine", role: .destructive) { Task { await act { try await app.api.cancelPlan(p.id) } } }
@@ -99,52 +101,7 @@ struct RoutinesView: View {
         guard let p = try? await app.api.plans() else { return }
         plans = p
         // A receipt changes the server's readiness line; show what this phone just reported.
-        if await install(p.mine), let fresh = try? await app.api.plans() { plans = fresh }
-    }
-
-    /// Installs accepted versions with AlarmKit on the primary phone and reports exactly
-    /// what the OS accepted; ended or paused routines are cancelled locally first.
-    @discardableResult
-    private func install(_ mine: [PlanDTO]) async -> Bool {
-        var reported = false
-        let primary = await app.isPrimaryPhone()
-        // Alarms are installed only from server data, so a routine the server no longer
-        // lists (possible only after a server restore) stops ringing here.
-        let listed = Set(mine.map(\.id))
-        for id in WakeAlarms.shared.installedPlanIds() where !listed.contains(id) { WakeAlarms.shared.cancel(planId: id) }
-        for plan in mine {
-            guard let v = plan.accepted, plan.state == "active", primary else {
-                WakeAlarms.shared.cancel(planId: plan.id)
-                continue
-            }
-            // The challenge is installed and verified now, so the wake-up never needs the network.
-            // If it can't be, the alarm still rings, without the challenge, and the server is told.
-            var challenge = v.challengeRevisionId
-            if let revision = challenge {
-                let installed = await ChallengeStore.shared.ensureInstalled(revision, api: app.api)
-                if !installed { challenge = nil }
-            }
-            let challengeMissing = v.challengeRevisionId != nil && challenge == nil
-            let routine = InstalledRoutine(planId: plan.id, version: v.version, label: v.label, localTime: v.localTime, timeZone: v.timeZone, timeZonePolicy: v.timeZonePolicy,
-                                           recurrence: v.recurrence, soundId: v.soundId, ringSeconds: v.ringSeconds, challengeRevisionId: challenge,
-                                           followUpDelaySeconds: challenge == nil ? nil : v.followUpDelaySeconds, paused: false)
-            let receipt: WakeMeAPI.InstallationReceipt
-            switch await WakeAlarms.shared.install(routine, label: v.label) {
-            case .scheduled(let dates):
-                // Same version already confirmed with the same next ring: nothing new to report.
-                let reportedNext = plan.installation?.nextFireAt.flatMap { try? Instant.parse($0) } // server sends milliseconds
-                if plan.readiness == "ready", plan.installation?.version == v.version, reportedNext == dates.first, !challengeMissing { continue }
-                receipt = .init(version: v.version, result: "scheduled", nextFireAt: dates.first.map(Instant.format), scheduledInstants: dates.map(Instant.format), errorCode: challengeMissing ? "challenge_unavailable" : nil)
-            case .nothingToSchedule:
-                continue
-            case .notAuthorized:
-                receipt = .init(version: v.version, result: "failed", errorCode: "alarm_permission_missing")
-            case .failed(let code):
-                receipt = .init(version: v.version, result: "failed", errorCode: code)
-            }
-            if (try? await app.api.reportInstallation(planId: plan.id, receipt)) != nil { reported = true }
-        }
-        return reported
+        if await SyncEngine.shared.reconcile(p.mine, app: app), let fresh = try? await app.api.plans() { plans = fresh }
     }
 }
 
