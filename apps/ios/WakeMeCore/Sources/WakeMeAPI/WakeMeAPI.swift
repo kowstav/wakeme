@@ -98,6 +98,19 @@ public struct WakeMeAPI: Sendable {
         try await client.patch("/v1/devices/\(deviceId)", body: CapabilitiesPatch(capabilities: capabilities), signed: true)
     }
 
+    struct PushPatch: Encodable { let push: DevicePush }
+    /// A new APNs token for this device (signed by the device, like every phone-affecting write).
+    public func updatePush(deviceId: String, _ push: DevicePush) async throws -> DeviceDTO {
+        try await client.patch("/v1/devices/\(deviceId)", body: PushPatch(push: push), signed: true)
+    }
+
+    struct CommandReceipt: Encodable { let kind: String; let reason: String?; let clientTime: String }
+    /// What this phone did with a friend's request ("received", "execution_refused", "opened",
+    /// "acknowledged"…). Signed by the recipient's registered device; a repeat is harmless.
+    public func postCommandReceipt(_ commandId: String, kind: String, reason: String? = nil, at clientTime: Date = Date()) async throws -> CommandDTO {
+        try await client.post("/v1/commands/\(commandId)/receipts", body: CommandReceipt(kind: kind, reason: reason, clientTime: Instant.format(clientTime)), signed: true)
+    }
+
     public func makePrimary(deviceId: String) async throws -> DeviceDTO { try await client.post("/v1/devices/\(deviceId)/primary", body: Optional<Empty>.none) }
 
     // MARK: friends

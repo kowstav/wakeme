@@ -300,6 +300,21 @@ final class WakeAlarms: @unchecked Sendable {
         }
     }
 
+    /// A friend's wake request that passed local re-validation: one AlarmKit alarm a few seconds
+    /// from now with the approved sound. The system Stop control ends it as any alarm; there is
+    /// no follow-up. Returns whether AlarmKit accepted it (reported as "installed" or refused).
+    func scheduleImmediate(commandId: String, soundId: String, friendName: String, in seconds: TimeInterval = 3) async -> Bool {
+        guard authorization == .authorized else { return false }
+        let alert = Self.alert(title: "\(friendName.isEmpty ? "A friend" : friendName) is waking you up", secondary: nil)
+        let attributes = AlarmAttributes<WakeAlarmMetadata>(presentation: AlarmPresentation(alert: alert), metadata: WakeAlarmMetadata(planId: "command", occurrenceKey: commandId, role: "MAIN"), tintColor: WMColor.accent)
+        do {
+            _ = try await manager.schedule(id: stableUUID("command:\(commandId)"), configuration: .alarm(schedule: .fixed(Date().addingTimeInterval(seconds)), attributes: attributes, sound: Self.sound(for: soundId)))
+            return true
+        } catch {
+            return false
+        }
+    }
+
     /// iOS 26.1+ supplies the system Stop control itself (doc 06: use the current initializer);
     /// iOS 26.0 needs an explicit stop button, labelled plainly.
     static func alert(title: LocalizedStringResource, secondary: AlarmButton?) -> AlarmPresentation.Alert {

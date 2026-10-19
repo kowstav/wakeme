@@ -14,6 +14,8 @@ on:
       - apps/ios/**
       - packages/policy-fixtures/**
       - .github/workflows/ios.yml
+      - scripts/ci/**
+      - services/api/src/entrypoints/dev.ts
 
 permissions:
   contents: read
@@ -67,10 +69,16 @@ jobs:
           DEVICE=$(xcrun simctl list devices available | grep -E "iPhone 1[6-9]|iPhone 2[0-9]" | grep -v Plus | head -1 | sed -E 's/^ *([^()]+) \(.*/\1/' | xargs)
           echo "Using $DEVICE"
           echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
+          # No APNs in CI: relay the pushes the dev backend records into the Simulator.
+          python3 "$GITHUB_WORKSPACE/scripts/ci/relay_sim_pushes.py" http://127.0.0.1:8787 app.wakeme.ios "$RUNNER_TEMP/push-relay.log" &
+          RELAY=$!
           xcodebuild -project WakeMe.xcodeproj -scheme WakeMe -configuration Debug \
             -destination "platform=iOS Simulator,name=$DEVICE" -resultBundlePath "$RUNNER_TEMP/WakeMe.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log" | grep -E "error:|warning: |Test Case|Executed|BUILD|\*\*" | head -300
-          test ${PIPESTATUS[0]} -eq 0
+          status=${PIPESTATUS[0]}
+          kill $RELAY 2>/dev/null || true
+          echo "--- push relay ---"; cat "$RUNNER_TEMP/push-relay.log" 2>/dev/null || true
+          test $status -eq 0
       - name: Launch and screenshot
         if: always()
         run: |

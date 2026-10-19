@@ -20,9 +20,14 @@ final class AppModel {
     let api = WakeMeAPI.app
     private let defaults = UserDefaults.standard
     private let selfSetupKey = "onboarding.selfSetup"
-    private let meCacheKey = "cache.me"
+    /// The profile cache, also read by push handling when iOS wakes the app in the background.
+    static let meCacheKey = "cache.me"
+    private var meCacheKey: String { Self.meCacheKey }
+    /// The running model, for push handling (which iOS calls outside SwiftUI).
+    static weak var current: AppModel?
 
     func start() async {
+        Self.current = self
         await Session.shared.restore()
         await route()
     }
@@ -136,6 +141,8 @@ final class AppModel {
         for planId in WakeAlarms.shared.installedPlanIds() { WakeAlarms.shared.cancel(planId: planId) }
         await ChallengeStore.shared.clear()
         await ReceiptQueue.shared.clear()
+        await GrantStore.shared.clear()
+        PushCenter.forget()
         await Session.shared.signOut()
         DeviceKey.shared.setDeviceId(nil)
         defaults.removeObject(forKey: meCacheKey)
@@ -168,11 +175,13 @@ final class AppModel {
                 osVersion: UIDevice.current.systemVersion,
                 appBuild: (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String) ?? "1",
                 publicKeySPKIBase64: DeviceKey.shared.publicKeySPKIBase64(),
-                push: nil,
+                push: PushCenter.currentPush(),
                 capabilities: await capabilities(),
                 makePrimary: me?.primaryDeviceId == nil
             )
             DeviceKey.shared.setDeviceId(device.id)
+            PushCenter.markSent(PushCenter.currentPush() != nil)
+            await GrantStore.shared.refresh(api: api)
             if me?.primaryDeviceId == nil, let fresh = try? await api.me() { updateMe(fresh) }
         } catch {
             // Registration is retried on the next launch; personal alarms don't depend on it.

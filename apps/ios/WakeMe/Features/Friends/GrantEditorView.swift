@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 import WakeMeAPI
 import WakeMeCore
 
@@ -22,6 +23,7 @@ struct GrantEditorView: View {
     @State private var reauth = false
     @State private var confirmRemove = false
     @State private var message: String?
+    @State private var askToHear = false
 
     private var name: String { friend.user.displayName }
     private var wakeOn: Bool { caps.contains(Capability.alarmRequest) || caps.contains(Capability.alarmSchedule) }
@@ -118,6 +120,18 @@ struct GrantEditorView: View {
             }
             .task { await load() }
             .sheet(isPresented: $reauth) { ConfirmIdentityView { Task { await save() } } }
+            .alert("Hear \(name)'s quacks?", isPresented: $askToHear) {
+                Button("Allow notifications") {
+                    Task {
+                        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+                        await app.reportCapabilities()
+                        dismiss()
+                    }
+                }
+                Button("Not now", role: .cancel) { dismiss() }
+            } message: {
+                Text("Wake Me uses notifications to play the sounds you just allowed. You can change this in Settings at any time.")
+            }
             .confirmationDialog("Remove all of \(name)'s permissions?", isPresented: $confirmRemove, titleVisibility: .visible) {
                 Button("Remove", role: .destructive) { Task { await removeAll() } }
             } message: {
@@ -180,7 +194,15 @@ struct GrantEditorView: View {
                 _ = try await app.api.createGrant(granteeId: friend.user.id, capabilities: caps.sorted(), limits: limits, validUntil: until)
             }
             await onSaved()
-            dismiss()
+            // The phone re-validates requests against its own copy of these rules.
+            await GrantStore.shared.refresh(api: app.api)
+            // Doc 03 §5 step 6: the sounds just allowed need notifications; explain before asking.
+            let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+            if (caps.contains(Capability.nudge) || caps.contains(Capability.alarmRequest)) && status == .notDetermined {
+                askToHear = true
+            } else {
+                dismiss()
+            }
         } catch let e as APIError where e.code == "reauth_required" {
             reauth = true // wake permissions need a sign-in within the last 24 hours
         } catch {
@@ -190,6 +212,8 @@ struct GrantEditorView: View {
 
     private func removeAll() async {
         guard let g = friend.iAllowThem else { return }
+        // Local first: this phone stops honouring the old rules before the server hears.
+        await GrantStore.shared.markRevoked(granteeId: friend.user.id)
         do {
             try await app.api.revokeGrant(g.id)
             await onSaved()

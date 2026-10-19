@@ -1,3 +1,4 @@
+import CryptoKit
 import XCTest
 
 /// Journeys on the Simulator against the local dev backend (services/api dev.ts,
@@ -8,11 +9,39 @@ final class LaunchTests: XCTestCase {
     }
 
     @MainActor
-    private func launch() -> XCUIApplication {
+    private func launch(timeZone: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestReset"]
+        if let timeZone { app.launchEnvironment["TZ"] = timeZone }
         app.launch()
         return app
+    }
+
+    /// A zone without daylight saving where it's about 14:00 now, so Gentle nudges' 08:00–22:00
+    /// hours allow a quack whatever time CI runs.
+    private static func afternoonZone(now: Date = Date()) -> String {
+        let zones = [-11: "Pacific/Pago_Pago", -10: "Pacific/Honolulu", -9: "Pacific/Gambier", -8: "Pacific/Pitcairn", -7: "America/Phoenix",
+                     -6: "America/Regina", -5: "America/Bogota", -4: "America/La_Paz", -3: "America/Sao_Paulo", -2: "Atlantic/South_Georgia",
+                     -1: "Atlantic/Cape_Verde", 0: "Africa/Abidjan", 1: "Africa/Lagos", 2: "Africa/Johannesburg", 3: "Europe/Istanbul",
+                     4: "Asia/Dubai", 5: "Asia/Karachi", 6: "Asia/Dhaka", 7: "Asia/Bangkok", 8: "Asia/Singapore", 9: "Asia/Tokyo",
+                     10: "Australia/Brisbane", 11: "Pacific/Guadalcanal", 12: "Pacific/Tarawa"]
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        var offset = (14 - utc.component(.hour, from: now) + 24) % 24
+        if offset > 12 { offset -= 24 }
+        return zones[offset]!
+    }
+
+    /// A registered phone for a test account: the server takes friend requests only from one.
+    struct TestDevice { let id: String; let key: P256.Signing.PrivateKey }
+
+    @MainActor
+    private func registerDevice(token: String) async throws -> TestDevice {
+        let key = P256.Signing.PrivateKey()
+        let installId = "uitest" + UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12)
+        let d = try await http("POST", "/v1/devices", token, ["installId": installId, "platform": "ios", "osVersion": "26.0", "appBuild": "1",
+                                                              "publicKey": key.publicKey.derRepresentation.base64EncodedString()])
+        return TestDevice(id: try XCTUnwrap(d["id"] as? String), key: key)
     }
 
     struct StepFailed: Error {}
@@ -46,13 +75,24 @@ final class LaunchTests: XCTestCase {
 
     /// The dev backend over HTTP, for a second test account acting as its own app would.
     @MainActor
-    private func http(_ method: String, _ path: String, _ token: String?, _ body: [String: Any]? = nil) async throws -> [String: Any] {
+    private func http(_ method: String, _ path: String, _ token: String?, _ body: [String: Any]? = nil, device: TestDevice? = nil) async throws -> [String: Any] {
         var r = URLRequest(url: URL(string: "http://127.0.0.1:8787" + path)!)
         r.httpMethod = method
         if let token { r.setValue("Bearer \(token)", forHTTPHeaderField: "authorization") }
-        if let body {
+        let data = try body.map { try JSONSerialization.data(withJSONObject: $0) } ?? Data()
+        if body != nil {
             r.setValue("application/json", forHTTPHeaderField: "content-type")
-            r.httpBody = try JSONSerialization.data(withJSONObject: body)
+            r.httpBody = data
+        }
+        if let device {
+            // WAKEME-V1 canonical request, as the apps sign it (services/api/src/http/device-auth.ts).
+            let ts = String(Int(Date().timeIntervalSince1970))
+            let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+            let message = ["WAKEME-V1", method, path, ts, digest].joined(separator: "\n")
+            let signature = try device.key.signature(for: Data(message.utf8)).derRepresentation.base64EncodedString()
+            r.setValue(device.id, forHTTPHeaderField: "x-wakeme-device")
+            r.setValue(ts, forHTTPHeaderField: "x-wakeme-timestamp")
+            r.setValue(signature, forHTTPHeaderField: "x-wakeme-signature")
         }
         let (data, response) = try await URLSession.shared.data(for: r)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
@@ -86,7 +126,7 @@ final class LaunchTests: XCTestCase {
     /// then a wake-up of your own, a friend's permissions, and the account controls.
     @MainActor
     func testSelfSetupJourney() async throws {
-        let app = launch()
+        let app = launch(timeZone: Self.afternoonZone())
         try must(app.buttons["Set up my own wake-up"].waitForExistence(timeout: 20), "step failed")
         app.buttons["Set up my own wake-up"].tap()
 
@@ -166,8 +206,33 @@ final class LaunchTests: XCTestCase {
         gentle.tap()
         shot(app, "14-permissions")
         app.navigationBars["What can Alex do?"].buttons["Save"].tap()
+        // Doc 03 §5 step 6: the sounds just allowed need notifications; the app explains first.
+        let hear = app.alerts["Hear Alex's quacks?"]
+        try must(hear.waitForExistence(timeout: 15), "the app explains before the system prompt")
+        shot(app, "14b-hear-quacks")
+        hear.buttons["Allow notifications"].tap()
+        if springboard.buttons["Allow"].waitForExistence(timeout: 8) { springboard.buttons["Allow"].tap() }
         try must(app.staticTexts["Alex can send quacks."].waitForExistence(timeout: 15), "the grant is saved and shown in words")
         shot(app, "15-friend-granted")
+
+        // Alex quacks Sam. There is no APNs in CI: the dev backend's push is relayed into the
+        // Simulator (scripts/ci/relay_sim_pushes.py), and the app re-validates it against Sam's own
+        // cached grant before showing it, then reports what happened.
+        let alexPhone = try await registerDevice(token: alex)
+        let samFriend = (try await http("GET", "/v1/friends", alex)["friends"] as? [[String: Any]] ?? [])
+            .compactMap { $0["user"] as? [String: Any] }.first { $0["displayName"] as? String == "Sam" }
+        let samUserId = try XCTUnwrap(samFriend?["id"] as? String)
+        let quack = try await http("POST", "/v1/commands", alex, ["targetUserId": samUserId, "capability": "nudge.send", "soundId": "bundled:quack.classic",
+                                                                  "idempotencyKey": "uitest-quack-\(Int(Date().timeIntervalSince1970))"], device: alexPhone)
+        let quackId = try XCTUnwrap(quack["id"] as? String)
+        var quackStatus = ""
+        for _ in 0..<45 {
+            quackStatus = (try await http("GET", "/v1/commands/\(quackId)", alex)["displayStatus"] as? String) ?? ""
+            if ["phone_received", "opened", "acknowledged"].contains(quackStatus) { break }
+            try await Task.sleep(for: .seconds(1))
+        }
+        shot(app, "15b-quack-received")
+        try must(["phone_received", "opened", "acknowledged"].contains(quackStatus), "Sam's phone reported Alex's quack (status: \(quackStatus))")
 
         // The other direction: Alex makes Sam a wake buddy, so Sam can send a wake alarm
         // (inside Alex's hours), suggest a wake-up for Alex, and message Alex.

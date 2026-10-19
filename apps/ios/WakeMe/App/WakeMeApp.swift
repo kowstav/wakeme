@@ -4,6 +4,7 @@ import WakeMeCore
 
 @main
 struct WakeMeApp: App {
+    @UIApplicationDelegateAdaptor(PushCenter.self) private var pushCenter
     @State private var app = AppModel()
     @Environment(\.scenePhase) private var scenePhase
 

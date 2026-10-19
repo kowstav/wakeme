@@ -14,7 +14,16 @@ actor ReceiptQueue {
         let outcome: String
     }
 
+    /// What this phone did with a friend's request; sent in order, same retry rules.
+    struct Command: Codable, Equatable, Sendable {
+        let commandId: String
+        let kind: String
+        let reason: String?
+        let at: Date
+    }
+
     private let key = "receipts.occurrences"
+    private let commandsKey = "receipts.commands"
     private var flushing = false
 
     func enqueue(_ receipt: Occurrence, api: WakeMeAPI) async {
@@ -34,6 +43,16 @@ actor ReceiptQueue {
         guard !flushing else { return }
         flushing = true
         defer { flushing = false }
+        for receipt in loadCommands() {
+            do {
+                _ = try await api.postCommandReceipt(receipt.commandId, kind: receipt.kind, reason: receipt.reason, at: receipt.at)
+                saveCommands(loadCommands().filter { $0 != receipt })
+            } catch let e as APIError where (400..<500).contains(e.status) && e.status != 401 && e.status != 429 {
+                saveCommands(loadCommands().filter { $0 != receipt }) // the request is gone or no longer this phone's
+            } catch {
+                return
+            }
+        }
         for receipt in load() {
             do {
                 try await api.reportOccurrence(planId: receipt.planId, occurrenceKey: receipt.occurrenceKey, version: receipt.version, outcome: receipt.outcome)
@@ -46,7 +65,25 @@ actor ReceiptQueue {
         }
     }
 
-    func clear() { UserDefaults.standard.removeObject(forKey: key) }
+    func enqueue(_ receipt: Command, api: WakeMeAPI) async {
+        var pending = loadCommands()
+        if !pending.contains(receipt) { pending.append(receipt) }
+        saveCommands(Array(pending.suffix(200)))
+        await flush(api: api)
+    }
+
+    func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: commandsKey)
+    }
+
+    private func loadCommands() -> [Command] {
+        UserDefaults.standard.data(forKey: commandsKey).flatMap { try? JSONDecoder().decode([Command].self, from: $0) } ?? []
+    }
+
+    private func saveCommands(_ list: [Command]) {
+        UserDefaults.standard.set(try? JSONEncoder().encode(list), forKey: commandsKey)
+    }
 
     private func load() -> [Occurrence] {
         UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([Occurrence].self, from: $0) } ?? []

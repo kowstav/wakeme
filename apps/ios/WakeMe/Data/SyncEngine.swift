@@ -11,7 +11,7 @@ extension WakeMeAPI {
 }
 
 /// Converges this phone with the server, as Android's SyncEngine does. The cursor feed is the
-/// source of truth (push is only a hint, and APNs isn't set up yet), so a phone that missed
+/// source of truth (push is only a hint), so a phone that missed
 /// changes catches up when the app opens or iOS grants it background time. Applying a routine
 /// arms it with AlarmKit on the primary phone and reports exactly what AlarmKit accepted.
 /// Everything that installs or tops up alarms runs here, one operation at a time.
@@ -124,6 +124,7 @@ final class SyncEngine {
     private func bootstrap(_ app: AppModel) async throws {
         let head = try await app.api.sync(cursor: nil).cursor
         await app.refreshMe()
+        await GrantStore.shared.refresh(api: app.api)
         let mine = try await app.api.plans().mine
         defaults.set(false, forKey: reconcileKey)
         let primary = await app.isPrimaryPhone()
@@ -145,6 +146,10 @@ final class SyncEngine {
             let mine = try await app.api.plans().mine
             _ = await reconcileAll(mine, primary: primary, api: app.api)
             return true
+        case "grant":
+            // Requests are re-validated against this cache; refresh it whenever a grant changes.
+            await GrantStore.shared.refresh(api: app.api)
+            return false
         case "alarm_plan":
             guard let me = app.me else { return false }
             guard let plan = change.plan else {

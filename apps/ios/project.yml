@@ -29,6 +29,11 @@ targets:
       # Linked explicitly so Xcode extracts App Intents metadata (the alarm's challenge and stop
       # intents); with only `import AppIntents` the build skipped it.
       - sdk: AppIntents.framework
+    # APNs needs this in a signed build (development here; distribution signing sets production).
+    entitlements:
+      path: WakeMe/WakeMe.entitlements
+      properties:
+        aps-environment: development
     info:
       path: WakeMe/Info.plist
       properties:
@@ -41,7 +46,7 @@ targets:
         # fetch: background app refresh tops up armed routines and catches up on changes (SyncEngine).
         # location: a safety share the person started keeps sending while the app is in the
         # background, with iOS's location indicator showing; it ends with the session (LocationSharer).
-        UIBackgroundModes: [fetch, location]
+        UIBackgroundModes: [fetch, location, remote-notification]
         NSLocationWhenInUseUsageDescription: Wake Me shares your location only when you start a check-in, location share or SOS, only with the friends you pick, and only until it ends or you stop it.
         BGTaskSchedulerPermittedIdentifiers: [app.wakeme.ios.sync]
         ITSAppUsesNonExemptEncryption: false
