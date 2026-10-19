@@ -91,13 +91,30 @@ jobs:
           fi
           adb shell getprop ro.build.version.release
           adb shell getprop ro.build.version.sdk
+          # boot_completed comes before the package and activity services answer reliably
+          # (the last run's install hit "Can't find service: activity").
+          ready=0
+          for i in $(seq 1 60); do
+            if adb shell service check package 2>/dev/null | grep -q ": found" \
+              && adb shell service check activity 2>/dev/null | grep -q ": found" \
+              && adb shell pm path android > /dev/null 2>&1; then ready=1; echo "system services answer after $((i * 5))s"; break; fi
+            sleep 5
+          done
+          [ "$ready" = 1 ] || { echo "system services never answered"; exit 1; }
+          sleep 30 # first-boot work (package scans, dexopt) settles
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
       - name: Install and grant the permissions a user would grant in onboarding
         run: |
-          adb install -r app/build/outputs/apk/debug/app-debug.apk
-          adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          for apk in app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk; do
+            for attempt in 1 2 3; do
+              if timeout 300 adb install -r "$apk"; then break; fi
+              [ "$attempt" = 3 ] && exit 1
+              echo "install attempt $attempt failed; waiting for the package service"
+              sleep 30
+            done
+          done
           adb shell pm grant "$APP_ID" android.permission.POST_NOTIFICATIONS
           adb shell appops set "$APP_ID" SCHEDULE_EXACT_ALARM allow
           adb logcat -c
@@ -133,6 +150,7 @@ jobs:
           fi
           echo "--- observations ---"; cat "$RUNNER_TEMP"/evidence/*.txt 2>/dev/null | grep -E "started=|TotalTime|^OK|FAILURES|Tests run" || true
           echo "--- crashes ---"; grep -E "FATAL EXCEPTION|AndroidRuntime: Process: $APP_ID" -A12 "$RUNNER_TEMP/evidence/logcat.txt" || echo "no app crash in logcat"
+          echo "--- system process ---"; grep -E "FATAL EXCEPTION IN SYSTEM PROCESS|WATCHDOG|Watchdog: |system_server.*(died|crash)|lowmemorykiller|Low on memory" -A6 "$RUNNER_TEMP/evidence/logcat.txt" | head -80 || true
           ls -la "$RUNNER_TEMP/evidence"
       - name: Screenshots into the log (downscaled base64, for review without artifact access)
         if: always()
