@@ -30,6 +30,7 @@ crash logs or diagnostics (no SDK yet).
 | `USE_FULL_SCREEN_INTENT` | Show the ringing alarm over the lock screen | Complete the full-screen intent declaration (alarm functionality). |
 | `FOREGROUND_SERVICE_SYSTEM_EXEMPTED` | Keep a started alarm playing until stopped (exact-alarm apps) | Foreground service declaration with a short video of an alarm ringing and being stopped. |
 | `FOREGROUND_SERVICE_LOCATION`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` | Location share the person starts, visible as an ongoing notification with Stop | Foreground service declaration and video; prominent in-app disclosure before the permission prompt. No background location permission is requested. |
+| `ACCESS_LOCAL_NETWORK` | **Debug builds only** (reaching the local dev backend on Android 17); not in the release manifest | None: check the release APK's merged manifest before upload. |
 | `POST_NOTIFICATIONS` | Quacks, requests and replies | Asked just in time, after an explanation. |
 | `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` | Re-install alarms after a reboot; ring reliably | Normal permissions. |
 | `USE_BIOMETRIC`, `USE_FINGERPRINT`, `BILLING` | Added by libraries (sign-in, billing) | Normal permissions; list in Data safety where relevant. |

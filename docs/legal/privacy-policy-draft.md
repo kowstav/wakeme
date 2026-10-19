@@ -14,7 +14,9 @@ Wake Me is provided by [legal entity, address]. Contact: [privacy@…]. Wake Me 
   friends, or in a group, gives nobody any permission.
 - We don't sell your data, show ads or track you across other apps.
 - Location is shared only when you start a share, only with the people you pick, and only
-  until it ends. Coordinates are deleted when the share ends.
+  until it ends. While it's on, your phone keeps sending its location even when Wake Me isn't
+  open, and your phone shows that location is in use. Coordinates are deleted when the share
+  ends.
 - Messages are stored on our servers so they reach your friends; they are not end-to-end
   encrypted. Notifications never contain message text.
 - You can export your data and delete your account in the app.

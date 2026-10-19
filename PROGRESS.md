@@ -32,10 +32,11 @@ Bugs found and fixed by tests and review: invite brute-force throttle never coun
 - **Operations**: runbooks in `docs/runbooks` (incident and kill switches, noisy friend, key rotation, restore and rollback, billing reconciliation, deletion/export/lost phone). Tools: `npm run resign-challenges -w @wakeme/api`, `npm run post-restore -w @wakeme/api`. **No drill has been exercised** (no staging environment).
 - **CI**: `ios.yml` (macOS; dev backend for UI journeys and the contract test) and `android-device.yml` (Android 17 and 16 emulators; dev backend for the journey test) run on pushes to the working branch; screenshots are printed into job logs. `ci.yml` runs on `main`/PRs and adds a secret scan of tracked files and a CycloneDX SBOM of the API's production dependencies. Every action is pinned to a commit SHA.
 - **Infra**: Dockerfile, compose file, role split and `.env.example` written, not built.
+- **Launch documents (drafts, not reviewed)**: privacy policy and terms (`docs/legal`), App Store and Google Play submission notes, data-safety answers and listing (`docs/store`). Legal review, a privacy manifest and real screenshots are still needed.
 
 ## Specified only (not yet written)
 
-Store metadata and reviewer instructions, privacy policy and terms drafts, focus supervision (Stage 6; server flag off by default; Focus buddy preset hidden in the apps), the Android 17 session-scoped location button, Stage 0 physical-device experiments and capability matrix.
+Focus supervision (Stage 6; server flag off by default; Focus buddy preset hidden in the apps), the Android 17 session-scoped location button, Stage 0 physical-device experiments and capability matrix.
 
 ## Decisions
 
