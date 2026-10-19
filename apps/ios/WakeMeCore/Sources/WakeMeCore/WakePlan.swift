@@ -46,6 +46,14 @@ public struct ScheduledAlarm: Equatable, Sendable {
     public let role: AlarmRole
     public let fireAt: Date
 
+    public init(planId: String, version: Int, occurrenceKey: String, role: AlarmRole, fireAt: Date) {
+        self.planId = planId
+        self.version = version
+        self.occurrenceKey = occurrenceKey
+        self.role = role
+        self.fireAt = fireAt
+    }
+
     /// Stable identifier so re-scheduling replaces instead of duplicating (AlarmKit/notification id).
     public var stableId: String { "\(planId):\(occurrenceKey):\(role.rawValue)" }
 

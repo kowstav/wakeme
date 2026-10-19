@@ -103,10 +103,9 @@ final class WakeAlarms {
                 let metadata = WakeAlarmMetadata(planId: a.planId, occurrenceKey: a.occurrenceKey, role: a.role.rawValue, challengeRevisionId: routine.challengeRevisionId)
                 let title: LocalizedStringResource = a.role == .main ? "\(label.isEmpty ? "Wake up" : label)" : "Follow-up: \(label.isEmpty ? "wake up" : label)"
                 let hasChallenge = routine.challengeRevisionId != nil
-                let alert = AlarmPresentation.Alert(
+                let alert = Self.alert(
                     title: title,
-                    secondaryButton: hasChallenge ? AlarmButton(text: "Start challenge", textColor: WMColor.textOnAccent, systemImageName: "puzzlepiece.extension") : nil,
-                    secondaryButtonBehavior: hasChallenge ? .custom : nil
+                    secondary: hasChallenge ? AlarmButton(text: "Start challenge", textColor: WMColor.textOnAccent, systemImageName: "puzzlepiece.extension") : nil
                 )
                 let attributes = AlarmAttributes<WakeAlarmMetadata>(presentation: AlarmPresentation(alert: alert), metadata: metadata, tintColor: WMColor.accent)
                 let configuration = AlarmManager.AlarmConfiguration<WakeAlarmMetadata>.alarm(
@@ -146,7 +145,7 @@ final class WakeAlarms {
     func scheduleTestAlarm(in seconds: TimeInterval = 60) async -> InstallResult {
         guard authorization == .authorized else { return .notAuthorized }
         let fireAt = Date().addingTimeInterval(seconds)
-        let alert = AlarmPresentation.Alert(title: "Wake Me test alarm")
+        let alert = Self.alert(title: "Wake Me test alarm", secondary: nil)
         let attributes = AlarmAttributes<WakeAlarmMetadata>(presentation: AlarmPresentation(alert: alert), metadata: WakeAlarmMetadata(planId: "test", occurrenceKey: "test", role: "MAIN"), tintColor: WMColor.accent)
         do {
             _ = try await manager.schedule(id: stableUUID("test-alarm"), configuration: .alarm(schedule: .fixed(fireAt), attributes: attributes, sound: Self.sound(for: "bundled:rise.gentle")))
@@ -154,6 +153,20 @@ final class WakeAlarms {
         } catch {
             return .failed("alarmkit_schedule_failed")
         }
+    }
+
+    /// iOS 26.1+ supplies the system Stop control itself (doc 06: use the current initializer);
+    /// iOS 26.0 needs an explicit stop button, labelled plainly.
+    static func alert(title: LocalizedStringResource, secondary: AlarmButton?) -> AlarmPresentation.Alert {
+        if #available(iOS 26.1, *) {
+            return AlarmPresentation.Alert(title: title, secondaryButton: secondary, secondaryButtonBehavior: secondary == nil ? nil : .custom)
+        }
+        return AlarmPresentation.Alert(
+            title: title,
+            stopButton: AlarmButton(text: "Stop", textColor: .white, systemImageName: "stop.circle"),
+            secondaryButton: secondary,
+            secondaryButtonBehavior: secondary == nil ? nil : .custom
+        )
     }
 
     private func installedMap() -> [String: [String]] {
