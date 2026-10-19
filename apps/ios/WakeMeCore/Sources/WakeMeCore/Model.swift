@@ -107,6 +107,19 @@ public struct GrantSnapshot: Codable, Equatable, Sendable {
     public var validUntil: String
     public var paused: Bool
     public var revokedAt: String?
+
+    public init(id: String, grantorId: String, granteeId: String, version: Int, capabilities: [String], limits: GrantLimits, validFrom: String, validUntil: String, paused: Bool, revokedAt: String? = nil) {
+        self.id = id
+        self.grantorId = grantorId
+        self.granteeId = granteeId
+        self.version = version
+        self.capabilities = capabilities
+        self.limits = limits
+        self.validFrom = validFrom
+        self.validUntil = validUntil
+        self.paused = paused
+        self.revokedAt = revokedAt
+    }
 }
 
 public enum Capability {

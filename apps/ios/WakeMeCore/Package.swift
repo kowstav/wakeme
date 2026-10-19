@@ -8,7 +8,10 @@ import PackageDescription
 let package = Package(
     name: "WakeMeCore",
     platforms: [.iOS(.v18), .macOS(.v15)],
-    products: [.library(name: "WakeMeCore", targets: ["WakeMeCore"])],
+    products: [
+        .library(name: "WakeMeCore", targets: ["WakeMeCore"]),
+        .library(name: "WakeMeAPI", targets: ["WakeMeAPI"]),
+    ],
     dependencies: [
         // Only used where CryptoKit is unavailable (Linux CI); Apple platforms use CryptoKit.
         .package(url: "https://github.com/apple/swift-crypto.git", exact: "5.0.1"),
@@ -18,6 +21,11 @@ let package = Package(
             name: "WakeMeCore",
             dependencies: [.product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))]
         ),
+        .target(
+            name: "WakeMeAPI",
+            dependencies: ["WakeMeCore", .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))]
+        ),
         .testTarget(name: "WakeMeCoreTests", dependencies: ["WakeMeCore"]),
+        .testTarget(name: "WakeMeAPITests", dependencies: ["WakeMeAPI", "WakeMeCore"]),
     ]
 )
