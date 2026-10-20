@@ -61,7 +61,7 @@ import app.wakeme.ui.onboarding.playQuackPreview
 import app.wakeme.ui.soundName
 
 @Composable
-fun FriendsScreen(onOpen: (String) -> Unit, vm: FriendsViewModel = hiltViewModel()) {
+fun FriendsScreen(onOpen: (String) -> Unit, onOpenCircle: (String) -> Unit = {}, vm: FriendsViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     var code by remember { mutableStateOf("") }
@@ -114,6 +114,7 @@ fun FriendsScreen(onOpen: (String) -> Unit, vm: FriendsViewModel = hiltViewModel
             }
         }
         items(s.friends, key = { it.friendshipId }) { f -> FriendCard(f, onOpen = { onOpen(f.friendshipId) }) }
+        item { Gap(); CirclesSection(onOpen = onOpenCircle) }
         item {
             Gap()
             PrimaryButton("Invite a friend", onClick = vm::createInvite)

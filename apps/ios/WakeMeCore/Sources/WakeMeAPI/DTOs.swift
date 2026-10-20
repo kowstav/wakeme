@@ -71,6 +71,10 @@ public struct FriendsDTO: Codable, Sendable { public var friends: [FriendDTO] }
 public struct GrantsDTO: Codable, Sendable { public var grants: [GrantDTO] }
 public struct InviteCreatedDTO: Codable, Equatable, Sendable, Identifiable { public var id: String; public var kind: String; public var token: String; public var code: String; public var url: String; public var expiresAt: String; public var maxUses: Int }
 public struct CircleRefDTO: Codable, Equatable, Sendable { public var name: String; public var memberCount: Int }
+public struct CircleDTO: Codable, Equatable, Sendable, Identifiable { public var id: String; public var name: String; public var role: String; public var memberCount: Int; public var conversationId: String; public var createdAt: String }
+public struct CirclesDTO: Codable, Sendable { public var circles: [CircleDTO] }
+public struct CircleMemberDTO: Codable, Equatable, Sendable { public var user: PublicUser; public var role: String; public var isFriend: Bool; public var joinedAt: String }
+public struct CircleDetailDTO: Codable, Equatable, Sendable { public var circle: CircleDTO; public var members: [CircleMemberDTO] }
 public struct InvitePreviewDTO: Codable, Equatable, Sendable { public var kind: String; public var inviter: PublicUser; public var circle: CircleRefDTO?; public var expiresAt: String; public var ownInvite: Bool; public var alreadyConnected: Bool }
 public struct RedeemDTO: Codable, Sendable { public var kind: String; public var friend: FriendDTO? }
 

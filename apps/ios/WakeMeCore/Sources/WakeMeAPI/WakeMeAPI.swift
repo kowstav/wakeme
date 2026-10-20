@@ -120,6 +120,17 @@ public struct WakeMeAPI: Sendable {
     struct InviteKind: Encodable { let kind = "friend" }
     public func createInvite() async throws -> InviteCreatedDTO { try await client.post("/v1/invites", body: InviteKind()) }
 
+    // MARK: circles (private groups; membership grants nothing on anyone's phone)
+    struct CircleName: Encodable { let name: String }
+    struct CircleInvite: Encodable { let kind = "circle"; let circleId: String }
+    public func circles() async throws -> [CircleDTO] { try await client.get("/v1/circles", as: CirclesDTO.self).circles }
+    public func createCircle(name: String) async throws -> CircleDTO { try await client.post("/v1/circles", body: CircleName(name: name)) }
+    public func circle(_ id: String) async throws -> CircleDetailDTO { try await client.get("/v1/circles/\(id)") }
+    public func renameCircle(_ id: String, name: String) async throws -> CircleDTO { try await client.patch("/v1/circles/\(id)", body: CircleName(name: name)) }
+    public func leaveCircle(_ id: String) async throws { let _: OkDTO = try await client.post("/v1/circles/\(id)/leave", body: Optional<Empty>.none) }
+    public func removeCircleMember(_ id: String, userId: String) async throws { let _: OkDTO = try await client.delete("/v1/circles/\(id)/members/\(userId)") }
+    public func createCircleInvite(_ circleId: String) async throws -> InviteCreatedDTO { try await client.post("/v1/invites", body: CircleInvite(circleId: circleId)) }
+
     struct InviteRef: Encodable { let token: String?; let code: String? }
     public func previewInvite(token: String?, code: String?) async throws -> InvitePreviewDTO { try await client.post("/v1/invites/preview", body: InviteRef(token: token, code: code)) }
     public func redeemInvite(token: String?, code: String?) async throws -> RedeemDTO { try await client.post("/v1/invites/redeem", body: InviteRef(token: token, code: code)) }

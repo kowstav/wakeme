@@ -146,6 +146,18 @@ class JourneyTest {
         tap("Publish")
         waitInList("Ready to use · version 2")
         DeviceEvidence.screenshot("31-quiz-version-2")
+
+        // A private circle: created from Friends, Sam is its owner, and inviting to it works.
+        tap("Friends")
+        tap("New circle")
+        type("Circle name", "Flat 3B")
+        tap("Create")
+        waitFor("Owner", timeout = 30_000)
+        waitFor("Flat 3B")
+        DeviceEvidence.screenshot("32-circle")
+        tap("Invite to this circle")
+        waitFor("Invite to Flat 3B", timeout = 30_000)
+        tap("Close")
     }
 
     /** Waits for text that may be further down a lazy list, scrolling each list towards it. */

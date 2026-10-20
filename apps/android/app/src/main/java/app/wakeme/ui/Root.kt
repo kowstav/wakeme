@@ -124,7 +124,8 @@ private fun NavGraph(nav: NavHostController, app: AppViewModel, modifier: Modifi
         startDestination = "friends",
         modifier = modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp),
     ) {
-        composable("friends") { FriendsScreen(onOpen = { nav.navigate("friend/$it") }) }
+        composable("friends") { FriendsScreen(onOpen = { nav.navigate("friend/$it") }, onOpenCircle = { nav.navigate("circle/$it") }) }
+        composable("circle/{id}", listOf(navArgument("id") { type = NavType.StringType })) { app.wakeme.ui.friends.CircleScreen(circleId = it.arguments!!.getString("id")!!, onMessages = { c -> nav.navigate("conversation/$c") }, onBack = { nav.popBackStack() }) }
         composable("friend/{id}", listOf(navArgument("id") { type = NavType.StringType })) {
             FriendDetailScreen(
                 friendshipId = it.arguments!!.getString("id")!!,

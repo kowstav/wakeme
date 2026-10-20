@@ -54,6 +54,7 @@ struct FriendsView: View {
                     }
                 }
             }
+            CirclesSection()
             Section {
                 PrimaryButton(title: "Invite a friend") { Task { await createInvite() } }
                 HStack {
@@ -123,7 +124,9 @@ struct InviteSheet: View {
                 Text("If the link doesn't open the app, they can type this code:").foregroundStyle(WMColor.textSecondary)
                 Text(invite.code).font(.system(.title, design: .monospaced).bold()).foregroundStyle(WMColor.textPrimary).textSelection(.enabled)
                     .accessibilityIdentifier("inviteCode")
-                Text("It works once and expires soon. Accepting makes you friends and nothing more: each of you chooses what the other can do.").foregroundStyle(WMColor.textSecondary)
+                Text(invite.kind == "circle"
+                     ? "It expires soon. Joining the circle doesn't make anyone friends or give any permissions."
+                     : "It works once and expires soon. Accepting makes you friends and nothing more: each of you chooses what the other can do.").foregroundStyle(WMColor.textSecondary)
                 ShareLink(item: "Let's wake each other up on Wake Me: \(invite.url) (code \(invite.code))") {
                     Text("Share").font(.headline).frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
                 }

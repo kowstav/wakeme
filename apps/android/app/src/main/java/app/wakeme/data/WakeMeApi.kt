@@ -3,6 +3,9 @@ package app.wakeme.data
 import app.wakeme.data.net.ApiClient
 import app.wakeme.data.net.ChallengeDto
 import app.wakeme.data.net.ChallengesDto
+import app.wakeme.data.net.CircleDetailDto
+import app.wakeme.data.net.CircleDto
+import app.wakeme.data.net.CirclesDto
 import app.wakeme.data.net.CommandDto
 import app.wakeme.data.net.CommandsDto
 import app.wakeme.data.net.ConversationsDto
@@ -57,6 +60,15 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     suspend fun friends() = api.get("/v1/friends", FriendsDto.serializer()).friends
     suspend fun friend(friendshipId: String) = api.get("/v1/friendships/$friendshipId", FriendDto.serializer())
     suspend fun createInvite() = api.post("/v1/invites", buildJsonObject { put("kind", "friend") }, InviteCreatedDto.serializer())
+
+    // ---------------------------------------------------------- circles (membership grants nothing)
+    suspend fun circles() = api.get("/v1/circles", CirclesDto.serializer()).circles
+    suspend fun createCircle(name: String) = api.post("/v1/circles", buildJsonObject { put("name", name) }, CircleDto.serializer())
+    suspend fun circle(id: String) = api.get("/v1/circles/$id", CircleDetailDto.serializer())
+    suspend fun renameCircle(id: String, name: String) = api.patch("/v1/circles/$id", buildJsonObject { put("name", name) }, CircleDto.serializer())
+    suspend fun leaveCircle(id: String) = api.post("/v1/circles/$id/leave", null, OkDto.serializer())
+    suspend fun removeCircleMember(id: String, userId: String) = api.delete("/v1/circles/$id/members/$userId", OkDto.serializer())
+    suspend fun createCircleInvite(circleId: String) = api.post("/v1/invites", buildJsonObject { put("kind", "circle"); put("circleId", circleId) }, InviteCreatedDto.serializer())
     suspend fun previewInvite(token: String?, code: String?) = api.post("/v1/invites/preview", inviteRef(token, code), InvitePreviewDto.serializer())
     suspend fun redeemInvite(token: String?, code: String?) = api.post("/v1/invites/redeem", inviteRef(token, code), RedeemDto.serializer())
     private fun inviteRef(token: String?, code: String?) = buildJsonObject { token?.let { put("token", it) }; code?.let { put("code", it) } }

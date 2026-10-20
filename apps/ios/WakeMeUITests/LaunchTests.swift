@@ -368,6 +368,23 @@ final class LaunchTests: XCTestCase {
         let sessions = try await http("GET", "/v1/location-sessions", alex)
         let sos = (sessions["mine"] as? [[String: Any]])?.first { $0["purpose"] as? String == "sos" }
         try must((sos?["viewers"] as? [[String: Any]])?.first?["acknowledgedAt"] is String, "Alex is told that Sam saw the SOS")
+
+        // A private circle: created from Friends; Sam is its owner.
+        app.tabBars.buttons["Friends"].tap()
+        let newCircle = app.buttons["New circle"]
+        // The tab keeps its navigation: back out of Alex's page to the list first.
+        for _ in 0..<3 where !app.navigationBars["Friends"].exists { app.navigationBars.buttons.element(boundBy: 0).tap() }
+        for _ in 0..<4 where !newCircle.isHittable { app.swipeUp() }
+        newCircle.tap()
+        let naming = app.alerts["New circle"]
+        try must(naming.waitForExistence(timeout: 10), "the circle is named first")
+        naming.textFields.firstMatch.typeText("Flat 3B")
+        naming.buttons["Create"].tap()
+        let circle = app.staticTexts["Flat 3B"]
+        try must(circle.waitForExistence(timeout: 15), "the new circle is listed")
+        circle.tap()
+        try must(app.staticTexts["Owner"].waitForExistence(timeout: 15), "Sam owns the circle")
+        shot(app, "29-circle")
     }
 
     /// The challenge runner checks answers on the phone: a wrong answer is a calm retry, the
