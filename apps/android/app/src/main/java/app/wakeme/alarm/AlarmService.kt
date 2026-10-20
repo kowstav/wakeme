@@ -163,6 +163,7 @@ class AlarmService : Service() {
         }
         releaseWakeLock()
         getSystemService(android.app.NotificationManager::class.java).cancel(NOTIFICATION_ID)
+        getSystemService(android.app.NotificationManager::class.java).cancel(NOTIFICATION_ID + 1)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

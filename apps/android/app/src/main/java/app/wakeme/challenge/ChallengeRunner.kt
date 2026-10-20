@@ -7,10 +7,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -24,14 +28,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,8 +49,8 @@ import app.wakeme.core.ChallengeStep
 import app.wakeme.core.StepResponse
 import app.wakeme.core.verifyStep
 import app.wakeme.designsystem.Body
-import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
+import app.wakeme.designsystem.ReadableWidth
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SecondaryButton
 import app.wakeme.designsystem.WM
@@ -67,43 +73,92 @@ fun ChallengeRunner(
     onEscape: () -> Unit,
     escapeLabel: String,
     modifier: Modifier = Modifier,
+    sessionKey: String = "practice",
+    controls: @Composable ColumnScope.() -> Unit = {},
 ) {
-    var index by remember { mutableIntStateOf(0) }
-    var fallback by remember { mutableStateOf(false) }
-    var feedback by remember { mutableStateOf<String?>(null) }
+    // A follow-up for this occurrence keeps progress; another occurrence/revision starts afresh.
+    key(sessionKey, definition) {
+        ChallengeContent(definition, onComplete, onEscape, escapeLabel, modifier, controls)
+    }
+}
+
+@Composable
+private fun ChallengeContent(
+    definition: ChallengeDefinition,
+    onComplete: (Boolean) -> Unit,
+    onEscape: () -> Unit,
+    escapeLabel: String,
+    modifier: Modifier,
+    controls: @Composable ColumnScope.() -> Unit,
+) {
+    var index by rememberSaveable { mutableIntStateOf(0) }
+    var fallback by rememberSaveable { mutableStateOf(false) }
+    var feedback by rememberSaveable { mutableStateOf<String?>(null) }
+    var finished by rememberSaveable { mutableStateOf(false) }
+    val startedAt = rememberSaveable { SystemClock.elapsedRealtime() }
+    var timedOut by rememberSaveable { mutableStateOf(false) }
+    val currentOnComplete by rememberUpdatedState(onComplete)
+    LaunchedEffect(startedAt, definition.maxDurationSeconds) {
+        val duration = definition.maxDurationSeconds.coerceIn(1, 3600) * 1000L
+        val elapsed = (SystemClock.elapsedRealtime() - startedAt).coerceAtLeast(0)
+        delay((duration - elapsed).coerceAtLeast(0))
+        timedOut = true
+        fallback = true // Expiry offers a self-check, never reports an unsolved challenge as solved.
+    }
     val step = definition.steps.getOrNull(index)
+    val stepIndex = index
+    val finish: (Boolean) -> Unit = { usedFallback ->
+        if (!finished) {
+            finished = true
+            currentOnComplete(usedFallback)
+        }
+    }
     val advance = {
         feedback = null
-        if (index + 1 >= definition.steps.size) onComplete(false) else index += 1
+        if (index + 1 >= definition.steps.size) finish(false) else index += 1
     }
     val check = { r: StepResponse ->
-        if (step != null && verifyStep(step, r)) advance() else feedback = "Not quite. Take your time and try again."
+        // Ignore a late scanner/timer callback, or a second tap from the step just completed.
+        if (!finished && !fallback && index == stepIndex) {
+            if (step != null && verifyStep(step, r)) advance() else feedback = "Not quite. Take your time and try again."
+        }
     }
 
-    Column(modifier.verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-        Text(definition.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        Body("Step ${index + 1} of ${definition.steps.size}")
-        if (fallback) {
-            AccessibleCheckIn(definition.fallback.prompt) { onComplete(true) }
-        } else if (step != null) {
-            key(index) {
-                when (step) {
-                    is ChallengeStep.MultipleChoice -> MultipleChoice(step) { check(StepResponse.Index(it)) }
-                    is ChallengeStep.ShortAnswer -> TextAnswer(step.prompt, KeyboardType.Text) { check(StepResponse.Text(it)) }
-                    is ChallengeStep.MathStep -> TextAnswer("${step.operands.joinToString(" ${symbol(step.operator)} ")} = ?", KeyboardType.Number) { check(StepResponse.Text(it)) }
-                    is ChallengeStep.MemoryOrder -> MemoryOrder(step) { check(StepResponse.Order(it)) }
-                    is ChallengeStep.Chess -> ChessStep(step) { check(StepResponse.Move(it)) }
-                    is ChallengeStep.Timer -> TimerStep(step) { check(StepResponse.Elapsed(it)) }
-                    is ChallengeStep.QrCode -> QrStep(step) { check(StepResponse.Text(it)) }
-                    is ChallengeStep.SelfAttested -> Checklist(step) { check(StepResponse.Checked(it)) }
+    Box(modifier.fillMaxSize().background(WM.colors.surface).safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
+        Column(Modifier.widthIn(max = ReadableWidth).fillMaxSize()) {
+            Column(
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg),
+                verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
+            ) {
+                Text(definition.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+                if (timedOut) Body("Time's up. Use the simple check-in or end this session.")
+                else Body("Step ${index + 1} of ${definition.steps.size}")
+                if (fallback || step == null) {
+                    AccessibleCheckIn(definition.fallback.prompt) { finish(true) }
+                } else {
+                    key(index) {
+                        when (step) {
+                            is ChallengeStep.MultipleChoice -> MultipleChoice(step) { check(StepResponse.Index(it)) }
+                            is ChallengeStep.ShortAnswer -> TextAnswer(step.prompt, KeyboardType.Text) { check(StepResponse.Text(it)) }
+                            is ChallengeStep.MathStep -> TextAnswer("${step.operands.joinToString(" ${symbol(step.operator)} ")} = ?", KeyboardType.Number) { check(StepResponse.Text(it)) }
+                            is ChallengeStep.MemoryOrder -> MemoryOrder(step) { check(StepResponse.Order(it)) }
+                            is ChallengeStep.Chess -> ChessStep(step) { check(StepResponse.Move(it)) }
+                            is ChallengeStep.Timer -> TimerStep(step) { check(StepResponse.Elapsed(it)) }
+                            is ChallengeStep.QrCode -> QrStep(step) { check(StepResponse.Text(it)) }
+                            is ChallengeStep.SelfAttested -> Checklist(step) { check(StepResponse.Checked(it)) }
+                        }
+                    }
+                    feedback?.let { Text(it, color = WM.colors.info, style = MaterialTheme.typography.bodyLarge) }
                 }
             }
-            feedback?.let { Text(it, color = WM.colors.info, style = MaterialTheme.typography.bodyLarge) }
-            QuietButton("Use the simple check-in instead", onClick = { fallback = true })
+            // Kept outside the scrolling puzzle. Bars and the IME are consumed above, so these
+            // controls remain reachable on small windows and with a long quiz or chess board.
+            Column(Modifier.padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceSm)) {
+                controls()
+                if (!fallback && step != null) QuietButton("Use the simple check-in instead", onClick = { fallback = true })
+                SecondaryButton(escapeLabel, onClick = onEscape)
+            }
         }
-        Gap()
-        SecondaryButton(escapeLabel, onClick = onEscape)
-        Body("This always works. Stopping is never locked behind the challenge.")
     }
 }
 
@@ -122,10 +177,11 @@ private fun MultipleChoice(step: ChallengeStep.MultipleChoice, onPick: (Int) -> 
 
 @Composable
 private fun TextAnswer(prompt: String, keyboard: KeyboardType, onSubmit: (String) -> Unit) {
-    var text by remember { mutableStateOf("") }
+    var text by rememberSaveable { mutableStateOf("") }
     Text(prompt, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
     OutlinedTextField(
         value = text,
+        label = { Text("Your answer") },
         onValueChange = { text = it.take(80) },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
@@ -137,10 +193,11 @@ private fun TextAnswer(prompt: String, keyboard: KeyboardType, onSubmit: (String
 
 @Composable
 private fun MemoryOrder(step: ChallengeStep.MemoryOrder, onSubmit: (List<String>) -> Unit) {
-    var showing by remember { mutableStateOf(true) }
-    val picked = remember { mutableStateListOf<String>() }
-    val shuffled = remember { step.items.shuffled() }
-    LaunchedEffect(Unit) {
+    var showing by rememberSaveable { mutableStateOf(true) }
+    var picked by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val shuffled = rememberSaveable(step.id) { step.items.shuffled() }
+    LaunchedEffect(showing) {
+        if (!showing) return@LaunchedEffect
         delay(step.displaySeconds * 1000L)
         showing = false
     }
@@ -155,12 +212,12 @@ private fun MemoryOrder(step: ChallengeStep.MemoryOrder, onSubmit: (List<String>
                 picked += item
                 if (picked.size == step.items.size) {
                     onSubmit(picked.toList())
-                    picked.clear()
+                    picked = emptyList()
                 }
             })
         }
-        if (picked.isNotEmpty()) QuietButton("Start over", onClick = { picked.clear() })
-        QuietButton("Show the list again", onClick = { picked.clear(); showing = true })
+        if (picked.isNotEmpty()) QuietButton("Start over", onClick = { picked = emptyList() })
+        QuietButton("Show the list again", onClick = { picked = emptyList(); showing = true })
     }
 }
 
@@ -168,8 +225,8 @@ private fun MemoryOrder(step: ChallengeStep.MemoryOrder, onSubmit: (List<String>
 @Composable
 private fun ChessStep(step: ChallengeStep.Chess, onMove: (String) -> Unit) {
     val board = remember(step.fen) { parseFenBoard(step.fen) }
-    var from by remember { mutableStateOf<String?>(null) }
-    var typed by remember { mutableStateOf("") }
+    var from by rememberSaveable { mutableStateOf<String?>(null) }
+    var typed by rememberSaveable { mutableStateOf("") }
     Text(step.prompt, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
     val whiteToMove = step.fen.split(" ").getOrNull(1) != "b"
     Column(Modifier.fillMaxWidth().aspectRatio(1f).border(1.dp, WM.colors.border)) {
@@ -204,7 +261,7 @@ private fun ChessStep(step: ChallengeStep.Chess, onMove: (String) -> Unit) {
         }
     }
     Body("Or type the move, like a1a8 (from square, to square).")
-    OutlinedTextField(value = typed, onValueChange = { typed = it.take(5) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(value = typed, label = { Text("Move, from square to square") }, onValueChange = { typed = it.take(5) }, singleLine = true, modifier = Modifier.fillMaxWidth())
     PrimaryButton("Play move", onClick = { onMove(typed) }, enabled = typed.length >= 4)
 }
 
@@ -228,8 +285,9 @@ private fun pieceName(p: Char) = (if (p.isUpperCase()) "white " else "black ") +
 /** Measured with the monotonic clock so changing the wall clock can't skip it. */
 @Composable
 private fun TimerStep(step: ChallengeStep.Timer, onDone: (Double) -> Unit) {
-    var startedAt by remember { mutableLongStateOf(0L) }
+    var startedAt by rememberSaveable { mutableLongStateOf(0L) }
     var elapsed by remember { mutableLongStateOf(0L) }
+    val currentOnDone by rememberUpdatedState(onDone)
     Text(step.prompt, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
     if (startedAt == 0L) {
         PrimaryButton("Start ${step.seconds / 60} min ${step.seconds % 60} s", onClick = { startedAt = SystemClock.elapsedRealtime() })
@@ -238,7 +296,7 @@ private fun TimerStep(step: ChallengeStep.Timer, onDone: (Double) -> Unit) {
             while (true) {
                 elapsed = (SystemClock.elapsedRealtime() - startedAt) / 1000
                 if (elapsed >= step.seconds) {
-                    onDone(elapsed.toDouble())
+                    currentOnDone(elapsed.toDouble())
                     break
                 }
                 delay(500)
@@ -253,7 +311,7 @@ private fun TimerStep(step: ChallengeStep.Timer, onDone: (Double) -> Unit) {
 @Composable
 private fun QrStep(step: ChallengeStep.QrCode, onCode: (String) -> Unit) {
     val context = LocalContext.current
-    var typed by remember { mutableStateOf("") }
+    var typed by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     Text(step.prompt, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
     PrimaryButton("Scan the code", onClick = {
@@ -265,18 +323,18 @@ private fun QrStep(step: ChallengeStep.QrCode, onCode: (String) -> Unit) {
     })
     error?.let { Body(it) }
     Body("Or type the letters printed under the code.")
-    OutlinedTextField(value = typed, onValueChange = { typed = it.take(16) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(value = typed, label = { Text("Code printed under the QR code") }, onValueChange = { typed = it.take(16) }, singleLine = true, modifier = Modifier.fillMaxWidth())
     SecondaryButton("Check code", onClick = { onCode(typed) }, enabled = typed.length >= 6)
 }
 
 @Composable
 private fun Checklist(step: ChallengeStep.SelfAttested, onSubmit: (List<Boolean>) -> Unit) {
-    val checked = remember { mutableStateListOf(*Array(step.items.size) { false }) }
+    var checked by rememberSaveable { mutableStateOf(List(step.items.size) { false }) }
     Text(step.prompt, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
     step.items.forEachIndexed { i, item ->
-        Row(Modifier.fillMaxWidth().clickable { checked[i] = !checked[i] }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = checked[i], onCheckedChange = { checked[i] = it })
-            Text(item, style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
+        Row(Modifier.fillMaxWidth().clickable { checked = checked.mapIndexed { j, value -> if (i == j) !value else value } }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = checked[i], onCheckedChange = { value -> checked = checked.mapIndexed { j, old -> if (i == j) value else old } })
+            Text(item, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
         }
     }
     step.alternative?.let { Body(it) }
@@ -286,14 +344,14 @@ private fun Checklist(step: ChallengeStep.SelfAttested, onSubmit: (List<Boolean>
 /** Low-demand alternative for any step: two taps a few seconds apart. Counts as a self-check. */
 @Composable
 private fun AccessibleCheckIn(prompt: String?, onDone: () -> Unit) {
-    var first by remember { mutableLongStateOf(0L) }
+    var first by rememberSaveable { mutableLongStateOf(0L) }
     var ready by remember { mutableStateOf(false) }
     Text(prompt ?: "Tap \"I'm awake\", then tap it again when it lights up.", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
     if (first == 0L) {
         PrimaryButton("I'm awake", onClick = { first = SystemClock.elapsedRealtime() }, height = WakeMeTokens.alarmControl)
     } else {
         LaunchedEffect(first) {
-            delay(5000)
+            delay((5000 - (SystemClock.elapsedRealtime() - first).coerceAtLeast(0)).coerceAtLeast(0))
             ready = true
         }
         PrimaryButton(if (ready) "I'm awake (again)" else "Just a moment…", onClick = onDone, enabled = ready, height = WakeMeTokens.alarmControl)

@@ -128,7 +128,7 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     suspend fun templates() = api.get("/v1/challenges/templates", TemplatesDto.serializer()).templates
     suspend fun challenges() = api.get("/v1/challenges", ChallengesDto.serializer()).challenges
     suspend fun challenge(id: String) = api.get("/v1/challenges/$id", ChallengeDto.serializer())
-    suspend fun createChallenge(body: JsonElement) = api.post("/v1/challenges", buildJsonObject { put("body", body) }, ChallengeDto.serializer())
+    suspend fun createChallenge(body: JsonElement, circleId: String? = null) = api.post("/v1/challenges", buildJsonObject { put("body", body); circleId?.let { put("circleId", it) } }, ChallengeDto.serializer())
     /** An edit is a new draft revision; published revisions never change. */
     suspend fun reviseChallenge(id: String, body: JsonElement) = api.post("/v1/challenges/$id/revisions", buildJsonObject { put("body", body) }, ChallengeDto.serializer())
     suspend fun fromTemplate(templateId: String, difficulty: String) = api.post("/v1/challenges/from-template", buildJsonObject { put("templateId", templateId); put("difficulty", difficulty) }, ChallengeDto.serializer())

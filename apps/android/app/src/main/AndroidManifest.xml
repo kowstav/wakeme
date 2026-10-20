@@ -75,6 +75,7 @@
         <activity
             android:name=".focus.FocusShieldActivity"
             android:exported="false"
+            android:windowSoftInputMode="adjustResize"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
             android:taskAffinity="app.wakeme.focus" />
@@ -96,6 +97,7 @@
         <activity
             android:name=".alarm.AlarmActivity"
             android:exported="false"
+            android:windowSoftInputMode="adjustResize"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
             android:showWhenLocked="true"

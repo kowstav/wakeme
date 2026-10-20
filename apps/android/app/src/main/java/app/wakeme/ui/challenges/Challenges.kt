@@ -33,6 +33,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +52,7 @@ import app.wakeme.core.quizQuestions
 import app.wakeme.data.WakeMeApi
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.ChallengeDto
+import app.wakeme.data.net.CircleDto
 import app.wakeme.data.net.TemplateDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
@@ -74,6 +79,7 @@ import javax.inject.Inject
 data class ChallengesState(
     val templates: List<TemplateDto> = emptyList(),
     val challenges: List<ChallengeDto> = emptyList(),
+    val circles: List<CircleDto> = emptyList(),
     val credits: Int? = null,
     val trying: Pair<ChallengeDto, ChallengeDefinition>? = null,
     val busy: String? = null,
@@ -98,7 +104,7 @@ class ChallengesViewModel @Inject constructor(private val api: WakeMeApi) : View
     fun load() = viewModelScope.launch {
         runCatching {
             val me = api.me()
-            _s.value = _s.value.copy(templates = api.templates(), challenges = api.challenges(), credits = me.billing.credits.available, meId = me.id)
+            _s.value = _s.value.copy(templates = api.templates(), challenges = api.challenges(), circles = api.circles(), credits = me.billing.credits.available, meId = me.id)
         }.onFailure { _s.value = _s.value.copy(error = (it as? ApiException)?.message) }
     }
 
@@ -120,12 +126,12 @@ class ChallengesViewModel @Inject constructor(private val api: WakeMeApi) : View
     fun fromTemplate(id: String, difficulty: String) = guard("template") { tryOut(api.fromTemplate(id, difficulty)) }
 
     /** A new quiz, or (while [ChallengesState.editing]) a new draft version of the one being edited. */
-    fun createQuiz(title: String, questions: List<QuizQuestion>) = guard("quiz") {
+    fun createQuiz(title: String, questions: List<QuizQuestion>, circleId: String?) = guard("quiz") {
         val editing = _s.value.editing
         val before = editing?.let { latestDefinition(it) }
         val def = quizDefinition(title, questions, before?.difficulty ?: "easy", before?.steps.orEmpty())
         val body = WakeMeJson.encodeToJsonElement(ChallengeDefinition.serializer(), def)
-        tryOut(if (editing != null) api.reviseChallenge(editing.id, body) else api.createChallenge(body))
+        tryOut(if (editing != null) api.reviseChallenge(editing.id, body) else api.createChallenge(body, circleId))
     }
 
     fun startEditing(id: String) = guard("load") {
@@ -226,6 +232,7 @@ fun ChallengesList(
         items(s.challenges, key = { it.id }) { c ->
             WMCard {
                 Text(c.title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                Body(challengeAudience(c.circleId, s.circles))
                 StatusPill(if (c.publishedRevision != null) "Ready to use · version ${c.publishedRevision}" else "Draft", if (c.publishedRevision != null) Tone.Success else Tone.Neutral)
                 QuietButton("Open", onClick = { onOpen(c) })
                 if (canEdit(c)) QuietButton("Edit", onClick = { onEdit(c.id) })
@@ -237,16 +244,18 @@ fun ChallengesList(
 
 @Composable
 private fun TryOut(c: ChallengeDto, def: ChallengeDefinition, vm: ChallengesViewModel) {
-    var finished by remember { mutableStateOf(false) }
+    var finished by rememberSaveable(c.id, def) { mutableStateOf(false) }
     val draft = c.revisions.maxBy { it.revision }.state == "draft"
     if (!finished) {
-        Column {
+        Column(Modifier.fillMaxSize()) {
             StatusPill(if (draft) "Trying your draft. Answers are checked on this phone." else "Practice run", Tone.Info)
-            ChallengeRunner(def, onComplete = { finished = true }, onEscape = { finished = true }, escapeLabel = "Stop trying")
+            ChallengeRunner(def, onComplete = { finished = true }, onEscape = { finished = true }, escapeLabel = "Stop trying", modifier = Modifier.weight(1f), sessionKey = "${c.id}:${c.latestRevision}")
         }
     } else {
         Column(Modifier.padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
             Text(def.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary)
+            val state by vm.state.collectAsState()
+            Body(challengeAudience(c.circleId, state.circles))
             if (draft) {
                 Body("Publishing freezes this version. Friends who accept it get exactly this; later edits become a new version they must accept.")
                 PrimaryButton("Publish", onClick = { vm.finishedTrying(publish = true) })
@@ -273,12 +282,13 @@ private fun Messages(s: ChallengesState, vm: ChallengesViewModel, onUpgrade: () 
 fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: String? = null, vm: ChallengesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     LaunchedEffect(editId) { if (editId != null) vm.startEditing(editId) }
-    var mode by remember { mutableStateOf("quiz") }
-    var title by remember { mutableStateOf("") }
-    var prompt by remember { mutableStateOf("") }
-    var difficulty by remember { mutableStateOf("easy") }
-    val facts = remember { mutableStateListOf(QuizRow()) }
-    var filledFrom by remember { mutableStateOf<String?>(null) }
+    var mode by rememberSaveable { mutableStateOf("quiz") }
+    var title by rememberSaveable { mutableStateOf("") }
+    var prompt by rememberSaveable { mutableStateOf("") }
+    var difficulty by rememberSaveable { mutableStateOf("easy") }
+    var circleId by rememberSaveable { mutableStateOf<String?>(null) }
+    val facts = rememberSaveable(saver = QuizRowsSaver) { mutableStateListOf(QuizRow()) }
+    var filledFrom by rememberSaveable { mutableStateOf<String?>(null) }
     val editing = s.editing
     val editQuestions = remember(editing) {
         editing?.revisions?.maxByOrNull { it.revision }
@@ -311,6 +321,21 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
             FilterChip(selected = mode == "quiz", onClick = { mode = "quiz" }, label = { Text("Build a quiz myself") })
             FilterChip(selected = mode == "ai", onClick = { mode = "ai" }, label = { Text("Describe it") })
         }
+        if (editId != null) {
+            Body(challengeAudience(editing?.circleId, s.circles))
+            Body("New versions keep the same audience. Sharing never gives anyone permission to ring your phone.")
+        } else if (mode == "quiz") {
+            SectionTitle("Who can see this quiz?")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                FilterChip(selected = circleId == null, onClick = { circleId = null }, enabled = s.busy == null, label = { Text("Only me") })
+                s.circles.forEach { circle ->
+                    FilterChip(selected = circleId == circle.id, onClick = { circleId = circle.id }, enabled = s.busy == null, label = { Text(circle.name) })
+                }
+            }
+            Body(if (circleId == null) "Only you can read this quiz here. You can still offer its published version in a wake-up someone accepts." else "Everyone in this circle can read the quiz and its answers, including drafts. Only you can edit or publish it. Circle membership gives no alarm permissions.")
+        } else {
+            Body("AI drafts are visible only to you. You can offer a published version in a wake-up someone accepts.")
+        }
         if (mode == "ai") {
             s.credits?.let { Body("$it AI creation${if (it == 1) "" else "s"} left. Saved challenges never use credits again.") }
             OutlinedTextField(prompt, { prompt = it.take(500) }, label = { Text("Describe a challenge only your group would get") }, placeholder = { Text("Ask which café we call headquarters. Use the choices I give.") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
@@ -332,7 +357,7 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
         if (facts.size < 8) QuietButton("Add another question", onClick = { facts += QuizRow() })
         val complete = facts.map { it.question() }.filter { it.prompt.isNotBlank() && it.answer.isNotBlank() }
         if (mode == "ai") PrimaryButton(if (s.busy == "ai") "Drafting…" else "Draft it", onClick = { vm.generate(prompt, complete, difficulty) }, enabled = prompt.isNotBlank() && s.busy == null)
-        else PrimaryButton(if (s.busy == "quiz") "Saving…" else "Save and try it", onClick = { vm.createQuiz(title, complete) }, enabled = complete.isNotEmpty() && s.busy == null)
+        else PrimaryButton(if (s.busy == "quiz") "Saving…" else "Save and try it", onClick = { vm.createQuiz(title, complete, circleId) }, enabled = complete.isNotEmpty() && s.busy == null)
         QuietButton("Cancel", onClick = onDone)
     }
     Messages(s, vm, onUpgrade)
@@ -345,3 +370,12 @@ private fun JsonObject.str(key: String) = this[key]?.jsonPrimitive?.content ?: t
 private data class QuizRow(val prompt: String = "", val answer: String = "", val wrong: String = "") {
     fun question() = QuizQuestion(prompt.trim(), answer.trim(), wrong.split(",").map(String::trim).filter(String::isNotEmpty).take(5))
 }
+
+/** Eight short questions at most; save text, not a whole API response, across window changes. */
+private val QuizRowsSaver = listSaver<SnapshotStateList<QuizRow>, String>(
+    save = { rows -> rows.flatMap { listOf(it.prompt, it.answer, it.wrong) } },
+    restore = { values -> values.chunked(3).map { QuizRow(it[0], it[1], it[2]) }.toMutableStateList() },
+)
+
+private fun challengeAudience(circleId: String?, circles: List<CircleDto>): String =
+    if (circleId == null) "Personal challenge" else circles.firstOrNull { it.id == circleId }?.let { "Shared with ${it.name}" } ?: "Shared in a circle"

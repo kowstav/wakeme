@@ -67,3 +67,4 @@ Screenshots come from CI (printed into job logs; see ADR 0009 — not device evi
 | iOS 30+ | iPhone simulator | pending | Guest home, push received, circles, Focus permission step, paywall (store unavailable) |
 | Android 30 | Compose previews (layoutlib) and Android 16 at 2560×1600 | 2026-10-20 | Full-width grid rows (headings, "Create a challenge", "Invite a friend") stretched to the 1200 dp grid on desktop instead of 640 dp; two-pane list-detail and rail confirmed |
 | Android 31 | Compose previews (layoutlib) | 2026-10-20 | Width fix confirmed: full-width rows keep 640 dp on tablet and desktop |
+| Android 31 | Android 16 emulator + layoutlib | 2026-10-20 (Codex) | Reviewed `40-large-screen`, `41-large-screen-detail`, `13-focus-shield`, desktop Challenges, foldable Routines and dark-phone Friends: readable controls, rail and two panes confirmed; next installed alarm visible on Friends. No new screenshot references approved or committed. |

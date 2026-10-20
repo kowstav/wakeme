@@ -157,7 +157,43 @@ class JourneyTest {
         DeviceEvidence.screenshot("32-circle")
         tap("Invite to this circle")
         waitFor("Invite to Flat 3B", timeout = 30_000)
+        val circleInviteText = compose.onAllNodes(hasText("type this code", substring = true)).fetchSemanticsNodes().first()
+            .config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()
+        val circleCode = checkNotNull(Regex("[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}").find(circleInviteText)?.value)
         tap("Close")
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        tap("Challenges")
+        tap("Create a challenge")
+        tap("Flat 3B")
+        type("Title", "Flat breakfast quiz")
+        type("Question 1", "Where do we meet for breakfast?")
+        type("Your answer", "Kitchen")
+        // A window change must keep the words and the explicitly selected audience.
+        compose.activityRule.scenario.recreate()
+        waitFor("Flat breakfast quiz")
+        waitFor("Kitchen")
+        tap("Save and try it")
+        waitFor("Step 1 of 1", timeout = 30_000)
+        type("Your answer", "Kitchen")
+        tap("Check")
+        waitFor("Shared with Flat 3B")
+        DeviceEvidence.screenshot("33-circle-quiz-preview")
+        tap("Publish")
+        waitInList("Flat breakfast quiz")
+        waitInList("Shared with Flat 3B")
+        DeviceEvidence.screenshot("34-circle-quiz-published")
+
+        fun alexChallenges() = get("/v1/challenges", alex).getJSONArray("challenges").let { array ->
+            (0 until array.length()).map { array.getJSONObject(it) }
+        }
+        check(alexChallenges().none { it.getString("title") == "Flat breakfast quiz" }) { "A friend outside the circle can read its quiz" }
+        post("/v1/invites/redeem", alex, JSONObject().put("code", circleCode))
+        val shared = alexChallenges().single { it.getString("title") == "Flat breakfast quiz" }
+        check(shared.getInt("publishedRevision") == 1)
+        check(alexChallenges().none { it.getString("title") == "HQ quiz" }) { "The personal quiz leaked through circle membership" }
+        val circleId = shared.getString("circleId")
+        post("/v1/circles/$circleId/leave", alex, JSONObject())
+        check(alexChallenges().none { it.getString("id") == shared.getString("id") }) { "Leaving the circle kept access to its quiz" }
     }
 
     /** Waits for text that may be further down a lazy list, scrolling each list towards it. */

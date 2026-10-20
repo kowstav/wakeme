@@ -2,6 +2,15 @@
 
 Last updated: 2026-10-20. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
 
+## Android continuation (2026-10-20, Codex)
+
+- Latest upstream CI inspected: [Android run 31](https://github.com/kowstav/wakeme/actions/runs/39398097172) passed all three jobs (Android 16, Android 17, Compose previews). [iOS run 35](https://github.com/kowstav/wakeme/actions/runs/39401474021) built and passed the core/API tests, but failed two UI checks: a quiz field received `Brunch, P` and the wrong-answer retry was not observed. The existing uncommitted `LaunchTests.swift` fix was preserved.
+- Implemented Android wake/challenge lifecycle work (ADR 0015): fixed stop/escape controls outside the scrolling content; readable width; keyboard resize on alarm/focus activities; saved progress, answers, selections and monotonic timer starts; a finite attempt limit that offers the accessible check-in without reporting completion; stale-callback/duplicate-completion guards; saved focus-break questions; cancellation of the old follow-up notification; failed media-player cleanup. No timing/performance improvement has been benchmarked.
+- Implemented Android manual circle quizzes: an explicit audience choice, personal by default, explanation that members can read drafts/answers, audience shown before publishing and in the list. Editing preserves the audience; circle membership grants no alarm authority. AI and template creation still start as personal challenges. The quiz form survives activity recreation. iOS circle authoring remains open.
+- Added four instrumented lifecycle tests and extended the creator journey to recreate the editor, publish a circle quiz, verify outsider/member access, and verify access ends on leaving. Added alarm/quiz/chess previews on four form factors, large text and landscape. New instrumented tests and previews are pending execution; no new reference images were accepted.
+- Local setup: installed the official Android CLI (1.0.16625370), API 37 SDK and a checksum-verified Temurin JDK 17.0.20.1. The first build failed when the system drive ran out of space; the temporary JDK archive and newly installed emulator package were removed. An Android 17 system-image download failed for insufficient disk space, so local emulator validation is unavailable. Retrying unit tests, compilation and lint with two workers. All downloaded build tools/data are local and ignored by Git.
+- Android emulator/previews CI now also runs on Android pull requests, rather than only pushes to the working branch. Launch gates below remain open.
+
 ## Verified
 
 Conditions: Linux cloud container (Node 24.19.0; PostgreSQL 17.11 in Docker; JDK 17.0.20 + Gradle 9.8.1; Swift 6.2.4 in Docker); GitHub-hosted `macos-26` runner (Xcode 26.6, iOS 26.x Simulator, iPhone 17 Pro) and Ubuntu 24.04 runners with KVM (Android emulators). Earlier runs: Windows 11, Node 24.19.0, embedded PostgreSQL 17 via PGlite 0.5.8. Simulator and emulator results are not device evidence (ADR 0009).
@@ -38,7 +47,7 @@ Bugs found and fixed by tests and review: invite brute-force throttle never coun
 
 ## Specified only (not yet written)
 
-Focus supervision (Stage 6; server flag off by default; Focus buddy preset hidden in the apps), the Android 17 session-scoped location button, Stage 0 physical-device experiments and capability matrix.
+Stage 0 physical-device experiments and capability matrix. Focus and the Android 17 session-scoped location button have gated implementations, described in the audit below; their distribution/device gates remain open.
 
 ### Doc coverage audit (2026-10-20, docs 01–04 and 06 against the code)
 

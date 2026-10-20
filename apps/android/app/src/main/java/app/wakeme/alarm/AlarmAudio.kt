@@ -74,7 +74,11 @@ class AlarmAudio(private val context: Context) {
         }
         val (uri, fallback) = resolve(soundId)
         return try {
-            val mp = MediaPlayer().apply {
+            val mp = MediaPlayer()
+            // Own the instance before prepare/start: either operation may fail (missing/corrupt
+            // cached media), and the failure path must still release the native player.
+            player = mp
+            mp.apply {
                 setAudioAttributes(attributes)
                 setDataSource(context, uri)
                 isLooping = true
@@ -84,9 +88,9 @@ class AlarmAudio(private val context: Context) {
                 audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }?.let { mp.setPreferredDevice(it) }
             }
             mp.start()
-            player = mp
             PlaybackReport(started = mp.isPlaying, focusGranted = true, routeType = routeName(mp.routedDevice), usedFallbackSound = fallback)
         } catch (e: Exception) {
+            releasePlayer()
             PlaybackReport(started = false, focusGranted = true, routeType = "none", usedFallbackSound = fallback, failure = "player_error")
         }
     }
@@ -117,10 +121,17 @@ class AlarmAudio(private val context: Context) {
     fun alarmVolumeIsZero(): Boolean = audioManager.getStreamVolume(AudioManager.STREAM_ALARM) == 0
 
     fun stop() {
-        player?.runCatching { stop(); release() }
-        player = null
+        releasePlayer()
         focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
         focusRequest = null
         context.getSystemService(VibratorManager::class.java)?.defaultVibrator?.cancel()
+    }
+
+    private fun releasePlayer() {
+        val previous = player
+        player = null
+        if (previous != null) {
+            try { runCatching { previous.stop() } } finally { previous.release() }
+        }
     }
 }
