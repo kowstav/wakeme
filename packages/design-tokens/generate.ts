@@ -206,7 +206,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 @Immutable
@@ -252,7 +251,7 @@ ${numeric(tokens.component).map(([k, v]) => `    val ${k} = ${v}.dp`).join('\n')
 
 /** Semantic type roles (sp, so they follow font scale). Figures are tabular in every role. */
 object WakeMeType {
-${typeRoles.map(([k, r]) => `    /** ${r.use} */\n    val ${k} = TextStyle(fontSize = ${r.size}.sp, lineHeight = ${r.line}.sp, fontWeight = FontWeight.W${r.weight}, letterSpacing = ${r.tracking}.em, fontFeatureSettings = "tnum")`).join('\n')}
+${typeRoles.map(([k, r]) => `    /** ${r.use} */\n    val ${k} = TextStyle(fontSize = ${r.size}.sp, lineHeight = ${r.line}.sp, fontWeight = FontWeight.W${r.weight}, letterSpacing = ${(r.tracking * r.size).toFixed(2)}.sp, fontFeatureSettings = "tnum")`).join('\n')}
 ${typeRoles.filter(([, r]) => r.maxScale !== undefined).map(([k, r]) => `    /** ${k} grows with font scale up to ${r.maxScale}× and no further, so it can't overflow. */\n    const val ${k}MaxScale = ${r.maxScale}f`).join('\n')}
 }
 `;

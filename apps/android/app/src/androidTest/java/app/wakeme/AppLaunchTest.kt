@@ -26,10 +26,12 @@ class AppLaunchTest {
     fun welcomeScreenShowsBothRoutes() {
         compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("I have an invite")).fetchSemanticsNodes().isNotEmpty() }
         DeviceEvidence.screenshot("01-welcome")
-        // Small screens scroll; each route must be reachable and visible once scrolled to.
-        for (label in listOf("Play preview", "I have an invite", "Set up my own wake-up")) {
-            compose.onNodeWithText(label).performScrollTo().assertIsDisplayed()
+        // The two routes are pinned at the bottom (always visible); the preview is in the scrolling
+        // story, so small screens scroll to it. Each must be visible.
+        for (label in listOf("I have an invite", "Set up my own wake-up")) {
+            compose.onNodeWithText(label).assertIsDisplayed()
         }
+        compose.onNodeWithText("Play preview").performScrollTo().assertIsDisplayed()
     }
 
     /** Doc 03 §5 step 2: a personal wake-up needs no account; signing in is for friends. */
@@ -37,7 +39,8 @@ class AppLaunchTest {
     fun selfSetupStartsWithoutAnAccount() {
         try {
             compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Set up my own wake-up")).fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText("Set up my own wake-up").performScrollTo().performClick()
+            // Pinned at the bottom of the welcome screen, so no scrolling is needed.
+            compose.onNodeWithText("Set up my own wake-up").performClick()
             compose.waitUntil(10_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Your wake-ups")).fetchSemanticsNodes().isNotEmpty() }
             DeviceEvidence.screenshot("02-guest-home")
             // The list composes only what is on screen: scroll it to the button first.

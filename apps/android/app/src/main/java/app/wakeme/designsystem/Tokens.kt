@@ -6,7 +6,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 @Immutable
@@ -230,31 +229,31 @@ object WakeMeTokens {
 /** Semantic type roles (sp, so they follow font scale). Figures are tabular in every role. */
 object WakeMeType {
     /** Alarm clock face */
-    val alarmTime = TextStyle(fontSize = 76.sp, lineHeight = 80.sp, fontWeight = FontWeight.W700, letterSpacing = -0.02.em, fontFeatureSettings = "tnum")
+    val alarmTime = TextStyle(fontSize = 76.sp, lineHeight = 80.sp, fontWeight = FontWeight.W700, letterSpacing = -1.52.sp, fontFeatureSettings = "tnum")
     /** Routine time on detail and editor */
-    val timeDisplay = TextStyle(fontSize = 56.sp, lineHeight = 60.sp, fontWeight = FontWeight.W600, letterSpacing = -0.02.em, fontFeatureSettings = "tnum")
+    val timeDisplay = TextStyle(fontSize = 56.sp, lineHeight = 60.sp, fontWeight = FontWeight.W600, letterSpacing = -1.12.sp, fontFeatureSettings = "tnum")
     /** Routine time on cards and lists */
-    val timeInline = TextStyle(fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.W600, letterSpacing = -0.01.em, fontFeatureSettings = "tnum")
+    val timeInline = TextStyle(fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.W600, letterSpacing = -0.32.sp, fontFeatureSettings = "tnum")
     /** Welcome headline */
-    val hero = TextStyle(fontSize = 32.sp, lineHeight = 40.sp, fontWeight = FontWeight.W700, letterSpacing = -0.015.em, fontFeatureSettings = "tnum")
+    val hero = TextStyle(fontSize = 32.sp, lineHeight = 40.sp, fontWeight = FontWeight.W700, letterSpacing = -0.48.sp, fontFeatureSettings = "tnum")
     /** Top of a screen */
-    val screenTitle = TextStyle(fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.W700, letterSpacing = -0.01.em, fontFeatureSettings = "tnum")
+    val screenTitle = TextStyle(fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.W700, letterSpacing = -0.28.sp, fontFeatureSettings = "tnum")
     /** Alarm label, challenge title, question */
-    val prominent = TextStyle(fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.W600, letterSpacing = 0.em, fontFeatureSettings = "tnum")
+    val prominent = TextStyle(fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.W600, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum")
     /** Header between groups (outside cards); large alarm button labels */
-    val section = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.W600, letterSpacing = 0.em, fontFeatureSettings = "tnum")
+    val section = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.W600, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum")
     /** Card and list-row titles, button labels */
-    val cardTitle = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.W600, letterSpacing = 0.em, fontFeatureSettings = "tnum")
+    val cardTitle = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.W600, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum")
     /** Label above a group of form controls */
-    val fieldLabel = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W600, letterSpacing = 0.007.em, fontFeatureSettings = "tnum")
+    val fieldLabel = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W600, letterSpacing = 0.10.sp, fontFeatureSettings = "tnum")
     /** Paragraphs and sentences */
-    val body = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.W400, letterSpacing = 0.009.em, fontFeatureSettings = "tnum")
+    val body = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.W400, letterSpacing = 0.14.sp, fontFeatureSettings = "tnum")
     /** Secondary line under a title, metadata */
-    val supporting = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W400, letterSpacing = 0.007.em, fontFeatureSettings = "tnum")
+    val supporting = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W400, letterSpacing = 0.10.sp, fontFeatureSettings = "tnum")
     /** Status pills, chips */
-    val label = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W600, letterSpacing = 0.007.em, fontFeatureSettings = "tnum")
+    val label = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W600, letterSpacing = 0.10.sp, fontFeatureSettings = "tnum")
     /** Trail step labels, footnotes; the floor for anything people must read */
-    val caption = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.W500, letterSpacing = 0.02.em, fontFeatureSettings = "tnum")
+    val caption = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.W500, letterSpacing = 0.24.sp, fontFeatureSettings = "tnum")
     /** alarmTime grows with font scale up to 1.3× and no further, so it can't overflow. */
     const val alarmTimeMaxScale = 1.3f
     /** timeDisplay grows with font scale up to 1.5× and no further, so it can't overflow. */

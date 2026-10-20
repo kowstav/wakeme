@@ -58,7 +58,6 @@ import app.wakeme.data.net.OfflineException
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.CardTitle
