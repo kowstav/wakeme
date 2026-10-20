@@ -151,14 +151,20 @@ final class LaunchTests: XCTestCase {
         try must(app.staticTexts["Let's make sure your alarm rings"].waitForExistence(timeout: 10), "step failed")
         try must(app.buttons["Allow alarms"].exists, "alarm access is asked here, at wake setup")
         shot(app, "04-ready")
+        // Ask here, where the button is; the screen shows the result (test alarm card = granted,
+        // "turned off" = refused, the button again = the request failed).
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        app.buttons["Allow alarms"].tap()
+        allowSystemPrompt(springboard)
+        shot(app, "04b-alarms-asked")
+        try must(app.buttons["Ring a test alarm in 1 minute"].waitForExistence(timeout: 10), "AlarmKit access granted on the readiness screen")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["New wake-up"].tap()
         try must(app.navigationBars["New wake-up"].waitForExistence(timeout: 10), "step failed")
         try must(app.staticTexts["Weekdays"].exists, "step failed")
         shot(app, "08-new-wake-up")
         app.navigationBars["New wake-up"].buttons["Save"].tap()
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        allowSystemPrompt(springboard)
+        allowSystemPrompt(springboard, timeout: 3) // already granted above
         try must(app.staticTexts["07:00 · Weekdays"].waitForExistence(timeout: 20), "the guest wake-up is listed")
         shot(app, "08b-guest-saved")
         try must(app.staticTexts["Ready on this phone"].waitForExistence(timeout: 10), "AlarmKit armed it on this phone")

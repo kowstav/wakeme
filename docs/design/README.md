@@ -66,3 +66,4 @@ Screenshots come from CI (printed into job logs; see ADR 0009 — not device evi
 | Android 26+ | Android 16/17 | run 30 large-screen and previews reviewed 2026-10-20; rest pending | Home card, quack hop, guest home, circles, focus shield, tablet-size rail (40-large-screen), list-detail on a tablet (41-large-screen-detail), Compose previews on four form factors (preview-*) |
 | iOS 30+ | iPhone simulator | pending | Guest home, push received, circles, Focus permission step, paywall (store unavailable) |
 | Android 30 | Compose previews (layoutlib) and Android 16 at 2560×1600 | 2026-10-20 | Full-width grid rows (headings, "Create a challenge", "Invite a friend") stretched to the 1200 dp grid on desktop instead of 640 dp; two-pane list-detail and rail confirmed |
+| Android 31 | Compose previews (layoutlib) | 2026-10-20 | Width fix confirmed: full-width rows keep 640 dp on tablet and desktop |
