@@ -30,7 +30,8 @@ val LocalWakeMeColors = staticCompositionLocalOf { WakeMeTokens.Light }
 /** Whether the palette in use is the dark one (the alarm always is). Avatars and shadows follow it. */
 val LocalWakeMeDark = staticCompositionLocalOf { false }
 
-// Material uses `primary` as the text colour of text buttons, focused field labels and the
+// `secondary` is accentText too: Material colours the selected navigation label with it, and
+// blue is reserved for information. Material uses `primary` as the text colour of text buttons, focused field labels and the
 // checked switch track, so it maps to accentText (contrast-checked on every surface), not to
 // the accent fill; PrimaryButton sets the accent fill itself. Selected chips and the navigation
 // indicator use secondaryContainer: the butter accentContainer with its own text colour, instead
@@ -42,7 +43,7 @@ private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
     if (dark) {
         darkColorScheme(
             primary = c.accentText, onPrimary = c.textOnAccent, primaryContainer = c.accentContainer, onPrimaryContainer = c.onAccentContainer,
-            secondary = c.info, onSecondary = c.textOnAccent, secondaryContainer = c.accentContainer, onSecondaryContainer = c.onAccentContainer,
+            secondary = c.accentText, onSecondary = c.textOnAccent, secondaryContainer = c.accentContainer, onSecondaryContainer = c.onAccentContainer,
             tertiary = c.success, tertiaryContainer = c.successContainer,
             background = c.surface, onBackground = c.textPrimary, surface = c.surface, onSurface = c.textPrimary,
             surfaceVariant = c.surfaceSunken, onSurfaceVariant = c.textSecondary, surfaceTint = c.surface,
@@ -54,7 +55,7 @@ private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
     } else {
         lightColorScheme(
             primary = c.accentText, onPrimary = c.surfaceRaised, primaryContainer = c.accentContainer, onPrimaryContainer = c.onAccentContainer,
-            secondary = c.info, onSecondary = c.surfaceRaised, secondaryContainer = c.accentContainer, onSecondaryContainer = c.onAccentContainer,
+            secondary = c.accentText, onSecondary = c.surfaceRaised, secondaryContainer = c.accentContainer, onSecondaryContainer = c.onAccentContainer,
             tertiary = c.success, tertiaryContainer = c.successContainer,
             background = c.surface, onBackground = c.textPrimary, surface = c.surface, onSurface = c.textPrimary,
             surfaceVariant = c.surfaceSunken, onSurfaceVariant = c.textSecondary, surfaceTint = c.surface,

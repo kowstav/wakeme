@@ -283,7 +283,8 @@ fun FriendDetailScreen(
 
             // ---- Send a quack: preview (local only) is a different control from Send.
             WMCard {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                // The duck's canvas already reserves room for its sound marks, so the title sits close.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
                     // Replays only after a send the server accepted; says nothing about delivery.
                     QuackBurst(tick = if (quackSent) s.sentTick else 0, height = 48.dp)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

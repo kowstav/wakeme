@@ -11,6 +11,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -101,8 +105,19 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
     val quack: () -> Unit = { playQuackPreview(context); quacks++ }
     // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+        val surface = WM.colors.surface
         Column(
-            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = WakeMeTokens.spaceLg),
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                // Text scrolling under the pinned actions fades out instead of being cut mid-line.
+                .drawWithContent {
+                    drawContent()
+                    val fade = WakeMeTokens.spaceLg.toPx()
+                    drawRect(Brush.verticalGradient(listOf(surface.copy(alpha = 0f), surface), startY = size.height - fade, endY = size.height), topLeft = Offset(0f, size.height - fade), size = Size(size.width, fade))
+                }
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = WakeMeTokens.spaceLg),
             verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
         ) {
             Gap(WakeMeTokens.spaceXl)

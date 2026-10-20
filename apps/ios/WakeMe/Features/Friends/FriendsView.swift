@@ -280,7 +280,8 @@ struct FriendDetailView: View {
         let sounds = f.theyAllowMe?.limits.nudge?.sounds ?? []
         let quackTick = lastCommand?.capability == Capability.nudge ? sentTick : 0
         WMCard {
-            HStack(spacing: WMSpacing.sm) {
+            // The duck's frame already reserves room for its sound marks, so the title sits close.
+            HStack(spacing: WMSpacing.xxs) {
                 // Replays only after a send the server accepted; says nothing about delivery.
                 QuackBurst(tick: quackTick, height: 48)
                 VStack(alignment: .leading, spacing: 2) {

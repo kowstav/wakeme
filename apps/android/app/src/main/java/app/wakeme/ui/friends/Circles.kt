@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -46,6 +47,7 @@ import app.wakeme.designsystem.SectionTitle
 import app.wakeme.designsystem.StatusPill
 import app.wakeme.designsystem.Tone
 import app.wakeme.designsystem.WM
+import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -200,9 +202,12 @@ fun CirclesList(circles: List<CircleDto>, onOpen: (String) -> Unit, onNew: () ->
         SectionTitle("Circles")
         if (circles.isEmpty()) Body("A circle is a private group: your flat, study group or team, with its own chat.")
         circles.forEach { c ->
-            WMCard(Modifier.clickable { onOpen(c.id) }) {
-                Text(c.name, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
-                Body("${c.memberCount} member${if (c.memberCount == 1) "" else "s"}")
+            // Same proportions as a friend row: a 17 sp title with its supporting line close below.
+            WMCard(onClick = { onOpen(c.id) }, onClickLabel = "Open ${c.name}") {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(c.name, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                    Supporting("${c.memberCount} member${if (c.memberCount == 1) "" else "s"}")
+                }
             }
         }
         QuietButton("New circle", onClick = onNew)

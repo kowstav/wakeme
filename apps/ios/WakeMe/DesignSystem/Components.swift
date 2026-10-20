@@ -19,7 +19,7 @@ struct PrimaryButton: View {
                 .padding(.vertical, WMSpacing.xs)
                 .frame(maxWidth: .infinity, minHeight: WMLayout.buttonHeight)
         }
-        .buttonStyle(WMPressStyle(fill: isEnabled ? WMColor.accent : WMColor.surfaceSunken, pressedFill: WMColor.accentPressed))
+        .buttonStyle(WMPressStyle(fill: isEnabled ? WMColor.accent : WMColor.textPrimary.opacity(0.12), pressedFill: WMColor.accentPressed))
     }
 }
 
@@ -104,7 +104,7 @@ struct StatusPill: View {
 
     private var fill: Color {
         switch tone {
-        case .neutral: WMColor.surfaceSunken
+        case .neutral: WMColor.textPrimary.opacity(0.08)
         case .info: WMColor.infoContainer
         case .success: WMColor.successContainer
         case .warning: WMColor.warningContainer
@@ -143,6 +143,7 @@ struct DeliveryTrailView: View {
     let displayStatus: String
     let alarm: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let trail = DeliveryTrail(displayStatus: displayStatus, alarm: alarm)
@@ -162,6 +163,9 @@ struct DeliveryTrailView: View {
                 .animation(WMMotion.respecting(reduceMotion, WMMotion.smooth), value: trail.reached)
             }
             .frame(height: 18)
+            // The pill above says the same thing in words; at accessibility sizes the step labels
+            // would stack several lines deep, so the trail stays visual-only there.
+            if !typeSize.isAccessibilitySize {
             HStack(alignment: .top) {
                 ForEach(0..<3, id: \.self) { i in
                     Text(labels[i])
@@ -170,6 +174,7 @@ struct DeliveryTrailView: View {
                         .multilineTextAlignment(i == 0 ? .leading : i == 1 ? .center : .trailing)
                         .frame(maxWidth: .infinity, alignment: i == 0 ? .leading : i == 1 ? .center : .trailing)
                 }
+            }
             }
         }
         .accessibilityHidden(true)

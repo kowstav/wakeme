@@ -68,6 +68,13 @@ struct WelcomeView: View {
             .frame(maxWidth: WMLayout.readableWidth)
             .frame(maxWidth: .infinity)
             .background(WMColor.surface)
+            // Text scrolling under the pinned actions fades out instead of being cut mid-line.
+            .overlay(alignment: .top) {
+                LinearGradient(colors: [WMColor.surface.opacity(0), WMColor.surface], startPoint: .top, endPoint: .bottom)
+                    .frame(height: WMSpacing.lg)
+                    .offset(y: -WMSpacing.lg)
+                    .allowsHitTesting(false)
+            }
             .wmEntrance(4)
         }
     }

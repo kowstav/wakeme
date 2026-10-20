@@ -101,7 +101,7 @@ fun PrimaryButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = if (pressed) c.accentPressed else c.accent,
             contentColor = c.textOnAccent,
-            disabledContainerColor = c.surfaceSunken,
+            disabledContainerColor = c.textPrimary.copy(alpha = 0.12f),
             disabledContentColor = c.textPrimary.copy(alpha = WakeMeTokens.opacityDisabled),
         ),
         contentPadding = PaddingValues(horizontal = WakeMeTokens.buttonPaddingX, vertical = WakeMeTokens.spaceSm),
@@ -215,7 +215,7 @@ enum class Tone { Neutral, Info, Success, Warning, Danger }
 fun StatusPill(text: String, tone: Tone = Tone.Neutral, modifier: Modifier = Modifier, announce: Boolean = false) {
     val c = WM.colors
     val (dot, fill) = when (tone) {
-        Tone.Neutral -> c.textSecondary to c.surfaceSunken
+        Tone.Neutral -> c.textSecondary to c.textPrimary.copy(alpha = 0.08f)
         Tone.Info -> c.info to c.infoContainer
         Tone.Success -> c.success to c.successContainer
         Tone.Warning -> c.warning to c.warningContainer
@@ -424,7 +424,9 @@ fun DeliveryTrailView(displayStatus: String, alarm: Boolean, modifier: Modifier 
                 }
             }
         }
-        Row(Modifier.fillMaxWidth()) {
+        // The pill above says the same thing in words; at very large text the step labels would
+        // stack three lines deep, so the trail stays visual-only there.
+        if (LocalDensity.current.fontScale < 1.5f) Row(Modifier.fillMaxWidth()) {
             labels.forEachIndexed { i, label ->
                 Text(
                     label,
