@@ -2,6 +2,14 @@
 
 Last updated: 2026-10-20. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
 
+## Design pass: Daybreak system, motion and signature journey (2026-10-21, Claude)
+
+- **What changed** (details and file paths in [docs/design/system.md](docs/design/system.md), decision in ADR 0020): visual/UX/motion audit with 25 prioritised findings ([audit](docs/design/audit-2026-10-20.md)); three directions with real content, Daybreak selected ([directions.html](docs/design/directions.html)); design tokens v2 (outline ≥ 3:1, containers, warm night, more distinct warning, increased-contrast variants, avatar and illustration colours, motion/elevation tokens, OKLCH report); an original duck drawn natively on both apps with the quack as the one signature animation; a shared `delivery-trail.json` fixture with `DeliveryTrail` in Android `:core` and iOS `WakeMeCore`; Friends → detail → quack → delivery trail → routines rebuilt on the system on both apps; welcome, gates, challenge runner, messages and editors updated. **Critical fix:** the iOS challenge escape and simple check-in are now pinned to the bottom (they could scroll off screen). Android navigation uses 320/180 ms shared-axis transitions instead of Navigation 3's 700 ms default.
+- **Tests actually run** (Windows 11, Node 24.19.0, JDK 22.0.2): `npm run generate:tokens` and `--check` (42 contrast pairs × 4 modes + 6 avatar tints pass); Android `:core:test` 28/28 including the new fixture test, run on JDK 22 through a scratch init script because JDK 17 isn't installed here.
+- **Not run**: Android app compile, lint, unit, instrumented and journey tests and Compose previews (no Android SDK on this machine; ~1 GB free RAM); every iOS build and test (needs macOS). New previews in `DesignSystemPreviews.kt` render in CI. No frame pacing, haptics or physical-device checks. Nothing in this pass is verified until CI runs on it.
+- **Sizing and typography pass** (same day): audit of the rendered UI from CI artifacts (Android run 53 emulator + previews, iOS run 35 simulator) with 16 ranked findings ([sizing audit](docs/design/sizing-audit-2026-10-21.md)); 13 semantic type roles and `layout`/`component` tokens generated for both apps; alarm clock off monospace; one button height for paired actions; card titles 17; aligned text buttons; field groups; outlined time fields; icon steppers; composer send button; welcome actions pinned to the thumb zone; iOS 20 pt screen margins.
+- **Next**: run both CI workflows on this change, fix failures, review the renders/screenshots and add them to the screenshot log; then extend the system to Safety, You, Paywall, Focus and Circles (system.md §11).
+
 ## Android continuation (2026-10-20, Codex)
 
 - Applied the relevant pinned Android skills; scope and source review are in [android-skills-review](docs/android-skills-review.md). Implementation follows docs 01–04 and 06. ADRs 0015–0019 record lifecycle, Direct Boot, attestation evaluation, SOS location and durable offline End decisions.
@@ -31,7 +39,7 @@ Conditions: Linux cloud container (Node 24.19.0; PostgreSQL 17.11 in Docker; JDK
 | Shared envelope vectors | verified on 3 platforms | `packages/policy-fixtures/fixtures/signed-envelopes.json`, made by the server's `signEnvelope` with a throwaway key. |
 | SigV4 storage signer | verified | Matches AWS's published presigned-URL example. |
 | APNs / FCM clients | verified against local fake servers | **Not tested against Apple or Google.** |
-| Design tokens | verified | All 14 WCAG contrast pairs pass in light and dark. |
+| Design tokens | verified | v2 (2026-10-21): 42 WCAG pairs pass in light, dark and both increased-contrast modes, plus 6 avatar tints; generator `--check` clean. |
 | Bundled sounds | generated | Six original WAVs parse; **not reviewed by ear**. |
 
 Commands: `npm test`, `npm run typecheck`, `npm run check:generated`; API on a real server: `TEST_DATABASE_URL=postgres://… npm test -w @wakeme/api`; Android core: `cd apps/android && ./gradlew -p tools/core-only :core:test`; iOS core: `cd apps/ios/WakeMeCore && swift test` (contract test: `WAKEME_DEV_BACKEND=http://127.0.0.1:8787 swift test --filter DevBackendTests` with `npm run dev -w @wakeme/api` running).
@@ -64,7 +72,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 | Guest personal alarms before an account | 02 §9, 03 §5.2 | implemented 2026-10-20, both apps; guest steps of the Android journey pass on the 16 and 17 emulators (run 29), iOS passed in run 30; iOS run 32 failed at "Ready on this phone" after saving (AlarmKit prompt not answered within 8 s, suspected); the test now waits 15 s and attaches a screenshot of any failed step; runs 33–34 failed the same way; run 34's screenshots show no permission prompt at all and "Not scheduled: allow alarms first" after saving; the test now asks on the readiness screen ("Allow alarms") and records which result the screen shows, rerun pending |
 | Sign in with Apple (iOS) / Google (Android) | 02 §9 | Google on Android; Sign in with Apple on iOS implemented 2026-10-20 (Supabase id_token grant with hashed nonce); both need the owner's Supabase providers and Apple entitlement to run |
 | Home shows the next alarm and one readiness issue | 03 §3 | implemented 2026-10-20, both apps; not yet seen in screenshots |
-| Signature quack animation with a Reduced Motion alternative; send/warning haptics | 03 §2 | implemented 2026-10-20, both apps; haptics not observable in CI |
+| Signature quack animation with a Reduced Motion alternative; send/warning haptics | 03 §2 | implemented 2026-10-20, both apps; replaced 2026-10-21 by the original duck (`DuckMark`/`QuackBurst`) and a token haptic vocabulary; not yet rendered; haptics not observable in CI |
 | User-recorded voice sounds (rights attestation, upload, scan, recipient approval) | 01 §6, 02 §5 `media_assets` | Android implemented; storage integrity unit tests and native recording/rights/background lifecycle passed in run 45 on 16/17. Real storage/scanner and recipient upload round trip need owner configuration; iOS recording remains open |
 | Private circles (create, members, circle chat, shared challenges) in the apps | 04 §6, 02 §5 | Android circle quizzes and membership access checks passed on 16/17 (run 33); create/members/invite/chat/rename/remove/leave implemented both apps; iOS circle authoring remains open |
 | iOS invite links (universal links) and an inviter preview before accepting | 03 §5 step 4 | code preview implemented 2026-10-20 (who invited you and what accepting means, then Accept); universal links need the owner's associated-domains entitlement and a hosted apple-app-site-association file |
@@ -77,7 +85,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 | Reusable shared routines beyond waking (study, gym, practice) | 04 §9 | Android presets/reuse implemented on the existing accepted schedule model; journey pending. No attendance tracking or penalties. iOS reuse UI remains open |
 | App Attest / Play Integrity evaluation | 02 §10 | evaluated in ADR 0017; owner-configured test track/device measurements required before optional online enforcement |
 | Error reporting / OpenTelemetry vendor | 02 §2 | owner decision (vendor choice); structured logs only |
-| Design process: references, three directions, screenshots on small/large devices, dark, large text, denied permissions | 03 §9 | design contract and screenshot review log in `docs/design` (2026-10-20); three directions, references and usability rounds still to do (owner/people) |
+| Design process: references, three directions, screenshots on small/large devices, dark, large text, denied permissions | 03 §9 | design contract and screenshot review log in `docs/design` (2026-10-20); three directions produced and Daybreak chosen (2026-10-21, `docs/design/directions.html`); references, screenshots of the new system and usability rounds still to do (owner/people) |
 | Stage 0 experiments, capability matrix, soak tests | 04 §2, §5, 06 experiments | owner (physical phones); `docs/device-results` empty |
 | Entitlements (AlarmKit distribution, Family Controls, Time Sensitive, APNs keys), developer accounts, signing | 04 §10 | owner |
 | Usability rounds, interviews, pilot, competitor hands-on study, trademark/domain check | 01 §5, §7; 03 §1, §9 | owner |
@@ -87,7 +95,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 
 ## Decisions
 
-Recorded in `docs/adr` (0001–0019); threat model with control-to-test mapping in `docs/threat-model.md`.
+Recorded in `docs/adr` (0001–0020); threat model with control-to-test mapping in `docs/threat-model.md`.
 
 ## Open decisions and deviations
 

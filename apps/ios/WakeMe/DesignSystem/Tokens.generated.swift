@@ -3,23 +3,50 @@ import SwiftUI
 import UIKit
 
 enum WMColor {
-    static let surface = Color(light: 0xFBF8F1, dark: 0x121417)
-    static let surfaceRaised = Color(light: 0xFFFFFF, dark: 0x1C1F24)
-    static let surfaceSunken = Color(light: 0xF3EEE3, dark: 0x0C0E10)
-    static let border = Color(light: 0xE2DCCF, dark: 0x2C3036)
+    static let surface = Color(light: 0xFBF8F1, dark: 0x151311)
+    static let surfaceRaised = Color(light: 0xFFFFFF, dark: 0x201E1A)
+    static let surfaceSunken = Color(light: 0xF3EEE3, dark: 0x0D0C0A)
+    static let surfaceOverlay = Color(light: 0xFFFFFF, dark: 0x292622)
+    static let border = Color(light: 0xE2DCCF, dark: 0x33302B)
+    static let outline = Color(light: 0x877F73, dark: 0x79736C, lightHighContrast: 0x5B5449, darkHighContrast: 0xA49D94)
     static let textPrimary = Color(light: 0x1B1A17, dark: 0xF3EFE6)
-    static let textSecondary = Color(light: 0x5C5850, dark: 0xB3ADA2)
+    static let textSecondary = Color(light: 0x5C5850, dark: 0xB3ADA2, lightHighContrast: 0x403D35, darkHighContrast: 0xD5D0C7)
     static let accent = Color(light: 0xF2B705, dark: 0xF5C518)
+    static let accentPressed = Color(light: 0xDDA315, dark: 0xDFB127)
     static let textOnAccent = Color(light: 0x1B1A17, dark: 0x1B1A17)
-    static let accentText = Color(light: 0x835C00, dark: 0xF5C518)
+    static let accentContainer = Color(light: 0xFBE9B0, dark: 0x42330A)
+    static let onAccentContainer = Color(light: 0x473101, dark: 0xFAE39F)
+    static let accentText = Color(light: 0x835C00, dark: 0xF5C518, lightHighContrast: 0x674600, darkHighContrast: 0xFBD452)
     static let info = Color(light: 0x2F5D9E, dark: 0x8DB4F0)
+    static let infoContainer = Color(light: 0xE5EFFF, dark: 0x1D2E47)
     static let success = Color(light: 0x2B7449, dark: 0x6FCF97)
-    static let warning = Color(light: 0x8F5400, dark: 0xF2B05E)
+    static let successContainer = Color(light: 0xDAF7E3, dark: 0x173523)
+    static let warning = Color(light: 0x9C4701, dark: 0xF7A062)
+    static let warningContainer = Color(light: 0xFFEADB, dark: 0x442916)
     static let danger = Color(light: 0xB3261E, dark: 0xFF8A80)
+    static let dangerContainer = Color(light: 0xFFE9E6, dark: 0x47211E)
     static let dangerFill = Color(light: 0xB3261E, dark: 0xB3261E)
     static let textOnDanger = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
-    static let alarmBackground = Color(light: 0x121417, dark: 0x0C0E10)
+    static let focus = Color(light: 0x2F5D9E, dark: 0x8DB4F0)
+    static let alarmBackground = Color(light: 0x151311, dark: 0x0D0C0A)
     static let alarmText = Color(light: 0xF3EFE6, dark: 0xF3EFE6)
+    /// Friend monogram tints (equal perceptual lightness).
+    static let avatarTints: [Color] = [
+        Color(light: 0xEBDEB5, dark: 0x423712), // butter
+        Color(light: 0xFAD6BA, dark: 0x4D3119), // apricot
+        Color(light: 0xC5E9CB, dark: 0x224028), // sage
+        Color(light: 0xB4EAEC, dark: 0x064043), // sea
+        Color(light: 0xC9E0FF, dark: 0x243954), // sky
+        Color(light: 0xE6D5FC, dark: 0x3F304F), // lilac
+    ]
+}
+
+/// Illustration colours for the duck; the same in both themes.
+enum WMIllustration {
+    static let duckBeak = Color(light: 0xEE8A2F, dark: 0xEE8A2F)
+    static let duckBeakShade = Color(light: 0xD9701C, dark: 0xD9701C)
+    static let duckEye = Color(light: 0x1B1A17, dark: 0x1B1A17)
+    static let duckEyeHighlight = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
 }
 
 enum WMSpacing {
@@ -34,27 +61,118 @@ enum WMSpacing {
 
 enum WMRadius {
     static let sm: CGFloat = 8
-    static let md: CGFloat = 12
+    static let md: CGFloat = 14
     static let lg: CGFloat = 20
+    static let xl: CGFloat = 28
     static let pill: CGFloat = 999
 }
 
 enum WMSize {
     static let minTouchTarget: CGFloat = 44
     static let alarmControl: CGFloat = 72
+    static let controlHeight: CGFloat = 52
 }
 
-enum WMMotion {
-    static let quick: Double = 0.15
-    static let standard: Double = 0.25
+/// Semantic type roles. Each follows Dynamic Type through its text style; roles with a fixed
+/// design size (iosSize) are for views that scale it with @ScaledMetric(relativeTo:).
+enum WMFont {
+    /// Alarm clock face
+    static var alarmTime: Font { .system(size: 76, weight: .bold) }
+    /// Routine time on detail and editor
+    static var timeDisplay: Font { .system(size: 56, weight: .semibold) }
+    /// Routine time on cards and lists
+    static var timeInline: Font { .largeTitle.weight(.semibold) }
+    /// Welcome headline
+    static var hero: Font { .largeTitle.weight(.bold) }
+    /// Top of a screen
+    static var screenTitle: Font { .largeTitle.weight(.bold) }
+    /// Alarm label, challenge title, question
+    static var prominent: Font { .title2.weight(.semibold) }
+    /// Header between groups (outside cards); large alarm button labels
+    static var section: Font { .title2.weight(.semibold) }
+    /// Card and list-row titles, button labels
+    static var cardTitle: Font { .headline.weight(.semibold) }
+    /// Label above a group of form controls
+    static var fieldLabel: Font { .subheadline.weight(.semibold) }
+    /// Paragraphs and sentences
+    static var body: Font { .body.weight(.regular) }
+    /// Secondary line under a title, metadata
+    static var supporting: Font { .subheadline.weight(.regular) }
+    /// Status pills, chips
+    static var label: Font { .subheadline.weight(.medium) }
+    /// Trail step labels, footnotes; the floor for anything people must read
+    static var caption: Font { .caption.weight(.medium) }
+}
+
+/// Semantic spacing (4-point scale) and component sizes.
+enum WMLayout {
+    static let screenMargin: CGFloat = 20
+    static let readableWidth: CGFloat = 640
+    static let cardPadding: CGFloat = 16
+    static let cardGap: CGFloat = 12
+    static let titleGap: CGFloat = 4
+    static let fieldLabelGap: CGFloat = 8
+    static let controlGap: CGFloat = 12
+    static let sectionGap: CGFloat = 24
+    static let sectionTopExtra: CGFloat = 8
+    static let buttonHeight: CGFloat = 52
+    static let alarmButtonHeight: CGFloat = 72
+    static let buttonPaddingX: CGFloat = 24
+    static let compactControlHeight: CGFloat = 40
+    static let chipHeight: CGFloat = 32
+    static let iconButtonVisual: CGFloat = 40
+    static let iconSize: CGFloat = 24
+    static let iconSizeSmall: CGFloat = 20
+    static let avatarRow: CGFloat = 44
+    static let avatarHeader: CGFloat = 56
+    static let statusPillPaddingX: CGFloat = 12
+    static let statusPillPaddingY: CGFloat = 6
+    static let dayToggleMax: CGFloat = 44
+}
+
+enum WMOpacity {
+    static let disabled: Double = 0.38
+    static let pressedOverlay: Double = 0.1
+    static let scrim: Double = 0.45
+}
+
+enum WMElevation {
+    static let cardShadowOpacity: Double = 0.06
+    static let cardShadowRadius: CGFloat = 10
+    static let cardShadowY: CGFloat = 2
+    static let overlayShadowOpacity: Double = 0.12
+    static let overlayShadowRadius: CGFloat = 24
+    static let overlayShadowY: CGFloat = 8
+}
+
+/// Raw motion values; Motion.swift turns them into animations that respect Reduce Motion.
+enum WMMotionToken {
+    static let quick: Double = 0.12
+    static let standard: Double = 0.22
+    static let emphasized: Double = 0.32
+    static let exit: Double = 0.18
+    static let reducedCrossfade: Double = 0.15
     static let quack: Double = 0.6
+    static let celebrate: Double = 0.9
+    static let pressResponse: Double = 0.2
+    static let pressDamping: Double = 0.9
+    static let snappyResponse: Double = 0.3
+    static let snappyDamping: Double = 0.86
+    static let smoothResponse: Double = 0.45
+    static let smoothDamping: Double = 1
+    static let playfulResponse: Double = 0.4
+    static let playfulDamping: Double = 0.55
+    static let pressScale: CGFloat = 0.97
+    static let stagger: Double = 0.04
+    static let staggerMaxItems = 5
 }
 
 extension Color {
-    /// A colour that follows light/dark appearance, including high-contrast variants handled by the system.
-    init(light: UInt32, dark: UInt32) {
+    /// A colour that follows light/dark appearance and, where a token defines one, Increase Contrast.
+    init(light: UInt32, dark: UInt32, lightHighContrast: UInt32? = nil, darkHighContrast: UInt32? = nil) {
         self.init(uiColor: UIColor { traits in
-            let v = traits.userInterfaceStyle == .dark ? dark : light
+            let high = traits.accessibilityContrast == .high
+            let v = traits.userInterfaceStyle == .dark ? (high ? darkHighContrast ?? dark : dark) : (high ? lightHighContrast ?? light : light)
             return UIColor(red: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255, blue: CGFloat(v & 0xFF) / 255, alpha: 1)
         })
     }

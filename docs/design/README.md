@@ -16,26 +16,32 @@
 
 ## 2. Visual direction: warm daylight + quiet night
 
-Source of truth: `packages/design-tokens/tokens.json` (generated into both apps; all 14 contrast
-pairs pass WCAG in light and dark, see `contrast-report.md`).
+Source of truth: `packages/design-tokens/tokens.json` v2, the **Daybreak** system ([system.md](system.md),
+chosen from three directions in [directions.html](directions.html); ADR 0020). Generated into both
+apps; 42 pairs pass WCAG in light, dark and both increased-contrast modes, see `contrast-report.md`.
 
 | Rule | Why |
 |---|---|
-| Off-white surfaces, dark ink; deep low-glare night surfaces | Calm legibility (doc 03 §2) |
+| Off-white surfaces, dark ink; warm, low-glare ink night surfaces (same hue family as day) | Calm legibility (doc 03 §2); one identity day and night |
 | Duck yellow (`accent`) is a fill; text on light backgrounds uses `accentText` | Yellow text on cream failed AA (run 13) |
-| Blue only for information; red only for destructive actions and SOS | Urgency keeps its meaning |
+| Blue only for information and focus; red only for destructive actions and SOS (readiness and validation use warning) | Urgency keeps its meaning |
+| Control boundaries use `outline` (≥ 3:1); `border` is decorative only | WCAG 1.4.11 (audit A2) |
+| Selection is butter (`accentContainer`) plus a check mark or bold weight | State never by colour alone |
 | Status is words plus a dot, never colour alone (`StatusPill`) | Colour-vision differences |
 | One primary action per screen; 44 pt / 48 dp minimum targets | Sleepy and one-handed use |
 | Native navigation: tab bar on iPhone; bottom bar on Android phones, rail on tablets | Platform-native, adaptive (doc 06) |
 | Dialogs on the raised surface, not Material's default tint | Run 19 review |
-| One signature motion (the quack hop) with a Reduce Motion alternative; calm haptics | Doc 03 §2 |
+| One signature motion (the original duck's quack) with a Reduce Motion still; tokenised springs; nothing animated in alarm, SOS or escape controls | Doc 03 §2; system.md §5 |
+| Delivery shown as words plus a trail that only advances on reported evidence | Literal status (shared `delivery-trail.json`) |
 
 ## 3. Components (same names on both platforms)
 
-`PrimaryButton`, `SecondaryButton` (visibly disabled at 38–45 % when unavailable), `QuietButton`,
-`DangerButton` (destructive/SOS only), `WMCard`, `StatusPill`, `SettingRow` (whole row toggles),
-`Stepper` (Android: 48 dp −/+ spoken as Fewer/More), `QuackSent`, app-switcher cover /
-`HideFromRecents` on Safety and Messages (ADR 0012).
+`PrimaryButton` (yellow capsule), `SecondaryButton` (outlined capsule; visibly disabled at 38–45 % when
+unavailable), `QuietButton`, `DangerButton` (destructive/SOS only, never animated), `WMCard`,
+`StatusPill` (tinted, words + dot, optional announcement), `ChoiceChip`, `DayChips`/`DayPicker`,
+`TimeDisplay`, `FriendAvatar`, `DeliveryTrailView`, `DetailTopBar` (Android), `EmptyState`,
+`DuckMark`, `QuackBurst`, `SettingRow` (whole row toggles), `Stepper` (Android: 48 dp −/+ spoken as
+Fewer/More), app-switcher cover / `HideFromRecents` on Safety and Messages (ADR 0012).
 
 ## 4. Copy rules
 
@@ -48,8 +54,8 @@ pairs pass WCAG in light and dark, see `contrast-report.md`).
 
 ## 5. What is not done (owner / people needed)
 
-- Reference collection and three distinct directions for two core screens (doc 03 §9 steps 2–4):
-  the current direction was chosen in the research pack; alternatives were not produced.
+- Three directions for the two core screens now exist as static HTML studies (directions.html);
+  a reference collection and people's reactions to them (doc 03 §9 steps 2–4) are still to do.
 - Five-person usability rounds and the 90 % targets (doc 03 §9 step 8): need participants.
 - Real-device screenshots (small/large phones, tablets) for store listings.
 
@@ -69,4 +75,5 @@ Screenshots come from CI (printed into job logs; see ADR 0009 — not device evi
 | Android 31 | Compose previews (layoutlib) | 2026-10-20 | Width fix confirmed: full-width rows keep 640 dp on tablet and desktop |
 | Android 31 | Android 16 emulator + layoutlib | 2026-10-20 (Codex) | Reviewed `40-large-screen`, `41-large-screen-detail`, `13-focus-shield`, desktop Challenges, foldable Routines and dark-phone Friends: readable controls, rail and two panes confirmed; next installed alarm visible on Friends. No new screenshot references approved or committed. |
 | Android 45 | Android 17 emulator | 2026-10-20 (Codex) | Reviewed voice rights/local-preview screen (52), real-host widget toolbar (53), system location button (56) and large-text challenge controls (51). Voice upload is visibly disabled without rights confirmation; Stop/check-in/End remain visible at large text. Widget uses canonical Glance styling; actual launcher/OEM rendering remains a device gate. |
+| Daybreak pass | Code only (2026-10-21) | not yet | No native render was possible on the authoring machine. New `DesignSystemPreviews` (light, dark, increased contrast, 2× text) and all changed screens need the next Android previews/journey and iOS simulator runs before review. |
 | Android 49 | Compose previews (layoutlib) | 2026-10-20 (Codex) | All 34 renders pass. Reviewed small-landscape alarm, large-text quiz and tablet chess: readable content with reachable fixed escape controls; chess content scrolls separately. No new baseline images accepted. |
