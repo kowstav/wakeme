@@ -70,7 +70,7 @@ data class FriendsState(
 )
 
 @HiltViewModel
-class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: SyncEngine, db: LocalDb, private val readiness: Readiness) : ViewModel() {
+class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: SyncEngine, db: LocalDb, private val readiness: Readiness, @ApplicationContext private val context: Context) : ViewModel() {
     private val _state = MutableStateFlow(FriendsState())
     val state: StateFlow<FriendsState> = _state
 
@@ -97,7 +97,9 @@ class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: Syn
 
     fun load() = viewModelScope.launch {
         try {
-            _state.value = _state.value.copy(loading = false, friends = api.friends(), offline = false)
+            val friends = api.friends()
+            _state.value = _state.value.copy(loading = false, friends = friends, offline = false)
+            QuackShortcuts.publish(context, friends)
         } catch (e: OfflineException) {
             _state.value = _state.value.copy(loading = false, offline = true)
         } catch (e: ApiException) {

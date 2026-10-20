@@ -200,6 +200,7 @@ class AppViewModel @Inject constructor(
 
     fun signOut() = launchCatching {
         sync.clearLocal()
+        app.wakeme.ui.friends.QuackShortcuts.clear(context)
         device.reset()
         session.signOut()
         prefs.clear()
