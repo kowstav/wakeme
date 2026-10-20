@@ -50,7 +50,7 @@ class AlarmAudio(private val context: Context) {
             "bundled:pulse.wake" to R.raw.pulse_wake,
         )
         bundled[soundId]?.let { return Uri.parse("android.resource://${context.packageName}/$it") to false }
-        if (soundId.startsWith("media:")) {
+        if (soundId.startsWith("media:") && context.getSystemService(android.os.UserManager::class.java).isUserUnlocked) {
             val file = File(context.filesDir, "sounds/${soundId.removePrefix("media:")}.audio")
             if (file.exists()) return Uri.fromFile(file) to false
         }

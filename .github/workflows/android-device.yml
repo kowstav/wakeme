@@ -190,8 +190,15 @@ jobs:
         run: |
           adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard || true
           adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null || true
-          adb shell am instrument -w -r -e notClass app.wakeme.JourneyTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
+          adb shell am instrument -w -r -e notClass app.wakeme.JourneyTest,app.wakeme.FocusShieldTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
+      - name: Focus accessibility journey in its own instrumentation process
+        run: |
+          # Compose/Espresso input changes UiAutomation flags and suppresses accessibility services.
+          # Run the actual service/shield assertions without that shared automation connection.
+          adb shell am instrument -w -r -e class app.wakeme.FocusShieldTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/focus.txt"
+          grep -q "^OK (" "$RUNNER_TEMP/evidence/focus.txt"
+          if grep -q "AssumptionViolatedException" "$RUNNER_TEMP/evidence/focus.txt"; then exit 1; fi
       - name: Cold launch and screenshot
         if: always() && steps.boot.outcome == 'success'
         run: |

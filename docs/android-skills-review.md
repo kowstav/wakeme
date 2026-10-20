@@ -12,6 +12,8 @@ rejected by the local Codex CLI. Only these relevant skills were applied in this
 | adaptive | Readable wake/challenge layouts, form-factor previews; no experimental Grid added |
 | edge-to-edge | Safe-drawing/keyboard insets, adjustResize for the alarm and focus activities |
 | jetpack-compose-performance | Saved and keyed UI state, formatter caching, off-main decoding, fresh timer callbacks |
+| android-permissions-security | Direct Boot storage boundaries and unlock receiver; private alarm components |
+| android-intent-security | Protected broadcast allowlist, immutable explicit alarm intents, HTTPS invite/warm Intent validation |
 
 Their installed SKILL.md contents match the pinned snapshot after normalizing line endings.
 No additional skill scripts or bundled profiler binaries were run. The emulator QA skill from

@@ -57,16 +57,16 @@ class AlarmService : Service() {
         val sessions = AlarmEntryPoints.sessions(this)
         // Before first unlock only the device-protected mirror is readable.
         val alarm = if (unlocked) runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().get(requestCode) }?.let {
-            BootAlarm(it.requestCode, it.fireAt, it.soundId, it.ringSeconds, it.label, it.planId, it.commandId, it.role, it.occurrenceKey, it.version)
-        } else AlarmEntryPoints.scheduler(this).bootAlarm(requestCode)
+            BootAlarm(it.requestCode, it.fireAt, it.soundId, it.ringSeconds, it.label, it.planId, it.commandId, it.role, it.occurrenceKey, it.version, it.challengeRevisionId)
+        } else BootAlarms(this).get(requestCode)
         if (alarm == null) {
             stopSelf()
             return
         }
         val helper = if (unlocked) runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().get(requestCode)?.helperName } else null
-        val challenge = if (unlocked) runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().get(requestCode)?.challengeRevisionId } else null
-        val hasFollowUp = alarm.role == AlarmRole.MAIN.name && unlocked && alarm.planId != null &&
-            runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().forPlan(alarm.planId) }.any { it.role == AlarmRole.FOLLOW_UP.name && it.occurrenceKey == alarm.occurrenceKey }
+        val challenge = alarm.challengeRevisionId
+        val hasFollowUp = alarm.role == AlarmRole.MAIN.name && alarm.planId != null &&
+            BootAlarms(this).all().any { it.planId == alarm.planId && it.role == AlarmRole.FOLLOW_UP.name && it.occurrenceKey == alarm.occurrenceKey }
 
         // systemExempted exists from Android 14; before that the untyped call is the supported form.
         if (Build.VERSION.SDK_INT >= 34) {
@@ -77,7 +77,7 @@ class AlarmService : Service() {
         wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WakeMe:alarm").apply { acquire((alarm.ringSeconds + 30) * 1000L) }
 
         val report = audio.start(alarm.soundId)
-        val previous = sessions.active.value
+        val previous = sessions.active.value?.takeIf { it.planId == alarm.planId && it.commandId == alarm.commandId && it.occurrenceKey == alarm.occurrenceKey && it.version == alarm.version }
         val isFollowUp = alarm.role == AlarmRole.FOLLOW_UP.name
         sessions.set(
             ActiveWake(
@@ -154,7 +154,9 @@ class AlarmService : Service() {
         if (active != null) {
             val next = if (completed) active.session.onChallengeCompleted() else active.session.onEscape()
             if (next.cancelsFollowUp && active.planId != null) {
-                runBlocking { AlarmEntryPoints.scheduler(this@AlarmService).cancelFollowUp(active.planId, active.occurrenceKey) }
+                if (getSystemService(UserManager::class.java).isUserUnlocked) {
+                    runBlocking { AlarmEntryPoints.scheduler(this@AlarmService).cancelFollowUp(active.planId, active.occurrenceKey) }
+                } else BootAlarms(this).cancelFollowUp(active.planId, active.occurrenceKey)
             }
             val receipts = AlarmEntryPoints.receipts(this)
             if (active.commandId != null) receipts.enqueue(Receipt.Command(active.commandId, if (completed) "challenge_completed" else "bypassed"))

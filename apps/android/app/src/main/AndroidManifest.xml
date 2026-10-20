@@ -96,6 +96,7 @@
         <!-- Full-screen alarm UI shown over the lock screen; large controls, no paywall, always an escape. -->
         <activity
             android:name=".alarm.AlarmActivity"
+            android:directBootAware="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:excludeFromRecents="true"
@@ -106,6 +107,7 @@
 
         <service
             android:name=".alarm.AlarmService"
+            android:directBootAware="true"
             android:exported="false"
             android:foregroundServiceType="systemExempted" />
 
@@ -122,10 +124,11 @@
             </intent-filter>
         </service>
 
-        <receiver android:name=".alarm.AlarmReceiver" android:exported="false" />
+        <receiver android:name=".alarm.AlarmReceiver" android:directBootAware="true" android:exported="false" />
         <receiver android:name=".push.NotificationActionReceiver" android:exported="false" />
         <receiver
             android:name=".alarm.RescheduleReceiver"
+            android:directBootAware="true"
             android:exported="true"
             tools:ignore="ExportedReceiver">
             <intent-filter>
