@@ -25,8 +25,8 @@
     <uses-permission android:name="android.permission.USE_LOCATION_BUTTON" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <!-- No microphone permission: voice recording for alarms isn't built yet. Add
-         RECORD_AUDIO (requested just in time) only together with that feature. -->
+    <!-- Only the explicit, foreground, bounded Voice sounds recording flow. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Focus lists launcher apps to choose from (no QUERY_ALL_PACKAGES). -->
     <queries>

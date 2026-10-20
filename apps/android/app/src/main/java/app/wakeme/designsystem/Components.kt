@@ -77,9 +77,9 @@ fun DangerButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
 }
 
 @Composable
-fun QuietButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    TextButton(onClick = onClick, modifier = modifier.defaultMinSize(minHeight = WakeMeTokens.minTouchTarget)) {
-        Text(text, color = WM.colors.accentText, style = MaterialTheme.typography.bodyLarge)
+fun QuietButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    TextButton(onClick = onClick, enabled = enabled, modifier = modifier.defaultMinSize(minHeight = WakeMeTokens.minTouchTarget)) {
+        Text(text, color = WM.colors.accentText.copy(alpha = if (enabled) 1f else 0.38f), style = MaterialTheme.typography.bodyLarge)
     }
 }
 

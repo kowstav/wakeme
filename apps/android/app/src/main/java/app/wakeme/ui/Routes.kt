@@ -19,6 +19,7 @@ sealed interface Route : NavKey {
     @Serializable data class ChallengeEdit(val id: String) : Route
     @Serializable data class Safety(val focusSessionId: String? = null) : Route
     @Serializable data object Focus : Route
+    @Serializable data object VoiceSounds : Route
     @Serializable data object You : Route
     @Serializable data object Ready : Route
     @Serializable data object Paywall : Route

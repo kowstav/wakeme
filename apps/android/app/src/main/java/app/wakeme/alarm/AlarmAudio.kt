@@ -91,6 +91,7 @@ class AlarmAudio(private val context: Context) {
             PlaybackReport(started = mp.isPlaying, focusGranted = true, routeType = routeName(mp.routedDevice), usedFallbackSound = fallback)
         } catch (e: Exception) {
             releasePlayer()
+            if (soundId.startsWith("media:")) return start("bundled:rise.gentle", preferSpeaker).copy(usedFallbackSound = true)
             PlaybackReport(started = false, focusGranted = true, routeType = "none", usedFallbackSound = fallback, failure = "player_error")
         }
     }

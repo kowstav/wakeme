@@ -112,6 +112,7 @@ class SyncEngine @Inject constructor(
     private val challenges: ChallengeInstaller,
     private val device: DeviceIdentity,
     private val arming: ArmingWindow,
+    private val sounds: app.wakeme.media.SoundLibrary,
 ) {
     private val mutex = Mutex()
     private val _changes = MutableSharedFlow<String>(extraBufferCapacity = 32)
@@ -126,6 +127,8 @@ class SyncEngine @Inject constructor(
     suspend fun sync() = mutex.withLock {
         // Local first: keep routines armed over the window even when the server can't be reached.
         arming.topUpAll()
+        // Audio availability never blocks the installed alarm path. Failed/missing downloads fall back.
+        try { sounds.refresh() } catch (e: CancellationException) { throw e } catch (_: Exception) { }
         val cursor = prefs.cursor()
         if (cursor == null) return@withLock bootstrap()
         var next: String = cursor
@@ -275,11 +278,12 @@ class SyncEngine @Inject constructor(
         }
     }
 
-    suspend fun clearLocal() {
+    suspend fun clearLocal() = mutex.withLock {
         scheduler.cancelAll()
         db.routines().clear()
         db.grants().clear()
         prefs.setCursor(null)
+        sounds.clear()
     }
 }
 

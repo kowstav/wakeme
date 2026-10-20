@@ -46,6 +46,7 @@ import app.wakeme.R
 import app.wakeme.designsystem.DetailPlaceholder
 import app.wakeme.designsystem.Readable
 import app.wakeme.focus.FocusScreen
+import app.wakeme.media.VoiceSoundsScreen
 import app.wakeme.ui.challenges.ChallengeEditorScreen
 import app.wakeme.ui.challenges.ChallengesScreen
 import app.wakeme.ui.friends.CircleScreen
@@ -245,6 +246,7 @@ private fun entries(backStack: NavBackStack<NavKey>, app: AppViewModel) = entryP
     // ---- Full-screen destinations
     entry<Route.Safety> { key -> Readable { SafetyScreen(focusSessionId = key.focusSessionId) } }
     entry<Route.Focus> { Readable { FocusScreen() } }
+    entry<Route.VoiceSounds> { Readable { VoiceSoundsScreen() } }
     entry<Route.You> {
         Readable {
             YouScreen(
@@ -252,6 +254,7 @@ private fun entries(backStack: NavBackStack<NavKey>, app: AppViewModel) = entryP
                 onPaywall = { backStack.add(Route.Paywall) },
                 onSafety = { backStack.add(Route.Safety()) },
                 onFocus = { backStack.add(Route.Focus) },
+                onVoiceSounds = { backStack.add(Route.VoiceSounds) },
             )
         }
     }

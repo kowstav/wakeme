@@ -87,11 +87,12 @@ data class Draft(
 data class GrantEditorState(val friend: FriendDto? = null, val presets: List<PresetDto> = emptyList(), val draft: Draft = Draft(), val saving: Boolean = false, val error: String? = null, val saved: Boolean = false)
 
 @HiltViewModel
-class GrantEditorViewModel @Inject constructor(private val api: WakeMeApi) : ViewModel() {
+class GrantEditorViewModel @Inject constructor(private val api: WakeMeApi, val sounds: app.wakeme.media.SoundLibrary) : ViewModel() {
     private val _s = MutableStateFlow(GrantEditorState())
     val state: StateFlow<GrantEditorState> = _s
 
     fun load(friendshipId: String) = viewModelScope.launch {
+        runCatching { sounds.refresh() }
         runCatching {
             val f = api.friend(friendshipId)
             val presets = api.presets()
@@ -159,6 +160,7 @@ class GrantEditorViewModel @Inject constructor(private val api: WakeMeApi) : Vie
 fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorViewModel = hiltViewModel()) {
     LaunchedEffect(friendshipId) { vm.load(friendshipId) }
     val s by vm.state.collectAsState()
+    val customSounds by vm.sounds.ready.collectAsState()
     LaunchedEffect(s.saved) { if (s.saved) onDone() }
     val f = s.friend ?: return
     val name = f.user.displayName
@@ -189,7 +191,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
             if (Capability.NUDGE in d.caps) {
                 Stepper("Up to ${d.nudge.maxPerHour} per hour", d.nudge.maxPerHour, 1, 12) { v -> vm.edit { it.copy(nudge = it.nudge.copy(maxPerHour = v)) } }
                 WindowEditor(d.nudge.windows.first()) { w -> vm.edit { it.copy(nudge = it.nudge.copy(windows = listOf(w))) } }
-                SoundPicker(d.nudge.sounds) { list -> vm.edit { it.copy(nudge = it.nudge.copy(sounds = list)) } }
+                SoundPicker(d.nudge.sounds, emptyList()) { list -> vm.edit { it.copy(nudge = it.nudge.copy(sounds = list)) } }
                 SettingRow("Allow during my quiet hours", "Off means quacks wait for daytime. Turn on only if you want them at night too.", d.nudge.overridesQuietHours) { on -> vm.edit { it.copy(nudge = it.nudge.copy(overridesQuietHours = on)) } }
             }
         }
@@ -203,7 +205,8 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
                 WindowEditor(d.alarm.windows.first()) { w -> vm.edit { it.copy(alarm = it.alarm.copy(windows = listOf(w))) } }
                 Choice("Ring for at most", listOf(30, 60, 120, 300), d.alarm.maxAlarmSeconds, { "${it}s" }) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxAlarmSeconds = v)) } }
                 Stepper("Up to ${d.alarm.maxPerDay} wake-up${if (d.alarm.maxPerDay > 1) "s" else ""} a day", d.alarm.maxPerDay, 1, 3) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxPerDay = v)) } }
-                SoundPicker(d.alarm.sounds) { list -> vm.edit { it.copy(alarm = it.alarm.copy(sounds = list)) } }
+                SoundPicker(d.alarm.sounds, customSounds) { list -> vm.edit { it.copy(alarm = it.alarm.copy(sounds = list)) } }
+                Body("Approved voice recordings are available for wake alarms. Quacks use the built-in notification sounds.")
                 SettingRow("Allow one follow-up alarm", "A second alarm a few minutes later unless you finish the challenge.", d.alarm.followUp.allowed) { on -> vm.edit { it.copy(alarm = it.alarm.copy(followUp = it.alarm.followUp.copy(allowed = on))) } }
             }
         }
@@ -245,10 +248,10 @@ private fun <T> Choice(label: String, options: List<T>, selected: T, text: (T) -
 }
 
 @Composable
-private fun SoundPicker(selected: List<String>, onChange: (List<String>) -> Unit) {
+private fun SoundPicker(selected: List<String>, custom: List<String>, onChange: (List<String>) -> Unit) {
     Text("Sounds they can use", style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-        BUNDLED.forEach { id ->
+        (BUNDLED + custom + selected).distinct().forEach { id ->
             val on = id in selected
             FilterChip(selected = on, onClick = { onChange(if (on) (selected - id).ifEmpty { listOf(id) } else selected + id) }, label = { Text(soundName(id)) })
         }

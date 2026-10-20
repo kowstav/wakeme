@@ -35,7 +35,11 @@ crash logs or diagnostics (no SDK yet).
 | `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` | Re-install alarms after a reboot; ring reliably | Normal permissions. |
 | `USE_BIOMETRIC`, `USE_FINGERPRINT`, `BILLING` | Added by libraries (sign-in, billing) | Normal permissions; list in Data safety where relevant. |
 
-No microphone, camera, contacts or SMS permissions.
+`RECORD_AUDIO` is requested only after choosing Record in You → Voice sounds. Recording stops
+at 30 seconds, when leaving the screen, or when the app goes into the background. Preview is
+local; upload requires a separate rights attestation and action. Friends must approve offers
+before the recording enters their alarm choices. Declare optional voice recordings in Audio.
+No camera, contacts or SMS permissions.
 
 ## Content rating (IARC) and audience
 

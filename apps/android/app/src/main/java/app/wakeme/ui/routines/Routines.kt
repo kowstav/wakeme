@@ -277,12 +277,13 @@ data class EditorState(
 )
 
 @HiltViewModel
-class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, private val readiness: Readiness, private val local: app.wakeme.alarm.LocalRoutines) : ViewModel() {
+class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, private val readiness: Readiness, private val local: app.wakeme.alarm.LocalRoutines, val sounds: app.wakeme.media.SoundLibrary) : ViewModel() {
     private val _s = MutableStateFlow(EditorState())
     val state: StateFlow<EditorState> = _s
 
     init {
         viewModelScope.launch { runCatching { api.challenges() }.onSuccess { list -> _s.value = _s.value.copy(challenges = list.filter { it.publishedRevision != null }) } }
+        viewModelScope.launch { runCatching { sounds.refresh() } }
     }
 
     fun save(ownerId: String?, terms: PlanTerms, context: android.content.Context) = viewModelScope.launch {
@@ -323,6 +324,7 @@ class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, pri
 @Composable
 fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = false, vm: RoutineEditorViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
+    val customSounds by vm.sounds.ready.collectAsState()
     val context = LocalContext.current
     LaunchedEffect(s.done) { if (s.done) onDone() }
     LaunchedEffect(ownerId) { ownerId?.let(vm::loadFriend) }
@@ -334,7 +336,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
     var followTravel by remember { mutableStateOf(false) }
     var challengeRevision by remember { mutableStateOf<String?>(null) }
     val limits = s.limits
-    val sounds = if (ownerId == null) listOf("bundled:rise.gentle", "bundled:bell.bright", "bundled:pulse.wake", "bundled:quack.double") else limits?.sounds.orEmpty()
+    val sounds = if (ownerId == null) listOf("bundled:rise.gentle", "bundled:bell.bright", "bundled:pulse.wake", "bundled:quack.double") + (if (guest) emptyList() else customSounds) else limits?.sounds.orEmpty()
     val rings = listOf(30, 60, 90, 120).filter { ownerId == null || limits == null || it <= limits.maxAlarmSeconds }.ifEmpty { listOfNotNull(limits?.maxAlarmSeconds) }
     val followUpDelay = minOf(180, if (ownerId == null) 180 else limits?.followUp?.maxDelaySeconds ?: 180)
     val canFollowUp = ownerId == null || limits?.followUp?.allowed == true
