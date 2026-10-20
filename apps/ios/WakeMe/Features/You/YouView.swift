@@ -8,6 +8,7 @@ struct YouView: View {
     @Environment(AppModel.self) private var app
     @State private var confirmSignOut = false
     @State private var confirmDelete = false
+    @State private var showPlus = false
     @State private var reauth = false
     @State private var exportFile: JSONFile?
     @State private var working = false
@@ -43,6 +44,8 @@ struct YouView: View {
                     Text("AI credits: \(me.billing.credits.available) available").foregroundStyle(WMColor.textPrimary)
                     Text("Routines \(me.limits.activeRoutines.used)/\(me.limits.activeRoutines.max) · Custom sounds \(me.limits.customSounds.used)/\(me.limits.customSounds.max)")
                         .foregroundStyle(WMColor.textSecondary)
+                    Button(me.billing.plan == "plus" ? "Manage Plus" : "See Plus") { showPlus = true }
+                        .frame(minHeight: WMSize.minTouchTarget)
                 }
                 Section("Your data") {
                     Button(working ? "Preparing…" : "Export my data") { Task { await export() } }.disabled(working)
@@ -55,6 +58,7 @@ struct YouView: View {
         .background(WMColor.surface)
         .navigationTitle("You")
         .task { await app.refreshMe() }
+        .sheet(isPresented: $showPlus) { PaywallView() }
         .confirmationDialog("Sign out?", isPresented: $confirmSignOut) {
             Button("Sign out", role: .destructive) { Task { await app.signOut() } }
         } message: {

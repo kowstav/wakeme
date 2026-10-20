@@ -47,7 +47,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 | Doc requirement | Where | State |
 |---|---|---|
 | iOS receives quacks and wake requests (APNs registration, token refresh, notification handling, receipts) | 01 §6, 02 §7, 03 §4A | implemented 2026-10-20 (code: `PushCenter`, `GrantStore`); CI simulator check pending (dev pushes relayed with `simctl push`; not APNs) |
-| iOS paywall (StoreKit through RevenueCat; trial/grace/expired/restore/refunded/store unavailable states) | 02 §2, 03 §7, 04 §16 | not written (Android has one) |
+| iOS paywall (StoreKit through RevenueCat; trial/grace/expired/restore/refunded/store unavailable states) | 02 §2, 03 §7, 04 §16 | implemented 2026-10-20 (RevenueCat 5.92.0, from You → See Plus); no RevenueCat key or App Store products exist, so only the "store unavailable" state can run in CI |
 | Guest personal alarms before an account | 02 §9, 03 §5.2 | not written (both apps need sign-in) |
 | Sign in with Apple (iOS) / Google (Android) | 02 §9 | Google on Android only; Apple not written |
 | Home shows the next alarm and one readiness issue | 03 §3 | implemented 2026-10-20, both apps; not yet seen in screenshots |

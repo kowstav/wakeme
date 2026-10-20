@@ -11,6 +11,9 @@ enum AppConfig {
     static var supabaseURL: String { value("WakeMeSupabaseURL").trimmingCharacters(in: CharacterSet(charactersIn: "/")) }
     static var supabaseAnonKey: String { value("WakeMeSupabaseAnonKey") }
     static var supabaseConfigured: Bool { !supabaseURL.isEmpty && !supabaseAnonKey.isEmpty }
+    /// RevenueCat public (publishable) SDK key for the App Store; empty means billing is unavailable.
+    static var revenueCatKey: String { value("WakeMeRevenueCatKey") }
+    static var billingConfigured: Bool { !revenueCatKey.isEmpty }
 
     /// Debug builds without Supabase use the local dev backend's token issuer (services/api dev.ts).
     static var useDevAuth: Bool {

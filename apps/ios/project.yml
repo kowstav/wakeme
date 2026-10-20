@@ -15,6 +15,11 @@ settings:
 packages:
   WakeMeCore:
     path: WakeMeCore
+  # StoreKit through RevenueCat (doc 02 §2), as on Android. Pinned; reviewed 2026-10-20
+  # (release 5.92.0, 2026-09-30, official SPM mirror of RevenueCat/purchases-ios, MIT).
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios-spm
+    exactVersion: 5.92.0
 targets:
   WakeMe:
     type: application
@@ -26,6 +31,8 @@ targets:
         product: WakeMeCore
       - package: WakeMeCore
         product: WakeMeAPI
+      - package: RevenueCat
+        product: RevenueCat
       # Linked explicitly so Xcode extracts App Intents metadata (the alarm's challenge and stop
       # intents); with only `import AppIntents` the build skipped it.
       - sdk: AppIntents.framework
@@ -54,6 +61,7 @@ targets:
         WakeMeAPIBaseURL: $(WAKEME_API_BASE_URL)
         WakeMeSupabaseURL: $(WAKEME_SUPABASE_URL)
         WakeMeSupabaseAnonKey: $(WAKEME_SUPABASE_ANON_KEY)
+        WakeMeRevenueCatKey: $(WAKEME_REVENUECAT_IOS_KEY)
         # Plain HTTP only to the local dev backend; production uses HTTPS with platform trust.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -65,6 +73,7 @@ targets:
         WAKEME_API_BASE_URL: "http://127.0.0.1:8787"
         WAKEME_SUPABASE_URL: ""
         WAKEME_SUPABASE_ANON_KEY: ""
+        WAKEME_REVENUECAT_IOS_KEY: ""
   WakeMeUITests:
     type: bundle.ui-testing
     platform: iOS
