@@ -13,7 +13,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.ActivityTestRule
 import app.wakeme.widget.QuickActionsReceiver
 import app.wakeme.widget.QuickActionsWidget
-import androidx.glance.appwidget.AppWidgetId
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
@@ -41,11 +41,11 @@ class QuickActionsWidgetTest {
             lateinit var view: AppWidgetHostView
             instrumentation.runOnMainSync {
                 host.startListening()
-                view = host.createView(activity.activity, id, manager.getAppWidgetInfo(id))
+                view = host.createView(activity.activity, id, requireNotNull(manager.getAppWidgetInfo(id)))
                 val density = context.resources.displayMetrics.density
                 activity.activity.setContentView(view, ViewGroup.LayoutParams((320 * density).toInt(), (180 * density).toInt()))
             }
-            runBlocking { QuickActionsWidget().update(context, AppWidgetId(id)) }
+            runBlocking { QuickActionsWidget().update(context, GlanceAppWidgetManager(context).getGlanceIdBy(id)) }
             fun find(node: View): View? = if (node.contentDescription?.toString() == "Choose a friend to quack") node
                 else (node as? ViewGroup)?.let { group -> (0 until group.childCount).firstNotNullOfOrNull { find(group.getChildAt(it)) } }
             var button: View? = null
@@ -59,8 +59,7 @@ class QuickActionsWidgetTest {
             val monitor = instrumentation.addMonitor(MainActivity::class.java.name, null, false)
             try {
                 instrumentation.runOnMainSync { button!!.performClick() }
-                val opened = instrumentation.waitForMonitorWithTimeout(monitor, 5000)
-                assertNotNull("widget opens the app", opened)
+                val opened = requireNotNull(instrumentation.waitForMonitorWithTimeout(monitor, 5000)) { "widget opens the app" }
                 assertEquals("friends", opened.intent.getStringExtra(MainActivity.EXTRA_ROUTE))
             } finally { instrumentation.removeMonitor(monitor) }
         } finally {

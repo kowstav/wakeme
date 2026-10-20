@@ -68,11 +68,12 @@ class AlarmActivity : ComponentActivity() {
         val sessions = AlarmEntryPoints.sessions(this)
         setContent {
             var completed by rememberSaveable { mutableStateOf(false) }
+            var completedKey by rememberSaveable { mutableStateOf<String?>(null) }
             var thanksRoute by rememberSaveable { mutableStateOf<String?>(null) }
             WakeMeTheme(dark = true) {
                 val active by sessions.active.collectAsState()
                 val a = active
-                if (completed) {
+                if (completed && (a == null || completedKey == a.identity)) {
                     Readable {
                         Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
                             Text("You're up", style = MaterialTheme.typography.headlineLarge, color = WM.colors.alarmText)
@@ -92,9 +93,9 @@ class AlarmActivity : ComponentActivity() {
                             wake = a,
                             loadChallenge = { id -> loadChallenge(id) },
                             onStop = { AlarmService.send(this, AlarmService.ACTION_STOP_SOUND) },
-                            onImUp = { AlarmService.send(this, AlarmService.ACTION_IM_UP); completed = true; thanksRoute = makeThanksRoute(a) },
-                            onComplete = { AlarmService.send(this, AlarmService.ACTION_COMPLETE); completed = true; thanksRoute = makeThanksRoute(a) },
-                            onCheckIn = { AlarmService.send(this, AlarmService.ACTION_CHECK_IN); completed = true; thanksRoute = makeThanksRoute(a) },
+                            onImUp = { AlarmService.send(this, AlarmService.ACTION_IM_UP); completedKey = a.identity; completed = true; thanksRoute = makeThanksRoute(a) },
+                            onComplete = { AlarmService.send(this, AlarmService.ACTION_COMPLETE); completedKey = a.identity; completed = true; thanksRoute = makeThanksRoute(a) },
+                            onCheckIn = { AlarmService.send(this, AlarmService.ACTION_CHECK_IN); completedKey = a.identity; completed = true; thanksRoute = makeThanksRoute(a) },
                             onEscape = { AlarmService.send(this, AlarmService.ACTION_ESCAPE); finish() },
                         )
                     }
@@ -147,7 +148,7 @@ fun AlarmScreen(
             onComplete = { usedFallback -> if (usedFallback) onCheckIn() else onComplete() },
             onEscape = onEscape,
             escapeLabel = stringResource(R.string.alarm_need_to_stop),
-            sessionKey = "${wake.planId ?: wake.commandId}:${wake.occurrenceKey}:${wake.version}",
+            sessionKey = wake.identity,
             controls = {
                 if (wake.ringing) PrimaryButton(stringResource(R.string.alarm_stop_sound), onClick = onStop)
             },

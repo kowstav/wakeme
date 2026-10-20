@@ -30,6 +30,7 @@ data class ActiveWake(
     val startedAt: Long,
     val usedFallbackSound: Boolean = false,
 ) {
+    val identity: String get() = "${planId ?: commandId}:$occurrenceKey:$version"
     val session: WakeSession get() = WakeSession(planId ?: commandId.orEmpty(), occurrenceKey, state, hasFollowUp)
 }
 
@@ -40,7 +41,10 @@ class WakeSessions @Inject constructor(@ApplicationContext context: Context) {
     private val _active = MutableStateFlow(load())
     val active: StateFlow<ActiveWake?> = _active
 
-    private fun load(): ActiveWake? = prefs.getString("active", null)?.let { runCatching { json.decodeFromString(ActiveWake.serializer(), it) }.getOrNull() }
+    private fun load(): ActiveWake? = prefs.getString("active", null)?.let {
+        // A restored session cannot prove a previous process's player is still running.
+        runCatching { json.decodeFromString(ActiveWake.serializer(), it).copy(ringing = false, routeType = "unknown") }.getOrNull()
+    }
 
     fun set(value: ActiveWake?) {
         _active.value = value
