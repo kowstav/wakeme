@@ -21,10 +21,11 @@ run gets its own file, `YYYY-MM-DD-<platform>-<device>.md`, using the record tem
 | 8 | Main alarm + one follow-up; challenge completion cancels the follow-up; Stop does not | Follow-up rings only when the challenge wasn't finished | Drop the follow-up promise on that platform | open | open | open | open | open | open |
 | 9 | Offline edit / pause / end of a routine | Local cancellation at once; server reconciles later; no ghost alarms | Show "pending" and keep the last confirmed schedule | open | open | open | open | open | open |
 | 10 | Guest wake-up, then sign-in on a flaky network | Local copy keeps ringing until the server copy is installed; never two rings | Keep local only until confirmed | open | open | open | open | open | open |
-| 11 | Android 17 location button for an SOS; location service for the SOS duration | Precise fix shared; session grant behaviour over the 2 h SOS recorded | Ordinary location permission | n/a | n/a | open | open | open | n/a (look-alike) |
+| 11 | Android 17 location button for an SOS snapshot; timed sharing separately (ADR 0018) | Alert sent first; one fresh position if available; no continuous service for SOS; denial/expiry observed; timed-share service stops on Stop | SOS without location; explicit settings recovery | n/a | n/a | open | open | open | open (fallback button) |
 | 12 | iOS shield → app transition (`openParentalControlsApp`) for focus (Stage 6) | Shield opens Wake Me; bounded unlock after challenge | Shield explains "open Wake Me" manually | open | open | n/a | n/a | n/a | n/a |
 | 13 | iOS 27 separate alarm volume vs AlarmKit audio | Recorded level at min / mid / max alarm volume | Readiness guidance only | open | n/a | n/a | n/a | n/a | n/a |
-| 14 | Reboot, time-zone change, DST transition, app update with armed routines | All armed occurrences survive or are re-armed | Readiness warns after reboot until opened | open | open | open | open | open | open |
+| 14 | Reboot before first unlock, time-zone change, DST transition, app update with armed routines | Mirrored alarm rings before unlock; local stop/escape cancel follow-up; cancellation stays after unlock; remaining occurrences re-arm | Readiness warns after reboot until opened | open | open | open | open | open | open |
+| 15 | Android voice capture, private upload/scan and recipient approval | Denial/revocation safe; recording stops on background/30 s; only clean approved sound rings; deletion/removal and corrupt-cache fallback observed | Built-in sounds | n/a | n/a | open | open | open | open |
 
 ## How to run (summary)
 

@@ -200,7 +200,7 @@ class JourneyTest {
         tap("Study")
         waitFor("18:00", substring = true)
         tap("Save wake-up")
-        waitInList("Study")
+        waitInList("18:00 · Weekdays")
         tap("Study")
         tap("Use this routine again")
         waitFor("Study")

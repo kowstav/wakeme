@@ -193,6 +193,7 @@ jobs:
           adb shell am instrument -w -r -e notClass app.wakeme.JourneyTest,app.wakeme.FocusShieldTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
       - name: Focus accessibility journey in its own instrumentation process
+        if: always() && steps.boot.outcome == 'success'
         run: |
           # Compose/Espresso input changes UiAutomation flags and suppresses accessibility services.
           # Run the actual service/shield assertions without that shared automation connection.

@@ -441,7 +441,7 @@ internal fun SystemLocationButton(onResult: (Boolean) -> Unit) {
     } ?: return
     androidx.compose.ui.viewinterop.AndroidView(
         factory = { ctx ->
-            androidx.core.locationbutton.LocationButton(ctx).apply {
+            androidx.core.locationbutton.LocationButton(android.view.ContextThemeWrapper(ctx, app.wakeme.R.style.ThemeOverlay_WakeMe_LocationButton)).apply {
                 id = app.wakeme.R.id.session_location_button
                 parentActivity = activity
                 setTextType(androidx.core.locationbutton.LocationButton.TEXT_TYPE_SHARE_PRECISE_LOCATION)

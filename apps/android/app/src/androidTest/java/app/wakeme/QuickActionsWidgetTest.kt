@@ -11,6 +11,11 @@ import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.ActivityTestRule
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import app.wakeme.widget.QuickActionsReceiver
 import app.wakeme.widget.QuickActionsWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
@@ -56,12 +61,16 @@ class QuickActionsWidgetTest {
             }
             assertNotNull("toolbar rendered with an accessible friend action", button)
             DeviceEvidence.screenshot("53-home-widget-toolbar")
-            val monitor = instrumentation.addMonitor(MainActivity::class.java.name, null, false)
-            try {
-                instrumentation.runOnMainSync { button!!.performClick() }
-                val opened = requireNotNull(instrumentation.waitForMonitorWithTimeout(monitor, 5000)) { "widget opens the app" }
-                assertEquals("friends", opened.intent.getStringExtra(MainActivity.EXTRA_ROUTE))
-            } finally { instrumentation.removeMonitor(monitor) }
+            onView(withContentDescription("Choose a friend to quack")).perform(click())
+            var opened: MainActivity? = null
+            val launchDeadline = android.os.SystemClock.elapsedRealtime() + 10_000
+            while (opened == null && android.os.SystemClock.elapsedRealtime() < launchDeadline) {
+                instrumentation.runOnMainSync {
+                    opened = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().firstOrNull()
+                }
+                if (opened == null) Thread.sleep(200)
+            }
+            assertEquals("friends", requireNotNull(opened) { "widget opens the app" }.intent.getStringExtra(MainActivity.EXTRA_ROUTE))
         } finally {
             automation.dropShellPermissionIdentity()
             host.stopListening(); host.deleteHost()
