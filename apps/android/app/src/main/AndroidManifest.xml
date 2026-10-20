@@ -28,6 +28,14 @@
     <!-- No microphone permission: voice recording for alarms isn't built yet. Add
          RECORD_AUDIO (requested just in time) only together with that feature. -->
 
+    <!-- Focus lists launcher apps to choose from (no QUERY_ALL_PACKAGES). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:name=".WakeMeApp"
         android:allowBackup="true"
@@ -60,6 +68,29 @@
                 <data android:scheme="https" android:host="wakeme.app" android:pathPrefix="/i/" />
             </intent-filter>
         </activity>
+
+        <!-- Focus (ADR 0014): the shield over an app the person chose to keep closed, and the narrowly
+             scoped accessibility service that shows it. Enabled per build (release: off until Play
+             approves the accessibility declaration). -->
+        <activity
+            android:name=".focus.FocusShieldActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity="app.wakeme.focus" />
+        <service
+            android:name=".focus.FocusShieldService"
+            android:enabled="@bool/focus_service_available"
+            android:exported="true"
+            android:label="@string/focus_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/focus_shield_service" />
+        </service>
 
         <!-- Full-screen alarm UI shown over the lock screen; large controls, no paywall, always an escape. -->
         <activity

@@ -176,6 +176,9 @@ jobs:
           done
           adb shell pm grant "$APP_ID" android.permission.POST_NOTIFICATIONS
           adb shell appops set "$APP_ID" SCHEDULE_EXACT_ALARM allow
+          # Focus (ADR 0014): turn on the narrowly scoped accessibility service, as a person would in Settings.
+          adb shell settings put secure enabled_accessibility_services "$APP_ID/app.wakeme.focus.FocusShieldService"
+          adb shell settings put secure accessibility_enabled 1
           adb logcat -c
       - name: Instrumented tests
         run: |

@@ -39,6 +39,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.wakeme.R
+import app.wakeme.focus.FocusScreen
 import app.wakeme.ui.challenges.ChallengeEditorScreen
 import app.wakeme.ui.friends.CircleScreen
 import app.wakeme.ui.routines.GuestHome
@@ -160,8 +161,9 @@ private fun NavGraph(nav: NavHostController, app: AppViewModel, modifier: Modifi
         composable("challenge-new") { ChallengeEditorScreen(onDone = { nav.popBackStack() }, onUpgrade = { nav.navigate("paywall") }) }
         composable("challenge-edit/{id}", listOf(navArgument("id") { type = NavType.StringType })) { ChallengeEditorScreen(onDone = { nav.popBackStack() }, onUpgrade = { nav.navigate("paywall") }, editId = it.arguments!!.getString("id")!!) }
         composable("safety") { SafetyScreen() }
+        composable("focus") { FocusScreen() }
         composable("safety/{id}", listOf(navArgument("id") { type = NavType.StringType })) { SafetyScreen(focusSessionId = it.arguments?.getString("id")) }
-        composable("you") { YouScreen(app = app, onPaywall = { nav.navigate("paywall") }, onSafety = { nav.navigate("safety") }) }
+        composable("you") { YouScreen(app = app, onPaywall = { nav.navigate("paywall") }, onSafety = { nav.navigate("safety") }, onFocus = { nav.navigate("focus") }) }
         composable("ready") { ReadyScreen(onContinue = { nav.popBackStack() }, continueLabel = "Done", onSkip = { nav.popBackStack() }) }
         composable("paywall") { PaywallScreen(onClose = { nav.popBackStack() }) }
     }

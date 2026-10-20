@@ -44,6 +44,7 @@ class IncomingHandler @Inject constructor(
     private val receipts: ReceiptQueue,
     private val scheduler: AlarmScheduler,
     private val challenges: ChallengeInstaller,
+    private val focus: app.wakeme.focus.FocusStore,
 ) {
     private val nm = context.getSystemService(NotificationManager::class.java)
 
@@ -98,6 +99,14 @@ class IncomingHandler @Inject constructor(
                         notify(id, if (decision.mode == "silent") Channels.REQUESTS_SILENT else Channels.quackChannel(cmd.soundId), data, actions = listOf(NotificationActionReceiver.ACK))
                         receipts.enqueue(Receipt.Command(id, "execution_reported"))
                     }
+                    Capability.FOCUS -> {
+                        // A request only: nothing starts until the recipient taps Start (ADR 0014).
+                        val friend = (data["title"] ?: "").substringBefore(" asks you to focus").ifBlank { "A friend" }
+                        val minutes = data["min"]?.toIntOrNull() ?: 25
+                        focus.offer(app.wakeme.focus.FocusRequest(id, cmd.actorId, friend, minutes, Instant.parse(cmd.expiresAt).toEpochMilli()))
+                        notify(id, if (decision.mode == "silent") Channels.REQUESTS_SILENT else Channels.REQUESTS, data, actions = emptyList(), route = "focus")
+                        receipts.enqueue(Receipt.Command(id, "execution_reported"))
+                    }
                     Capability.CHECKIN -> {
                         notify(id, if (decision.mode == "silent") Channels.REQUESTS_SILENT else Channels.REQUESTS, data, actions = listOf(NotificationActionReceiver.IM_OK))
                         receipts.enqueue(Receipt.Command(id, "execution_reported"))
@@ -119,10 +128,10 @@ class IncomingHandler @Inject constructor(
         return if (resId != 0) runCatching { context.getString(resId, *args.toTypedArray()) }.getOrDefault(data[fallbackField].orEmpty()) else data[fallbackField].orEmpty()
     }
 
-    private fun notify(id: String, channel: String, data: Map<String, String>, actions: List<String>) {
+    private fun notify(id: String, channel: String, data: Map<String, String>, actions: List<String>, route: String = "command/$id") {
         val open = PendingIntent.getActivity(
             context, id.hashCode(),
-            Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "command/$id"),
+            Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, route),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val b = NotificationCompat.Builder(context, channel)

@@ -171,7 +171,7 @@ private fun whenText(iso: String?) = iso?.let { runCatching { dateFmt.format(Ins
  * recipient's own consent settings and apply to every friend at once.
  */
 @Composable
-fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, vm: YouViewModel = hiltViewModel()) {
+fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, onFocus: () -> Unit = {}, vm: YouViewModel = hiltViewModel()) {
     val me by app.me.collectAsState()
     val s by vm.state.collectAsState()
     val context = LocalContext.current
@@ -265,6 +265,7 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, vm
         item {
             Gap(WakeMeTokens.spaceSm)
             SecondaryButton("Safety check-ins and location", onClick = onSafety)
+            SecondaryButton("Focus", onClick = onFocus)
         }
 
         // ------------------------------------------------------- subscription
