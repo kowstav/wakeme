@@ -188,6 +188,14 @@ final class LaunchTests: XCTestCase {
         app.tabBars.buttons["You"].tap()
         try must(app.staticTexts["Sam"].waitForExistence(timeout: 15), "step failed")
         shot(app, "10-you")
+        // Focus (ADR 0014): reachable from You; Screen Time access is asked for here, never at sign-up.
+        let focusLink = app.buttons["Focus"]
+        for _ in 0..<3 where !focusLink.isHittable { app.swipeUp() }
+        focusLink.tap()
+        try must(app.navigationBars["Focus"].waitForExistence(timeout: 10), "the Focus screen opens")
+        try must(app.buttons["Allow Screen Time access"].exists || app.buttons["Choose apps"].exists, "focus explains Screen Time before asking")
+        shot(app, "10b-focus")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         let delete = app.buttons["Delete account"]
         for _ in 0..<4 where !delete.isHittable { app.swipeUp() }
         try must(delete.exists, "account deletion is in the app (App Store 5.1.1(v))")

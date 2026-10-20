@@ -169,6 +169,13 @@ enum IncomingRequests {
             }
             await report(cmd.id, kind: "execution_refused", reason: WakeAlarms.shared.authorization == .authorized ? "os_scheduling_failed" : "permission_missing")
             return .show // the visible alert is the honest fallback
+        case Capability.focus:
+            // A request only (ADR 0014): it waits on the Focus screen until the recipient chooses.
+            let friend = data["title"].map { $0.replacingOccurrences(of: " asks you to focus", with: "") } ?? "A friend"
+            let request = FocusRequest(commandId: cmd.id, friendId: cmd.actorId, friendName: friend, minutes: data["min"].flatMap(Int.init) ?? 25)
+            await MainActor.run { FocusController.shared.offer(request) }
+            if presenting { await report(cmd.id, kind: "execution_reported") }
+            return mode == "silent" ? .showSilently : .show
         default:
             if presenting { await report(cmd.id, kind: "execution_reported") }
             return mode == "silent" ? .showSilently : .show

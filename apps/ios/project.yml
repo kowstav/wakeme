@@ -36,11 +36,19 @@ targets:
       # Linked explicitly so Xcode extracts App Intents metadata (the alarm's challenge and stop
       # intents); with only `import AppIntents` the build skipped it.
       - sdk: AppIntents.framework
+      # Focus (ADR 0014): ends the shield on time, explains it, and opens Wake Me from it.
+      - target: WakeMeFocusMonitor
+      - target: WakeMeShieldConfig
+      - target: WakeMeShieldAction
     # APNs needs this in a signed build (development here; distribution signing sets production).
+    # Family Controls (individual authorization) and the App Group the focus extensions share need
+    # the owner's team; distribution needs Apple's Family Controls approval.
     entitlements:
       path: WakeMe/WakeMe.entitlements
       properties:
         aps-environment: development
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups: [group.app.wakeme.ios]
     info:
       path: WakeMe/Info.plist
       properties:
@@ -74,6 +82,68 @@ targets:
         WAKEME_SUPABASE_URL: ""
         WAKEME_SUPABASE_ANON_KEY: ""
         WAKEME_REVENUECAT_IOS_KEY: ""
+  WakeMeFocusMonitor:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WakeMeFocusMonitor
+    entitlements:
+      path: WakeMeFocusMonitor/WakeMeFocusMonitor.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups: [group.app.wakeme.ios]
+    info:
+      path: WakeMeFocusMonitor/Info.plist
+      properties:
+        CFBundleDisplayName: Wake Me focus
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.deviceactivity.monitor-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).FocusMonitorExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.focus-monitor
+        SWIFT_VERSION: "5.0"
+  WakeMeShieldConfig:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WakeMeShieldConfig
+    entitlements:
+      path: WakeMeShieldConfig/WakeMeShieldConfig.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups: [group.app.wakeme.ios]
+    info:
+      path: WakeMeShieldConfig/Info.plist
+      properties:
+        CFBundleDisplayName: Wake Me shield
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.ManagedSettingsUI.shield-configuration-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShieldConfigurationExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.shield-config
+        SWIFT_VERSION: "5.0"
+  WakeMeShieldAction:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WakeMeShieldAction
+    entitlements:
+      path: WakeMeShieldAction/WakeMeShieldAction.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+    info:
+      path: WakeMeShieldAction/Info.plist
+      properties:
+        CFBundleDisplayName: Wake Me shield action
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.ManagedSettings.shield-action-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShieldActionExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.shield-action
+        SWIFT_VERSION: "5.0"
   WakeMeUITests:
     type: bundle.ui-testing
     platform: iOS
