@@ -128,7 +128,12 @@ private fun MainTabs(app: AppViewModel) {
     val pending by app.route.collectAsState()
     LaunchedEffect(pending) {
         pending?.let { r ->
-            routeKey(r)?.let { key -> if (key in TopLevelRoutes) backStack.selectTab(key) else backStack.add(key) }
+            // A restored launch Intent or another tap on the same notification can offer the
+            // current destination again. Keep its saved state/ViewModel instead of adding it twice.
+            routeKey(r)?.let { key ->
+                if (key in TopLevelRoutes) backStack.selectTab(key)
+                else if (backStack.lastOrNull() != key) backStack.add(key)
+            }
             app.consumeRoute()
         }
     }

@@ -234,7 +234,10 @@ class JourneyTest {
         }
         check(thanksCount() == 0)
         compose.activityRule.scenario.onActivity { activity ->
-            activity.startActivity(android.content.Intent(activity, MainActivity::class.java)
+            // ActivityScenario matches lifecycle events by the original Intent's filter fields.
+            // Keep those fields while exercising the real onNewIntent path; replace launch flags
+            // so the test launcher's CLEAR_TASK flag cannot clear the activity being recreated.
+            activity.startActivity(android.content.Intent(activity.intent).setFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .putExtra(MainActivity.EXTRA_ROUTE, "wake-thanks-plan/${buddyPlan.getString("id")}"))
         }
         waitFor("Send thanks")
