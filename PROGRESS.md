@@ -9,7 +9,7 @@ Last updated: 2026-10-20. Status words: **specified**, **implemented**, **verifi
 - Implemented Android manual circle quizzes: an explicit audience choice, personal by default, explanation that members can read drafts/answers, audience shown before publishing and in the list. Editing preserves the audience; circle membership grants no alarm authority. AI and template creation still start as personal challenges. The quiz form survives activity recreation. iOS circle authoring remains open.
 - Added four instrumented lifecycle tests and extended the creator journey to recreate the editor, publish a circle quiz, verify outsider/member access, and verify access ends on leaving. Added alarm/quiz/chess previews on four form factors, large text and landscape. New instrumented tests and previews are pending execution; no new reference images were accepted.
 - Local setup: installed the official Android CLI (1.0.16625370), API 37 SDK and a checksum-verified Temurin JDK 17.0.20.1. The first build failed when the system drive ran out of space; the temporary JDK archive and newly installed emulator package were removed. An Android 17 system-image download failed for insufficient disk space, so local emulator validation is unavailable. Retrying unit tests, compilation and lint with two workers. All downloaded build tools/data are local and ignored by Git.
-- Android emulator/previews CI now also runs on Android pull requests, rather than only pushes to the working branch. Launch gates below remain open.
+- Android emulator/previews CI now also runs on Android pull requests and `codex/**` feature-branch pushes, rather than only pushes to the working branch. Push/PR runs for the same branch share a concurrency group. Launch gates below remain open.
 
 ## Verified
 
