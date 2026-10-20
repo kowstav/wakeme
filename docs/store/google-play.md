@@ -12,9 +12,9 @@
 | Play category | Data | Notes |
 |---|---|---|
 | Personal info → Email address, Name | Sign-in email; display name | Google sign-in or email code |
-| Location → Precise location | Only during a share the person starts (optional) | Deleted when the share ends |
+| Location → Approximate and precise location | One optional SOS position, or a timed share the person starts | Capture time/accuracy shown; session expiry enforced |
 | Messages → Other in-app messages | Messages between friends | Not end-to-end encrypted |
-| Audio → Other audio files | Custom sounds people upload (optional) | |
+| Audio files → Voice or sound recordings | Optional recorded sounds people explicitly upload | Private storage, format/hash/duration checks; recipient approves offers |
 | Financial info → Purchase history | Plus subscription status | |
 | App activity → Other actions | Requests sent and received, routines | Request records kept 30 days |
 | Device or other IDs | Install ID, device public key, push token | Not the advertising ID |
@@ -40,6 +40,8 @@ at 30 seconds, when leaving the screen, or when the app goes into the background
 local; upload requires a separate rights attestation and action. Friends must approve offers
 before the recording enters their alarm choices. Declare optional voice recordings in Audio.
 No camera, contacts or SMS permissions.
+
+Audio/location categories checked against [Google's Data safety definitions](https://support.google.com/googleplay/android-developer/answer/10787469). This remains a draft for the owner's final provider and legal review.
 
 ## Content rating (IARC) and audience
 

@@ -24,7 +24,7 @@ The copied widget sources retain their Apache-2.0 notices. Glance 1.2.0 was chec
 [official release notes](https://developer.android.com/jetpack/androidx/releases/glance). Widget
 actions open the app and never send a quack or start a safety/focus session automatically.
 
-The resulting changes are described in ADRs 0015–0017 and PROGRESS.md. No performance improvement has
+The resulting changes are described in ADRs 0015–0019 and PROGRESS.md. No performance improvement has
 been benchmarked, and no new screenshot reference has been approved or committed. Local emulator
 setup failed for insufficient disk space; only test execution actually recorded in PROGRESS.md
 counts as verification. Physical-device and distribution gates remain open.

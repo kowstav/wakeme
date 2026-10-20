@@ -48,7 +48,7 @@ internal class PrivateSoundStorage(http: OkHttpClient) {
         require(url.isHttps || (BuildConfig.DEBUG && url.host in setOf("127.0.0.1", "localhost", "10.0.2.2"))) { "A secure sound download is unavailable." }
         return raw
     }
-    suspend fun upload(target: UploadTarget, recording: File) {
+    suspend fun upload(target: UploadTarget, recording: File) = withContext(Dispatchers.IO) {
         require(target.method == "PUT")
         val request = Request.Builder().url(url(target.url)).put(recording.asRequestBody("audio/mp4".toMediaType())).apply {
             target.headers.forEach { (key, value) ->
