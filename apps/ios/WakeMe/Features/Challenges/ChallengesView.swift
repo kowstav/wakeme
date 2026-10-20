@@ -260,6 +260,8 @@ struct ChallengeCreatorView: View {
     @State private var working = false
     @State private var progress: String?
     @State private var message: String?
+    @State private var outOfCredits = false
+    @State private var showPlus = false
     @State private var filledFromEdit = false
 
     private var filled: [WakeMeAPI.QuizQuestion] {
@@ -363,6 +365,13 @@ struct ChallengeCreatorView: View {
             }
             .onAppear(perform: fillFromEdit)
             .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
+            .alert("You've used your AI creations for now", isPresented: $outOfCredits) {
+                Button("See Plus") { showPlus = true }
+                Button("Write a quiz myself", role: .cancel) { mode = .quiz }
+            } message: {
+                Text("Plus adds monthly AI credits. Writing a quiz yourself is always free, and saved challenges never use credits.")
+            }
+            .sheet(isPresented: $showPlus) { PaywallView() }
         }
     }
 
@@ -395,7 +404,7 @@ struct ChallengeCreatorView: View {
                 try await draftWithAI()
             }
         } catch let e as APIError where e.code == "credits_exhausted" {
-            message = "You've used your AI creations for now. You can still write a quiz yourself."
+            outOfCredits = true
         } catch let e as APIError where e.code == "challenge_invalid" {
             message = e.message + " Check answers, lengths and that it's safe and gentle."
         } catch {
