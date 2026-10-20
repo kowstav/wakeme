@@ -223,6 +223,18 @@ jobs:
           adb shell am force-stop "$APP_ID"
           adb shell am start -W -n "$APP_ID/app.wakeme.MainActivity" > /dev/null; sleep 8
           adb exec-out screencap -p > "$RUNNER_TEMP/evidence/40-large-screen.png"
+          # List-detail (android/skills adaptive, step 3): open the journey's friend Alex; on a wide
+          # window the friend opens beside the list and the navigation rail stays.
+          adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 || true
+          b=$(adb shell cat /sdcard/ui.xml 2>/dev/null | grep -o 'text="Alex"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' | head -n 1 | grep -o '\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]' || true)
+          if [ -n "$b" ]; then
+            nums=$(echo "$b" | grep -o '[0-9]*')
+            x1=$(echo "$nums" | sed -n 1p); y1=$(echo "$nums" | sed -n 2p); x2=$(echo "$nums" | sed -n 3p); y2=$(echo "$nums" | sed -n 4p)
+            adb shell input tap $(( (x1 + x2) / 2 )) $(( (y1 + y2) / 2 )); sleep 4
+            adb exec-out screencap -p > "$RUNNER_TEMP/evidence/41-large-screen-detail.png"
+          else
+            echo "Alex not found on the large-screen Friends list"
+          fi
           adb shell wm size reset; adb shell wm density reset
       - name: Collect evidence
         if: always()
@@ -261,3 +273,45 @@ jobs:
         with:
           name: android-emulator-evidence-api${{ matrix.api }}
           path: ${{ runner.temp }}/evidence
+
+  previews:
+    # android/skills adaptive, step 1: Compose Preview Screenshot Testing on phone, foldable, tablet
+    # and desktop sizes (layoutlib renders, not devices). No reference images are committed yet, so
+    # this records them for review; after review they are committed and this job validates instead.
+    name: Compose previews (phone, foldable, tablet, desktop)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+      - name: SDK platform
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - name: Render previews
+        run: ./gradlew --no-daemon -Pwakeme.screenshots=true -Pandroid.experimental.enableScreenshotTest=true :app:updateDebugScreenshotTest
+      - name: Previews into the log (downscaled base64, for review without artifact access)
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/previews"
+          find app/src -path "*screenshotTest*" -path "*reference*" -name "*.png" | sort | while read -r f; do
+            n=$(basename "$f" .png | sed 's/^app\.wakeme\.//; s/_[0-9a-f]\{8,\}_[0-9]*$//')
+            convert "$f" -resize 480x "$RUNNER_TEMP/previews/$n.png" 2>/dev/null || cp "$f" "$RUNNER_TEMP/previews/$n.png"
+            echo "=====BEGIN SCREENSHOT preview-$n====="; base64 -w 0 "$RUNNER_TEMP/previews/$n.png"; echo; echo "=====END SCREENSHOT preview-$n====="
+          done
+          ls app/src | grep -i screenshot || echo "no screenshot output"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: compose-preview-references
+          path: apps/android/app/src/screenshotTestDebug/reference

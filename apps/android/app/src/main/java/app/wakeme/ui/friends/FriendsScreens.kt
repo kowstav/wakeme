@@ -18,11 +18,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.items
+import app.wakeme.designsystem.AdaptiveList
+import app.wakeme.designsystem.ReloadWhenBackOnTop
+import app.wakeme.designsystem.fullWidth
+import app.wakeme.readiness.ReadinessItem
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -47,7 +49,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.wakeme.core.Capability
 import app.wakeme.data.net.FriendAction
 import app.wakeme.data.net.FriendDto
@@ -67,10 +69,9 @@ import app.wakeme.ui.onboarding.playQuackPreview
 import app.wakeme.ui.soundName
 
 @Composable
-fun FriendsScreen(onOpen: (String) -> Unit, onOpenCircle: (String) -> Unit = {}, vm: FriendsViewModel = hiltViewModel()) {
+fun FriendsScreen(onOpen: (String) -> Unit, onOpenCircle: (String) -> Unit = {}, onTop: Boolean = true, vm: FriendsViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
-    var code by remember { mutableStateOf("") }
     val askNotifications = rememberNotificationAsk()
     var notificationsOn by remember { mutableStateOf(notificationsAllowed(context)) }
     LifecycleResumeEffect(Unit) {
@@ -78,60 +79,23 @@ fun FriendsScreen(onOpen: (String) -> Unit, onOpenCircle: (String) -> Unit = {},
         vm.refreshReadiness()
         onPauseOrDispose { }
     }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-        item {
-            Gap()
-            Text("Friends", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-            if (s.offline) StatusPill("Offline · showing nothing new. Your alarms still work.", Tone.Warning)
-        }
-        // Doc 03 §3: home shows the next alarm on this phone and, at most, one readiness issue.
-        s.nextAlarm?.let { next ->
-            item {
-                WMCard {
-                    Text("Next alarm on this phone", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                    Body(nextAlarmText(next.fireAt, next.label))
-                    s.readinessIssue?.let { issue ->
-                        StatusPill(readinessIssueText(issue), Tone.Warning)
-                        SecondaryButton(readinessFixLabel(issue), onClick = { context.startActivity(vm.settingsIntent(issue)) })
-                    }
-                }
+    ReloadWhenBackOnTop(onTop, vm::load)
+    FriendsList(
+        s = s,
+        notificationsOn = notificationsOn,
+        onOpen = onOpen,
+        onFixReadiness = { issue -> context.startActivity(vm.settingsIntent(issue)) },
+        onTurnOnNotifications = {
+            if (notificationsAsked(context)) {
+                context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+            } else {
+                askNotifications("So quacks and requests from your friends can reach you.") { notificationsOn = notificationsAllowed(context) }
             }
-        }
-        if (!s.loading && s.friends.isEmpty()) {
-            item {
-                WMCard {
-                    Text("Invite someone you trust", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                    Body("Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
-                }
-            }
-        }
-        if (s.friends.isNotEmpty() && !notificationsOn) {
-            item {
-                WMCard {
-                    Body("Notifications are off, so quacks from friends can't reach you.", color = WM.colors.textPrimary)
-                    SecondaryButton("Turn on notifications", onClick = {
-                        if (notificationsAsked(context)) {
-                            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
-                        } else {
-                            askNotifications("So quacks and requests from your friends can reach you.") { notificationsOn = notificationsAllowed(context) }
-                        }
-                    })
-                }
-            }
-        }
-        items(s.friends, key = { it.friendshipId }) { f -> FriendCard(f, onOpen = { onOpen(f.friendshipId) }) }
-        item { Gap(); CirclesSection(onOpen = onOpenCircle) }
-        item {
-            Gap()
-            PrimaryButton("Invite a friend", onClick = vm::createInvite)
-            Gap(WakeMeTokens.spaceSm)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(code, { code = it.uppercase().take(11) }, label = { Text("Have a code?") }, singleLine = true, modifier = Modifier.weight(1f))
-                TextButton(onClick = { vm.redeemCode(code); code = "" }, enabled = code.length >= 9) { Text("Join") }
-            }
-            Gap(WakeMeTokens.spaceXl)
-        }
-    }
+        },
+        onInvite = vm::createInvite,
+        onRedeem = vm::redeemCode,
+        circles = { CirclesSection(onOpen = onOpenCircle, onTop = onTop) },
+    )
     s.invite?.let { inv ->
         AlertDialog(
             onDismissRequest = vm::dismissMessage,
@@ -147,6 +111,69 @@ fun FriendsScreen(onOpen: (String) -> Unit, onOpenCircle: (String) -> Unit = {},
         )
     }
     s.message?.let { AlertDialog(onDismissRequest = vm::dismissMessage, confirmButton = { TextButton(onClick = vm::dismissMessage) { Text("OK") } }, text = { Text(it) }) }
+}
+
+/** The Friends tab's content without its ViewModel (the screenshot tests render it with sample data). */
+@Composable
+fun FriendsList(
+    s: FriendsState,
+    notificationsOn: Boolean,
+    onOpen: (String) -> Unit,
+    onFixReadiness: (ReadinessItem) -> Unit,
+    onTurnOnNotifications: () -> Unit,
+    onInvite: () -> Unit,
+    onRedeem: (String) -> Unit,
+    circles: @Composable () -> Unit,
+) {
+    var code by remember { mutableStateOf("") }
+    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues()) {
+        fullWidth {
+            Gap()
+            Text("Friends", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+            if (s.offline) StatusPill("Offline · showing nothing new. Your alarms still work.", Tone.Warning)
+        }
+        // Doc 03 §3: home shows the next alarm on this phone and, at most, one readiness issue.
+        s.nextAlarm?.let { next ->
+            fullWidth {
+                WMCard {
+                    Text("Next alarm on this phone", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                    Body(nextAlarmText(next.fireAt, next.label))
+                    s.readinessIssue?.let { issue ->
+                        StatusPill(readinessIssueText(issue), Tone.Warning)
+                        SecondaryButton(readinessFixLabel(issue), onClick = { onFixReadiness(issue) })
+                    }
+                }
+            }
+        }
+        if (!s.loading && s.friends.isEmpty()) {
+            fullWidth {
+                WMCard {
+                    Text("Invite someone you trust", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                    Body("Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
+                }
+            }
+        }
+        if (s.friends.isNotEmpty() && !notificationsOn) {
+            fullWidth {
+                WMCard {
+                    Body("Notifications are off, so quacks from friends can't reach you.", color = WM.colors.textPrimary)
+                    SecondaryButton("Turn on notifications", onClick = onTurnOnNotifications)
+                }
+            }
+        }
+        items(s.friends, key = { it.friendshipId }) { f -> FriendCard(f, onOpen = { onOpen(f.friendshipId) }) }
+        fullWidth { Gap(); circles() }
+        fullWidth {
+            Gap()
+            PrimaryButton("Invite a friend", onClick = onInvite)
+            Gap(WakeMeTokens.spaceSm)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(code, { code = it.uppercase().take(11) }, label = { Text("Have a code?") }, singleLine = true, modifier = Modifier.weight(1f))
+                TextButton(onClick = { onRedeem(code); code = "" }, enabled = code.length >= 9) { Text("Join") }
+            }
+            Gap(WakeMeTokens.spaceXl)
+        }
+    }
 }
 
 @Composable

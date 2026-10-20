@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// android/skills adaptive, step 1: Compose Preview Screenshot Testing across phone, foldable, tablet and
+// desktop. The plugin is experimental, so it is applied only when asked (-Pwakeme.screenshots=true,
+// the CI "previews" job) and cannot break the app build, tests or lint.
+val screenshots = providers.gradleProperty("wakeme.screenshots").orNull == "true"
+
 fun prop(name: String): String = (findProperty(name) as String?).orEmpty()
 fun quoted(name: String): String = "\"" + prop(name).replace("\"", "\\\"") + "\""
 
@@ -76,7 +81,11 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+
+    if (screenshots) experimentalProperties["android.experimental.enableScreenshotTest"] = true
 }
+
+if (screenshots) apply(plugin = "com.android.compose.screenshot")
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
@@ -91,7 +100,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.process)
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.room.runtime)
@@ -102,6 +113,9 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.compose.material3.navsuite)
+    implementation(libs.compose.material3.adaptive)
+    implementation(libs.compose.material3.adaptive.layout)
+    implementation(libs.compose.material3.adaptive.navigation3)
     implementation(libs.compose.material.icons)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
@@ -109,7 +123,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.hilt.work)
     ksp(libs.hilt.work.compiler)
 
@@ -140,4 +154,10 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
+
+    if (screenshots) {
+        "screenshotTestImplementation"(platform(libs.compose.bom))
+        "screenshotTestImplementation"(libs.compose.ui.tooling)
+        "screenshotTestImplementation"(libs.screenshot.validation.api)
+    }
 }

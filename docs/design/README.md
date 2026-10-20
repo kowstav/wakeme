@@ -63,5 +63,5 @@ Screenshots come from CI (printed into job logs; see ADR 0009 — not device evi
 | Android 19 | Android 16/17 | 2026-10-19 | Lavender default dialogs; check-in summary cut off |
 | iOS 21 | iPhone 17 Pro simulator | 2026-10-19 | Incoming SOS listed below "Start" → friends' shares first |
 | Android 20 | Android 16/17 | 2026-10-19 | Disabled "Send quack" looked tappable; switch subtitle under the switch; bare −/+ steppers |
-| Android 26+ | Android 16/17 | pending | Home card, quack hop, guest home, circles, focus shield, tablet-size rail (40-large-screen) |
+| Android 26+ | Android 16/17 | pending | Home card, quack hop, guest home, circles, focus shield, tablet-size rail (40-large-screen), list-detail on a tablet (41-large-screen-detail), Compose previews on four form factors (preview-*) |
 | iOS 30+ | iPhone simulator | pending | Guest home, push received, circles, Focus permission step, paywall (store unavailable) |

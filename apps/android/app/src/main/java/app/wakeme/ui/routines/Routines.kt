@@ -8,8 +8,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import app.wakeme.designsystem.AdaptiveList
+import app.wakeme.designsystem.ReloadWhenBackOnTop
+import app.wakeme.designsystem.fullWidth
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -28,7 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.wakeme.alarm.AlarmScheduler
@@ -166,34 +175,41 @@ class RoutinesViewModel @Inject constructor(
 }
 
 @Composable
-fun RoutinesScreen(onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: () -> Unit = {}, vm: RoutinesViewModel = hiltViewModel()) {
+fun RoutinesScreen(onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: () -> Unit = {}, onTop: Boolean = true, vm: RoutinesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-        item {
+    ReloadWhenBackOnTop(onTop, vm::load)
+    RoutinesList(s, onNew = onNew, onOpen = onOpen, onFixReadiness = onFixReadiness)
+    s.error?.let { AlertDialog(onDismissRequest = vm::clearError, confirmButton = { TextButton(onClick = vm::clearError) { Text("OK") } }, text = { Text(it) }) }
+}
+
+/** The Routines tab's content without its ViewModel (the screenshot tests render it with sample data). */
+@Composable
+fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: () -> Unit) {
+    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues()) {
+        fullWidth {
             Gap()
-            Text("Routines", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+            Text("Routines", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             if (!s.exactAlarmsOk) {
                 StatusPill("Alarms aren't allowed to ring on time yet", Tone.Danger)
                 SecondaryButton("Make this phone ready", onClick = onFixReadiness)
             }
         }
         val proposals = s.mine.filter { it.pending != null }
-        if (proposals.isNotEmpty()) item { SectionTitle("Waiting for you") }
+        if (proposals.isNotEmpty()) fullWidth { SectionTitle("Waiting for you") }
         items(proposals, key = { "p" + it.id }) { p -> PlanCard(p, s.myId, onOpen) }
-        item { SectionTitle("On this phone") }
-        if (s.mine.none { it.accepted != null }) item { Body("No alarms yet. Set one for yourself, or let a friend suggest one.") }
+        fullWidth { SectionTitle("On this phone") }
+        if (s.mine.none { it.accepted != null }) fullWidth { Body("No alarms yet. Set one for yourself, or let a friend suggest one.") }
         items(s.mine.filter { it.accepted != null }, key = { it.id }) { p -> PlanCard(p, s.myId, onOpen) }
         if (s.helping.isNotEmpty()) {
-            item { SectionTitle("Helping friends") }
+            fullWidth { SectionTitle("Helping friends") }
             items(s.helping, key = { "h" + it.id }) { p -> PlanCard(p, s.myId, onOpen) }
         }
-        item {
+        fullWidth {
             Gap()
             PrimaryButton("New wake-up", onClick = onNew)
             Gap(WakeMeTokens.spaceXl)
         }
     }
-    s.error?.let { AlertDialog(onDismissRequest = vm::clearError, confirmButton = { TextButton(onClick = vm::clearError) { Text("OK") } }, text = { Text(it) }) }
 }
 
 @Composable

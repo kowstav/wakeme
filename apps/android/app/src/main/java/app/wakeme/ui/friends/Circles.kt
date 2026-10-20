@@ -27,7 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.wakeme.data.WakeMeApi
@@ -98,22 +98,13 @@ class CirclesViewModel @Inject constructor(private val api: WakeMeApi) : ViewMod
 
 /** The Circles part of the Friends tab: your circles, and making a new one. */
 @Composable
-fun CirclesSection(onOpen: (String) -> Unit, vm: CirclesViewModel = hiltViewModel()) {
+fun CirclesSection(onOpen: (String) -> Unit, onTop: Boolean = true, vm: CirclesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     var naming by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
-    LaunchedEffect(Unit) { vm.loadList() }
-    Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-        SectionTitle("Circles")
-        if (s.circles.isEmpty()) Body("A circle is a private group: your flat, study group or team, with its own chat.")
-        s.circles.forEach { c ->
-            WMCard(Modifier.clickable { onOpen(c.id) }) {
-                Text(c.name, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
-                Body("${c.memberCount} member${if (c.memberCount == 1) "" else "s"}")
-            }
-        }
-        QuietButton("New circle", onClick = { naming = true })
-    }
+    // Also when the list is back on top beside a circle that was just left or renamed (two panes).
+    LaunchedEffect(onTop) { if (onTop) vm.loadList() }
+    CirclesList(s.circles, onOpen = onOpen, onNew = { naming = true })
     if (naming) {
         AlertDialog(
             onDismissRequest = { naming = false },
@@ -200,4 +191,20 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
         )
     }
     s.message?.let { AlertDialog(onDismissRequest = vm::dismiss, confirmButton = { TextButton(onClick = vm::dismiss) { Text("OK") } }, text = { Text(it) }) }
+}
+
+/** Your circles without the ViewModel (the screenshot tests render it with sample data). */
+@Composable
+fun CirclesList(circles: List<CircleDto>, onOpen: (String) -> Unit, onNew: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+        SectionTitle("Circles")
+        if (circles.isEmpty()) Body("A circle is a private group: your flat, study group or team, with its own chat.")
+        circles.forEach { c ->
+            WMCard(Modifier.clickable { onOpen(c.id) }) {
+                Text(c.name, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
+                Body("${c.memberCount} member${if (c.memberCount == 1) "" else "s"}")
+            }
+        }
+        QuietButton("New circle", onClick = onNew)
+    }
 }

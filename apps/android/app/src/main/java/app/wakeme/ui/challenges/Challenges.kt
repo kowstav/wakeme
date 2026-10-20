@@ -7,8 +7,17 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import app.wakeme.designsystem.AdaptiveList
+import app.wakeme.designsystem.ReloadWhenBackOnTop
+import app.wakeme.designsystem.fullWidth
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -27,7 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.wakeme.challenge.ChallengeRunner
@@ -178,38 +187,52 @@ class ChallengesViewModel @Inject constructor(private val api: WakeMeApi) : View
 }
 
 @Composable
-fun ChallengesScreen(onNew: () -> Unit, onEdit: (String) -> Unit, onUpgrade: () -> Unit, vm: ChallengesViewModel = hiltViewModel()) {
+fun ChallengesScreen(onNew: () -> Unit, onEdit: (String) -> Unit, onUpgrade: () -> Unit, onTop: Boolean = true, vm: ChallengesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
-    // Coming back from the editor shows what was just published.
+    // Coming back from the editor shows what was just published (beside the editor too, on two panes).
     LaunchedEffect(Unit) { vm.load() }
+    ReloadWhenBackOnTop(onTop, vm::load)
     s.trying?.let { (c, def) -> TryOut(c, def, vm); return }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-        item {
+    ChallengesList(s, onNew = onNew, onTry = { t -> vm.fromTemplate(t.id, "easy") }, onOpen = vm::open, canEdit = vm::canEdit, onEdit = onEdit)
+    Messages(s, vm, onUpgrade)
+}
+
+/** The Challenges tab's content without its ViewModel (the screenshot tests render it with sample data). */
+@Composable
+fun ChallengesList(
+    s: ChallengesState,
+    onNew: () -> Unit,
+    onTry: (TemplateDto) -> Unit,
+    onOpen: (ChallengeDto) -> Unit,
+    canEdit: (ChallengeDto) -> Boolean,
+    onEdit: (String) -> Unit,
+) {
+    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues()) {
+        fullWidth {
             Gap()
-            Text("Challenges", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+            Text("Challenges", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             Body("Build challenges from your group's own jokes and goals. They run on the phone, even offline, and always have a way out.")
             PrimaryButton("Create a challenge", onClick = onNew)
         }
-        item { SectionTitle("Start from a template") }
+        fullWidth { SectionTitle("Start from a template") }
         items(s.templates, key = { it.id }) { t ->
             WMCard {
                 Text(t.title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 Body(t.description)
-                SecondaryButton("Try it", onClick = { vm.fromTemplate(t.id, "easy") })
+                SecondaryButton("Try it", onClick = { onTry(t) })
             }
         }
-        if (s.challenges.isNotEmpty()) item { SectionTitle("Yours and your circles'") }
+        if (s.challenges.isNotEmpty()) fullWidth { SectionTitle("Yours and your circles'") }
         items(s.challenges, key = { it.id }) { c ->
             WMCard {
                 Text(c.title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 StatusPill(if (c.publishedRevision != null) "Ready to use · version ${c.publishedRevision}" else "Draft", if (c.publishedRevision != null) Tone.Success else Tone.Neutral)
-                QuietButton("Open", onClick = { vm.open(c) })
-                if (vm.canEdit(c)) QuietButton("Edit", onClick = { onEdit(c.id) })
+                QuietButton("Open", onClick = { onOpen(c) })
+                if (canEdit(c)) QuietButton("Edit", onClick = { onEdit(c.id) })
             }
         }
-        item { Gap(WakeMeTokens.spaceXl) }
+        fullWidth { Gap(WakeMeTokens.spaceXl) }
     }
-    Messages(s, vm, onUpgrade)
 }
 
 @Composable

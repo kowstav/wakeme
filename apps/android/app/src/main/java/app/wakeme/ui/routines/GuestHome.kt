@@ -1,13 +1,13 @@
 package app.wakeme.ui.routines
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import app.wakeme.designsystem.AdaptiveList
+import app.wakeme.designsystem.Readable
+import app.wakeme.designsystem.fullWidth
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.wakeme.alarm.LocalRoutines
@@ -68,12 +68,12 @@ fun GuestHome(onSignIn: () -> Unit, vm: GuestViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     var editing by remember { mutableStateOf(false) }
     if (editing) {
-        RoutineEditorScreen(ownerId = null, onDone = { editing = false }, guest = true)
+        Readable { RoutineEditorScreen(ownerId = null, onDone = { editing = false }, guest = true) }
         return
     }
     // Outside the main Scaffold: keep the list clear of the system bars and keyboard itself.
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-        item {
+    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.asPaddingValues()) {
+        fullWidth {
             Gap()
             Text("Your wake-ups", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             Body("They live on this phone only and ring without a connection. Sign in when you want friends to help.")
@@ -86,15 +86,15 @@ fun GuestHome(onSignIn: () -> Unit, vm: GuestViewModel = hiltViewModel()) {
                 QuietButton("Delete this wake-up", onClick = { vm.delete(r.planId) })
             }
         }
-        item { PrimaryButton("New wake-up", onClick = { editing = true }) }
-        item { WMCard { ReadinessSection() } }
-        item {
+        fullWidth { PrimaryButton("New wake-up", onClick = { editing = true }) }
+        fullWidth { WMCard { ReadinessSection() } }
+        fullWidth {
             WMCard {
                 Text("Wake each other up", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 Body("Sign in to invite friends. Your wake-ups here move to your account and keep ringing on this phone.")
                 SecondaryButton("Sign in to add friends", onClick = onSignIn)
             }
         }
-        item { Gap(WakeMeTokens.spaceXl) }
+        fullWidth { Gap(WakeMeTokens.spaceXl) }
     }
 }
