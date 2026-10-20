@@ -116,7 +116,7 @@ fun ReadinessSection(vm: ReadyViewModel = hiltViewModel()) {
         SectionTitle(stringResource(R.string.ready_title))
         when {
             s.readiness.missing.isEmpty() -> StatusPill(stringResource(R.string.ready_all_good), Tone.Success)
-            !s.readiness.readyForWake -> StatusPill("Wake-ups can't ring reliably on this phone yet", Tone.Danger)
+            !s.readiness.readyForWake -> StatusPill("Wake-ups can't ring reliably on this phone yet", Tone.Warning)
             else -> StatusPill("Ready for wake-ups · ${s.readiness.missing.size} optional step${if (s.readiness.missing.size == 1) "" else "s"}", Tone.Info)
         }
         s.readiness.missing.forEach { r ->

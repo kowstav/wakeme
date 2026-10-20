@@ -38,6 +38,7 @@ import app.wakeme.core.ChallengeDefinition
 import app.wakeme.core.WakeMeJson
 import app.wakeme.core.WakeSessionState
 import app.wakeme.challenge.ChallengeRunner
+import app.wakeme.designsystem.AlarmTimeStyle
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.Readable
@@ -166,9 +167,11 @@ fun AlarmScreen(
                 LaunchedEffect(clockText) {
                     if (clockText == null) while (true) { delay(1000); now = LocalTime.now() }
                 }
-                Text(clockText ?: now.format(formatter), fontSize = 64.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = c.alarmText)
+                // System font with tabular figures (monospace spaced the colon out: "07 : 00").
+                // Grows with font size up to 1.3× so it never overflows a phone at 2×.
+                Text(clockText ?: now.format(formatter), style = AlarmTimeStyle, color = c.alarmText, maxLines = 1)
                 if (wake.label.isNotBlank()) Text(wake.label, style = MaterialTheme.typography.headlineSmall, color = c.alarmText)
-                wake.helperName?.let { Text(stringResource(R.string.alarm_from_friend, it), style = MaterialTheme.typography.titleLarge, color = c.alarmText) }
+                wake.helperName?.let { Text(stringResource(R.string.alarm_from_friend, it), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal), color = c.alarmText) }
                 if (wake.usedFallbackSound) Body("The voice recording wasn't available. Using the built-in Gentle rise sound.", color = c.alarmText)
                 when {
                     wake.playbackFailure == "audio_focus_denied" -> Body("Sound is paused because another call or audio is active. Vibration continues.", color = c.alarmText)

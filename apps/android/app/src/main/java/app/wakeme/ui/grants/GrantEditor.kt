@@ -1,6 +1,29 @@
 package app.wakeme.ui.grants
 
 import android.app.TimePickerDialog
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
+import app.wakeme.designsystem.CardTitle
+import app.wakeme.designsystem.ChoiceChip
+import app.wakeme.designsystem.FieldGroup
+import app.wakeme.designsystem.Supporting
+import app.wakeme.designsystem.TimeDisplayStyle
+import app.wakeme.designsystem.WMMotion
+import app.wakeme.designsystem.rememberHaptics
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,7 +34,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -179,10 +201,11 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
             Body((fmt(g.lastUsedAt)?.let { "Last used $it." } ?: "$name hasn't used these yet.") +
                 " Saved to your account and kept on this phone, so a change or removal applies here even when you're offline.")
         }
-        Text("Start from", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            s.presets.filter { it.id != "focus_buddy" }.forEach { p ->
-                FilterChip(selected = false, onClick = { vm.applyPreset(p) }, label = { Text(if (p.id == "gentle_nudges") "Gentle nudges" else "Wake buddy") })
+        FieldGroup("Start from") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                s.presets.filter { it.id != "focus_buddy" }.forEach { p ->
+                    ChoiceChip(if (p.id == "gentle_nudges") "Gentle nudges" else "Wake buddy", selected = false, onClick = { vm.applyPreset(p) })
+                }
             }
         }
 
@@ -197,7 +220,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
         }
 
         WMCard {
-            SectionTitle("Help wake me")
+            CardTitle("Help wake me")
             SettingRow("Set wake-up routines for me", "You'll see and accept every routine before it's active.", Capability.ALARM_SCHEDULE in d.caps) { vm.toggle(Capability.ALARM_SCHEDULE, it) }
             SettingRow("Wake me now", "Ring this phone during your wake hours, if you're not up.", Capability.ALARM_REQUEST in d.caps) { vm.toggle(Capability.ALARM_REQUEST, it) }
             if (Capability.ALARM_REQUEST in d.caps || Capability.ALARM_SCHEDULE in d.caps) {
@@ -217,7 +240,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                     CHALLENGE_TYPES.forEach { t ->
                         val on = t in d.challenge.types
-                        FilterChip(selected = on, onClick = { vm.edit { it.copy(challenge = it.challenge.copy(types = if (on) (it.challenge.types - t).ifEmpty { listOf("math") } else it.challenge.types + t)) } }, label = { Text(t.replace('_', ' ')) })
+                        ChoiceChip(t.replace('_', ' '), selected = on, onClick = { vm.edit { it.copy(challenge = it.challenge.copy(types = if (on) (it.challenge.types - t).ifEmpty { listOf("math") } else it.challenge.types + t)) } })
                     }
                 }
                 Choice("At most", listOf(30, 60, 90, 180), d.challenge.maxDurationSeconds, { "${it}s" }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDurationSeconds = v)) } }
@@ -226,7 +249,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
         }
 
         WMCard {
-            SectionTitle("Check in on me")
+            CardTitle("Check in on me")
             SettingRow("Ask me to check in", "A request you can answer with “I'm OK”.", Capability.CHECKIN in d.caps) { vm.toggle(Capability.CHECKIN, it) }
             SettingRow("Ask where I am", "They can ask. Nothing is shared unless you choose to share, each time.", Capability.LOCATION in d.caps) { vm.toggle(Capability.LOCATION, it) }
         }
@@ -241,58 +264,124 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
 
 @Composable
 private fun <T> Choice(label: String, options: List<T>, selected: T, text: (T) -> String, onPick: (T) -> Unit) {
-    Text(label, style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-        options.forEach { o -> FilterChip(selected = o == selected, onClick = { onPick(o) }, label = { Text(text(o)) }) }
+    FieldGroup(label) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+            options.forEach { o -> ChoiceChip(text(o), selected = o == selected, onClick = { onPick(o) }) }
+        }
     }
 }
 
 @Composable
 private fun SoundPicker(selected: List<String>, custom: List<String>, onChange: (List<String>) -> Unit) {
-    Text("Sounds they can use", style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-        (BUNDLED + custom + selected).distinct().forEach { id ->
-            val on = id in selected
-            FilterChip(selected = on, onClick = { onChange(if (on) (selected - id).ifEmpty { listOf(id) } else selected + id) }, label = { Text(soundName(id)) })
+    FieldGroup("Sounds they can use") {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+            (BUNDLED + custom + selected).distinct().forEach { id ->
+                val on = id in selected
+                ChoiceChip(soundName(id), selected = on, onClick = { onChange(if (on) (selected - id).ifEmpty { listOf(id) } else selected + id) })
+            }
         }
     }
 }
 
-/** Seven day chips, Monday first; at least one stays selected. */
+/**
+ * Seven day toggles in one row, Monday first; at least one stays selected. Each is a 48 dp-tall
+ * target sharing the row's width (about 43 dp wide on a 360 dp phone), read as "Monday, checked".
+ * A chosen day fills with the accent and turns bold, so the state isn't colour alone.
+ */
 @Composable
 fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
     val names = listOf("M", "T", "W", "T", "F", "S", "S")
     val full = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
+    val haptics = rememberHaptics()
+    val c = WM.colors
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
         ALL_DAYS.forEach { day ->
             val on = day in days
-            FilterChip(
-                selected = on,
-                onClick = { onChange(if (on) (days - day).ifEmpty { listOf(day) } else (days + day).sorted()) },
-                label = { Text(names[day - 1]) },
-                modifier = Modifier.semantics { contentDescription = full[day - 1] },
-            )
+            val fill by animateColorAsState(if (on) c.accent else c.surfaceRaised, WMMotion.snappy(), label = "dayFill")
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = WakeMeTokens.minTouchTarget)
+                    .toggleable(value = on, role = Role.Checkbox, onValueChange = {
+                        haptics.selection()
+                        onChange(if (on) (days - day).ifEmpty { listOf(day) } else (days + day).sorted())
+                    })
+                    .semantics { contentDescription = full[day - 1] },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier.sizeIn(maxWidth = 44.dp, maxHeight = 44.dp).aspectRatio(1f).fillMaxSize()
+                        .background(fill, CircleShape)
+                        .border(1.dp, if (on) c.accent else c.outline, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(names[day - 1], style = MaterialTheme.typography.titleMedium, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, color = if (on) c.textOnAccent else c.textPrimary)
+                }
+            }
         }
     }
 }
 
-/** A time of day ("HH:MM") that opens the system time picker. */
+/**
+ * The routine's time as the biggest thing on screen (tabular, so it doesn't shift while it
+ * changes). Tapping it opens the system time picker; TalkBack reads "Rings at 07:00, change time".
+ */
 @Composable
-fun TimeOfDayButton(label: String, time: String, onPick: (String) -> Unit) {
+fun TimeDisplay(label: String, time: String, onPick: (String) -> Unit) {
     val context = LocalContext.current
-    TextButton(onClick = {
-        val (h, m) = time.split(":").map { it.toInt() }
-        TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
-    }) { Text("$label $time") }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(WakeMeTokens.radiusLg))
+            .clickable(onClickLabel = "Change time", role = Role.Button) {
+                val (h, m) = time.split(":").map { it.toInt() }
+                TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
+            }
+            .padding(vertical = WakeMeTokens.spaceXs)
+            .semantics(mergeDescendants = true) { },
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = WM.colors.textSecondary)
+        AnimatedContent(targetState = time, transitionSpec = { WMMotion.fadeThrough() }, label = "time") { t ->
+            Text(t, style = TimeDisplayStyle, color = WM.colors.textPrimary)
+        }
+    }
+}
+
+/**
+ * A time of day ("HH:MM") as a compact outlined field: the role ("From") small above the time.
+ * Opens the system time picker; read as "From 08:00, change time". Text stays "$label $time"
+ * for the journey test via the merged description.
+ */
+@Composable
+fun TimeOfDayButton(label: String, time: String, modifier: Modifier = Modifier, onPick: (String) -> Unit) {
+    val context = LocalContext.current
+    val c = WM.colors
+    val shape = RoundedCornerShape(WakeMeTokens.radiusMd)
+    Column(
+        modifier
+            .heightIn(min = WakeMeTokens.buttonHeight)
+            .clip(shape)
+            .border(1.dp, c.outline, shape)
+            .clickable(onClickLabel = "Change time", role = Role.Button) {
+                val (h, m) = time.split(":").map { it.toInt() }
+                TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
+            }
+            .padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceXs)
+            .semantics(mergeDescendants = true) { contentDescription = "$label $time" },
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+        Text(time, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+    }
 }
 
 @Composable
 fun WindowEditor(window: LocalWindow, onChange: (LocalWindow) -> Unit) {
     DayChips(window.days) { onChange(window.copy(days = it)) }
-    Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
-        TimeOfDayButton("From", window.start) { s -> if (s != window.end) onChange(window.copy(start = s)) }
-        TimeOfDayButton("Until", window.end) { e -> if (e != window.start) onChange(window.copy(end = e)) }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
+        TimeOfDayButton("From", window.start, Modifier.weight(1f)) { s -> if (s != window.end) onChange(window.copy(start = s)) }
+        TimeOfDayButton("Until", window.end, Modifier.weight(1f)) { e -> if (e != window.start) onChange(window.copy(end = e)) }
     }
-    if (window.end <= window.start) Body("Ends the next morning.")
+    if (window.end <= window.start) Supporting("Ends the next morning.")
 }
 

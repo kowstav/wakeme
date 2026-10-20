@@ -233,18 +233,21 @@ fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewM
         if (active.isEmpty() && sharing == null) item { StatusPill("You're not sharing anything", Tone.Neutral) }
 
         item {
-            Gap(WakeMeTokens.spaceSm)
-            SectionTitle("Start")
-            PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty())
-            Gap(WakeMeTokens.spaceSm)
-            SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty())
-            if (s.friends.isEmpty() && !s.loading) Body("Add a friend first. Only friends you pick can see a session.")
+            // A header sits closer to its own buttons than to what came before it.
+            androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
+                SectionTitle("Start")
+                PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty())
+                SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty())
+                if (s.friends.isEmpty() && !s.loading) Body("Add a friend first. Only friends you pick can see a session.")
+            }
         }
 
         item {
-            Gap(WakeMeTokens.spaceLg)
-            DangerButton("Send SOS to friends", onClick = { composing = "sos" })
-            Body("Alerts the friends you pick, and shares your location for 2 hours if you allow it.")
+            // SOS stays still and unmistakable; its explanation sits right under it.
+            androidx.compose.foundation.layout.Column(Modifier.padding(top = WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                DangerButton("Send SOS to friends", onClick = { composing = "sos" })
+                Body("Alerts the friends you pick, and shares your location for 2 hours if you allow it.")
+            }
             Gap(WakeMeTokens.spaceXl)
         }
     }

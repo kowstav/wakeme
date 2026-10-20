@@ -214,7 +214,6 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
         // ------------------------------------------------------ consent settings
         me?.let { m ->
             item {
-                Gap(WakeMeTokens.spaceSm)
                 SectionTitle("When friends can reach you")
                 val q = m.settings.quietHours
                 SettingRow(
@@ -271,7 +270,6 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
 
         // ------------------------------------------------------- subscription
         item {
-            Gap(WakeMeTokens.spaceSm)
             SectionTitle("Subscription")
             val b = s.billing
             if (b != null) {
@@ -288,7 +286,6 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
 
         // ------------------------------------------------------------ account
         item {
-            Gap(WakeMeTokens.spaceSm)
             SectionTitle("Account")
             SecondaryButton("Download my data", onClick = { vm.export() }, enabled = !s.busy)
             Gap(WakeMeTokens.spaceSm)

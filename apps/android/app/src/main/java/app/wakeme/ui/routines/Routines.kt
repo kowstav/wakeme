@@ -1,7 +1,6 @@
 package app.wakeme.ui.routines
 
 import android.content.Context
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,7 +21,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -57,7 +55,22 @@ import app.wakeme.data.net.ChallengeDto
 import app.wakeme.data.net.PlanDto
 import app.wakeme.data.net.PlanVersionDto
 import app.wakeme.data.net.OfflineException
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.CardTitle
+import app.wakeme.designsystem.ChoiceChip
+import app.wakeme.designsystem.FieldGroup
+import app.wakeme.designsystem.Supporting
+import app.wakeme.designsystem.WakeMeType
+import androidx.compose.foundation.layout.fillMaxWidth
+import app.wakeme.designsystem.DetailTopBar
+import app.wakeme.designsystem.EmptyState
+import app.wakeme.designsystem.TimeDisplayStyle
+import app.wakeme.ui.grants.TimeDisplay
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -74,7 +87,6 @@ import app.wakeme.readiness.Readiness
 import app.wakeme.sync.SyncEngine
 import app.wakeme.sync.SyncWorker
 import app.wakeme.ui.grants.DayChips
-import app.wakeme.ui.grants.TimeOfDayButton
 import app.wakeme.ui.soundName
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -94,7 +106,7 @@ fun readinessText(r: String, ownerName: String, mine: Boolean): Pair<String, Ton
         "ready_edit_pending" -> "Ready on $where · a change is waiting for approval" to Tone.Info
         "awaiting_acceptance" -> (if (mine) "Waiting for you to accept" else "Waiting for $ownerName to accept") to Tone.Info
         "awaiting_installation" -> "Saved · not yet confirmed on $where" to Tone.Warning
-        "install_failed" -> "Couldn't schedule on $where. Check alarm permissions." to Tone.Danger
+        "install_failed" -> "Couldn't schedule on $where. Check alarm permissions." to Tone.Warning
         "paused" -> "Paused" to Tone.Neutral
         "permission_lost" -> "Permission removed" to Tone.Warning
         "finished" -> "Finished" to Tone.Neutral
@@ -197,20 +209,20 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
             Gap()
             Text("Routines", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             if (!s.exactAlarmsOk) {
-                StatusPill("Alarms aren't allowed to ring on time yet", Tone.Danger)
+                StatusPill("Alarms aren't allowed to ring on time yet", Tone.Warning)
                 SecondaryButton("Make this phone ready", onClick = onFixReadiness)
             }
             if (s.pendingEnds > 0) StatusPill("Ended on this phone · account update waiting to sync", Tone.Warning)
         }
         val proposals = s.mine.filter { it.pending != null }
         if (proposals.isNotEmpty()) fullWidth { SectionTitle("Waiting for you") }
-        items(proposals, key = { "p" + it.id }) { p -> PlanCard(p, s.myId, onOpen) }
+        items(proposals, key = { "p" + it.id }) { p -> PlanCard(p, s.myId, onOpen, Modifier.animateItem()) }
         fullWidth { SectionTitle("On this phone") }
-        if (s.mine.none { it.accepted != null }) fullWidth { Body("No alarms yet. Set one for yourself, or let a friend suggest one.") }
-        items(s.mine.filter { it.accepted != null }, key = { it.id }) { p -> PlanCard(p, s.myId, onOpen) }
+        if (s.mine.none { it.accepted != null }) fullWidth { EmptyState("No alarms yet", "Set one for yourself, or let a friend suggest one. Nothing rings until this phone confirms it.") }
+        items(s.mine.filter { it.accepted != null }, key = { it.id }) { p -> PlanCard(p, s.myId, onOpen, Modifier.animateItem()) }
         if (s.helping.isNotEmpty()) {
             fullWidth { SectionTitle("Helping friends") }
-            items(s.helping, key = { "h" + it.id }) { p -> PlanCard(p, s.myId, onOpen) }
+            items(s.helping, key = { "h" + it.id }) { p -> PlanCard(p, s.myId, onOpen, Modifier.animateItem()) }
         }
         fullWidth {
             Gap()
@@ -221,15 +233,29 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
 }
 
 @Composable
-private fun PlanCard(p: PlanDto, myId: String?, onOpen: (String) -> Unit) {
+private fun PlanCard(p: PlanDto, myId: String?, onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
     val v = p.accepted ?: p.pending ?: return
     val mine = p.owner.id == myId
     val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
-    WMCard(Modifier.clickable { onOpen(p.id) }) {
-        Text("${v.localTime} · ${daysText(v.recurrence)}", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
-        if (v.label.isNotBlank()) Body(v.label)
-        if (!mine) Body("For ${p.owner.displayName}") else if (p.creator.id != myId) Body("Suggested by ${p.creator.displayName}")
-        StatusPill(label, tone)
+    WMCard(modifier, onClick = { onOpen(p.id) }, onClickLabel = "Open routine") {
+        Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
+            Text(timeAndDays(v.localTime, daysText(v.recurrence), WM.colors.textSecondary), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+            if (v.label.isNotBlank()) Text(v.label, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+            if (!mine) Supporting("For ${p.owner.displayName}") else if (p.creator.id != myId) Supporting("Suggested by ${p.creator.displayName}")
+        }
+        StatusPill(label, tone, announce = true)
+    }
+}
+
+/**
+ * "07:00 · Weekdays" as one text (tests and TalkBack read it whole), with the time in the
+ * timeInline role and the days quieter: the time is what people look for.
+ */
+private fun timeAndDays(time: String, days: String, quiet: androidx.compose.ui.graphics.Color) = buildAnnotatedString {
+    withStyle(WakeMeType.timeInline.toSpanStyle()) { append(time) }
+    withStyle(SpanStyle(color = quiet)) {
+        append(" · ")
+        append(days)
     }
 }
 
@@ -239,32 +265,39 @@ fun RoutineDetailScreen(planId: String, onBack: () -> Unit, onReuse: () -> Unit 
     // Read the observed state before the loading return, so the first API result recomposes this pane.
     val p = (s.mine + s.helping).firstOrNull { it.id == planId } ?: run { Body("Loading routine…"); return }
     val mine = p.owner.id == s.myId
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-        val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
-        Text("Wake-up routine", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        StatusPill(label, tone)
-        p.accepted?.let { VersionCard("Active version", it) }
-        p.nextOccurrences.firstOrNull()?.let { Body("Next: ${it.localDate}") }
-        p.pending?.let { pending ->
-            VersionCard(if (p.accepted == null) "Proposed by ${p.creator.displayName}" else "Proposed change from ${p.creator.displayName}", pending)
-            if (mine) {
-                Body("Nothing changes until you accept. You can change your mind anytime.")
-                PrimaryButton("Accept this version", onClick = { vm.act({ acceptPlan(p.id, pending.version) }) })
-                SecondaryButton(if (p.accepted == null) "Decline" else "Keep the current version", onClick = { vm.act({ declinePlan(p.id, pending.version) }) })
+    Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+        DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXxs))
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = WakeMeTokens.spaceMd).padding(bottom = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+            val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
+            Text("Wake-up routine", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+            (p.accepted ?: p.pending)?.let { v ->
+                Text(v.localTime, style = TimeDisplayStyle, color = WM.colors.textPrimary)
+                Body(daysText(v.recurrence) + if (v.label.isNotBlank()) " · ${v.label}" else "")
             }
+            StatusPill(label, tone, announce = true)
+            p.accepted?.let { VersionCard("Active version", it) }
+            p.nextOccurrences.firstOrNull()?.let { Body("Next: ${it.localDate}") }
+            p.pending?.let { pending ->
+                VersionCard(if (p.accepted == null) "Proposed by ${p.creator.displayName}" else "Proposed change from ${p.creator.displayName}", pending)
+                if (mine) {
+                    Body("Nothing changes until you accept. You can change your mind anytime.")
+                    PrimaryButton("Accept this version", onClick = { vm.act({ acceptPlan(p.id, pending.version) }) })
+                    SecondaryButton(if (p.accepted == null) "Decline" else "Keep the current version", onClick = { vm.act({ declinePlan(p.id, pending.version) }) })
+                }
+            }
+            if (mine && p.state in setOf("active", "paused")) {
+                SecondaryButton(if (p.state == "paused") "Resume" else "Pause", onClick = { vm.pause(p, p.state != "paused") })
+            }
+            if (p.accepted != null) SecondaryButton("Use this routine again", onClick = onReuse)
+            if (p.state !in setOf("cancelled", "declined")) DangerButton("End this routine", onClick = { vm.cancel(p); onBack() })
         }
-        if (mine && p.state in setOf("active", "paused")) {
-            SecondaryButton(if (p.state == "paused") "Resume" else "Pause", onClick = { vm.pause(p, p.state != "paused") })
-        }
-        if (p.accepted != null) SecondaryButton("Use this routine again", onClick = onReuse)
-        if (p.state !in setOf("cancelled", "declined")) DangerButton("End this routine", onClick = { vm.cancel(p); onBack() })
     }
 }
 
 @Composable
 private fun VersionCard(title: String, v: PlanVersionDto) {
     WMCard {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+        CardTitle(title)
         Body("${v.localTime} · ${daysText(v.recurrence)} · ${v.timeZone}${if (v.timeZonePolicy == "device") " (follows your phone when travelling)" else ""}")
         Body("Rings for up to ${v.ringSeconds} seconds with ${soundName(v.soundId).lowercase()}")
         v.followUpDelaySeconds?.let { Body("One follow-up alarm ${it / 60} min later unless you finish the challenge") }
@@ -398,14 +431,14 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
         appliedLimits = true
     }
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-        Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+        DetailTopBar(onBack = onDone)
+        Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
         if (ownerId != null) Body("${s.friendName ?: "Your friend"} sees exactly this and decides. Nothing changes on their phone until they accept.")
         Body("Use routines for waking, study, gym or practice. These are reminders you choose; Wake Me doesn't verify attendance or penalize missed days.")
         if (reuseId != null) Body("This creates a new routine for you. Your existing routine and your friends' permissions stay as they are. Choose any challenge again.")
-        Text("Start with", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+        FieldGroup("Start with") { FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             listOf("Wake-up", "Study", "Gym", "Language practice", "Music practice").forEach { preset ->
-                FilterChip(selected = selectedPreset == preset, onClick = {
+                ChoiceChip(preset, selected = selectedPreset == preset, onClick = {
                     selectedPreset = preset
                     label = if (preset == "Wake-up") "" else preset
                     ring = if (preset == "Wake-up") 90 else 30
@@ -415,39 +448,40 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
                         window = LocalWindow(if (preset == "Gym") listOf(1, 3, 5) else listOf(1, 2, 3, 4, 5), at, at)
                         timeZone = ZoneId.systemDefault().id
                     }
-                }, label = { Text(preset) })
+                })
             }
-        }
-        Body("Time and days")
+        } }
+        TimeDisplay("Rings at", window.start) { window = window.copy(start = it, end = it) }
         DayChips(window.days) { window = window.copy(days = it) }
-        TimeOfDayButton("Rings at", window.start) { window = window.copy(start = it, end = it) }
+        Body(daysText(Recurrence.weekly(window.days)))
         if (ownerId == null) Body("Time zone: $timeZone")
         if (limits != null && ownerId != null) {
             Body("${s.friendName ?: "They"} allow wake-ups: " + limits.windows.joinToString("; ") { "${daysText(Recurrence.weekly(it.days))} ${it.start}–${it.end}" } + ". It rings at this time in their time zone.")
             if (outsideHours) StatusPill("That's outside the wake hours ${s.friendName ?: "they"} chose.", Tone.Warning)
         }
-        OutlinedTextField(label, { label = it.take(40) }, label = { Text("Label (optional), e.g. 9am class") }, singleLine = true)
-        Text("Sound", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            sounds.forEach { id ->
-                FilterChip(selected = sound == id, onClick = { sound = id }, label = { Text(soundName(id)) })
+        OutlinedTextField(label, { label = it.take(40) }, label = { Text("Label (optional), e.g. 9am class") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        FieldGroup("Sound") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                sounds.forEach { id ->
+                    ChoiceChip(soundName(id), selected = sound == id, onClick = { sound = id })
+                }
             }
+            if (sound.startsWith("media:")) Supporting("If this recording isn't available, Gentle rise rings instead. Recordings aren't available before the first unlock after restarting your phone.")
         }
-        Text("Ring for", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-        if (sound.startsWith("media:")) Body("If this recording isn't available, Gentle rise rings instead. Recordings aren't available before the first unlock after restarting your phone.")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            rings.forEach { v -> FilterChip(selected = ring == v, onClick = { ring = v }, label = { Text("${v}s") }) }
+        FieldGroup("Ring for") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                rings.forEach { v -> ChoiceChip("${v}s", selected = ring == v, onClick = { ring = v }) }
+            }
         }
         if (ownerId != null) Body("Only the sounds and ring length ${s.friendName ?: "they"} approved.")
         if (s.challenges.isNotEmpty() && (ownerId == null || s.canAssignChallenges)) {
-            Text("Challenge (optional)", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                FilterChip(selected = challengeRevision == null, onClick = { challengeRevision = null }, label = { Text("None") })
+            FieldGroup("Challenge (optional)") { FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                ChoiceChip("None", selected = challengeRevision == null, onClick = { challengeRevision = null })
                 s.challenges.forEach { c ->
                     val rev = c.revisions.firstOrNull { it.revision == c.publishedRevision }?.id
-                    FilterChip(selected = challengeRevision == rev, onClick = { challengeRevision = rev }, label = { Text(c.title) })
+                    ChoiceChip(c.title, selected = challengeRevision == rev, onClick = { challengeRevision = rev })
                 }
-            }
+            } }
             if (canFollowUp) SettingRow("One follow-up alarm", "Rings ${followUpDelay / 60} min later unless the challenge is finished. You can always end the session.", followUp) { followUp = it }
         }
         if (ownerId == null) SettingRow("Follow my phone when I travel", "Off keeps the time in your home time zone.", followTravel) { followTravel = it }

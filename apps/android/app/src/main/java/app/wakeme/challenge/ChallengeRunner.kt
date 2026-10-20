@@ -1,6 +1,13 @@
 package app.wakeme.challenge
 
 import android.os.SystemClock
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +52,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.lerp
+import app.wakeme.designsystem.StatusPill
+import app.wakeme.designsystem.Tone
+import app.wakeme.designsystem.WMMotion
+import app.wakeme.designsystem.rememberHaptics
 import app.wakeme.core.ChallengeDefinition
 import app.wakeme.core.ChallengeStep
 import app.wakeme.core.StepResponse
@@ -106,7 +121,6 @@ private fun ChallengeContent(
         fallback = true // Expiry offers a self-check, never reports an unsolved challenge as solved.
     }
     val step = definition.steps.getOrNull(index)
-    val stepIndex = index
     val finish: (Boolean) -> Unit = { usedFallback ->
         if (!finished) {
             finished = true
@@ -117,10 +131,19 @@ private fun ChallengeContent(
         feedback = null
         if (index + 1 >= definition.steps.size) finish(false) else index += 1
     }
-    val check = { r: StepResponse ->
-        // Ignore a late scanner/timer callback, or a second tap from the step just completed.
-        if (!finished && !fallback && index == stepIndex) {
-            if (step != null && verifyStep(step, r)) advance() else feedback = "Not quite. Take your time and try again."
+    val haptics = rememberHaptics()
+    val check = { at: Int, r: StepResponse ->
+        // Ignore a late scanner/timer callback, a second tap from the step just completed, or a tap
+        // on the previous step while it fades out.
+        val current = definition.steps.getOrNull(at)
+        if (!finished && !fallback && index == at && current != null) {
+            if (verifyStep(current, r)) {
+                haptics.selection()
+                advance()
+            } else {
+                haptics.wrongAnswer()
+                feedback = "Not quite. Take your time and try again."
+            }
         }
     }
 
@@ -133,22 +156,37 @@ private fun ChallengeContent(
                 Text(definition.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
                 if (timedOut) Body("Time's up. Use the simple check-in or end this session.")
                 else Body("Step ${index + 1} of ${definition.steps.size}")
+                StepProgress(done = if (finished) definition.steps.size else index, total = definition.steps.size)
                 if (fallback || step == null) {
                     AccessibleCheckIn(definition.fallback.prompt) { finish(true) }
                 } else {
-                    key(index) {
-                        when (step) {
-                            is ChallengeStep.MultipleChoice -> MultipleChoice(step) { check(StepResponse.Index(it)) }
-                            is ChallengeStep.ShortAnswer -> TextAnswer(step.prompt, KeyboardType.Text) { check(StepResponse.Text(it)) }
-                            is ChallengeStep.MathStep -> TextAnswer("${step.operands.joinToString(" ${symbol(step.operator)} ")} = ?", KeyboardType.Number) { check(StepResponse.Text(it)) }
-                            is ChallengeStep.MemoryOrder -> MemoryOrder(step) { check(StepResponse.Order(it)) }
-                            is ChallengeStep.Chess -> ChessStep(step) { check(StepResponse.Move(it)) }
-                            is ChallengeStep.Timer -> TimerStep(step) { check(StepResponse.Elapsed(it)) }
-                            is ChallengeStep.QrCode -> QrStep(step) { check(StepResponse.Text(it)) }
-                            is ChallengeStep.SelfAttested -> Checklist(step) { check(StepResponse.Checked(it)) }
+                    // Each step arrives from the reading direction and fades in; the previous one
+                    // fades out. Input works at once (no delay), and a stale tap is ignored above.
+                    AnimatedContent(
+                        targetState = index,
+                        transitionSpec = {
+                            (slideInHorizontally(WMMotion.enter()) { it / 12 } + fadeIn(WMMotion.enter())) togetherWith fadeOut(WMMotion.exit())
+                        },
+                        label = "step",
+                    ) { at ->
+                        Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+                            when (val s = definition.steps.getOrNull(at)) {
+                                is ChallengeStep.MultipleChoice -> MultipleChoice(s) { check(at, StepResponse.Index(it)) }
+                                is ChallengeStep.ShortAnswer -> TextAnswer(s.prompt, KeyboardType.Text) { check(at, StepResponse.Text(it)) }
+                                is ChallengeStep.MathStep -> TextAnswer("${s.operands.joinToString(" ${symbol(s.operator)} ")} = ?", KeyboardType.Number) { check(at, StepResponse.Text(it)) }
+                                is ChallengeStep.MemoryOrder -> MemoryOrder(s) { check(at, StepResponse.Order(it)) }
+                                is ChallengeStep.Chess -> ChessStep(s) { check(at, StepResponse.Move(it)) }
+                                is ChallengeStep.Timer -> TimerStep(s) { check(at, StepResponse.Elapsed(it)) }
+                                is ChallengeStep.QrCode -> QrStep(s) { check(at, StepResponse.Text(it)) }
+                                is ChallengeStep.SelfAttested -> Checklist(s) { check(at, StepResponse.Checked(it)) }
+                                null -> Unit
+                            }
                         }
                     }
-                    feedback?.let { Text(it, color = WM.colors.info, style = MaterialTheme.typography.bodyLarge) }
+                    // Calm, not punishing: no shake, no red. Announced politely to TalkBack.
+                    AnimatedVisibility(visible = feedback != null, enter = fadeIn(WMMotion.standard()), exit = fadeOut(WMMotion.quick())) {
+                        StatusPill(feedback ?: "", Tone.Info, announce = true)
+                    }
                 }
             }
             // Kept outside the scrolling puzzle. Bars and the IME are consumed above, so these
@@ -229,6 +267,9 @@ private fun ChessStep(step: ChallengeStep.Chess, onMove: (String) -> Unit) {
     var typed by rememberSaveable { mutableStateOf("") }
     Text(step.prompt, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
     val whiteToMove = step.fen.split(" ").getOrNull(1) != "b"
+    // Dark squares are a warm grey mixed from the outline colour, so the board reads as a board
+    // in both themes (surfaceSunken on surfaceRaised was 1.06:1).
+    val darkSquare = lerp(WM.colors.surfaceRaised, WM.colors.outline, 0.32f)
     Column(Modifier.fillMaxWidth().aspectRatio(1f).border(1.dp, WM.colors.border)) {
         val ranks = if (whiteToMove) (8 downTo 1) else (1..8)
         val files = if (whiteToMove) ('a'..'h').toList() else ('a'..'h').reversed()
@@ -242,7 +283,7 @@ private fun ChessStep(step: ChallengeStep.Chess, onMove: (String) -> Unit) {
                         Modifier
                             .weight(1f)
                             .aspectRatio(1f)
-                            .background(if (from == sq) WM.colors.accent else if (dark) WM.colors.surfaceSunken else WM.colors.surfaceRaised)
+                            .background(if (from == sq) WM.colors.accent else if (dark) darkSquare else WM.colors.surfaceRaised)
                             .clickable {
                                 val f = from
                                 if (f == null) {
@@ -355,5 +396,17 @@ private fun AccessibleCheckIn(prompt: String?, onDone: () -> Unit) {
             ready = true
         }
         PrimaryButton(if (ready) "I'm awake (again)" else "Just a moment…", onClick = onDone, enabled = ready, height = WakeMeTokens.alarmControl)
+    }
+}
+
+/** One segment per step; finished steps fill with success. Visual only: "Step 2 of 3" is read. */
+@Composable
+private fun StepProgress(done: Int, total: Int) {
+    if (total < 2) return
+    Row(Modifier.fillMaxWidth().clearAndSetSemantics { }, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
+        repeat(total) { i ->
+            val fill by animateColorAsState(if (i < done) WM.colors.success else WM.colors.border, WMMotion.standard(), label = "segment")
+            Box(Modifier.weight(1f).height(6.dp).background(fill, CircleShape))
+        }
     }
 }

@@ -1,6 +1,17 @@
 package app.wakeme.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -30,7 +41,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -44,6 +58,10 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import app.wakeme.R
 import app.wakeme.designsystem.DetailPlaceholder
+import app.wakeme.designsystem.DuckMark
+import app.wakeme.designsystem.WM
+import app.wakeme.designsystem.WMMotion
+import app.wakeme.designsystem.WakeMeTokens
 import app.wakeme.designsystem.Readable
 import app.wakeme.focus.FocusScreen
 import app.wakeme.media.VoiceSoundsScreen
@@ -72,8 +90,15 @@ import app.wakeme.ui.you.YouScreen
 fun WakeMeRoot(app: AppViewModel) {
     val gate by app.gate.collectAsState()
     val error by app.error.collectAsState()
-    when (val g = gate) {
-        Gate.Loading -> Box(Modifier) { CircularProgressIndicator() }
+    // Setup steps fade through one another (no sliding: they aren't a spatial stack).
+    AnimatedContent(targetState = gate, contentKey = { it::class }, transitionSpec = { WMMotion.fadeThrough() }, label = "gate") { g ->
+    when (g) {
+        Gate.Loading -> Box(Modifier.fillMaxSize().background(WM.colors.surface), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+                DuckMark(size = 64.dp)
+                CircularProgressIndicator(Modifier.size(24.dp), color = WM.colors.accentText, strokeWidth = 2.5.dp)
+            }
+        }
         Gate.Welcome -> Readable { WelcomeScreen(onInvite = app::chooseInviteFlow, onSelf = app::chooseSelfSetup) }
         Gate.SignIn -> Readable { SignInScreen(app) }
         Gate.Profile -> Readable { ProfileScreen(onCreate = app::createProfile) }
@@ -81,6 +106,7 @@ fun WakeMeRoot(app: AppViewModel) {
         Gate.Ready -> Readable { ReadyScreen(onContinue = { app.finishSelfSetup(openRoutineEditor = true) }, onSkip = { app.finishSelfSetup(openRoutineEditor = false) }) }
         Gate.Main -> MainTabs(app)
         Gate.Guest -> GuestHome(onSignIn = app::signInFromGuest)
+    }
     }
     error?.let {
         AlertDialog(
@@ -166,6 +192,17 @@ private fun MainTabs(app: AppViewModel) {
         // The adaptive scaffold doesn't pass insets down: keep content clear of the status bar,
         // cutouts and side bars here; screens add the bottom (navigation bar, keyboard) themselves.
         val shellInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        // Navigation 3 defaults to a 700 ms slide; Wake Me uses a short shared-axis move instead:
+        // the new screen arrives from the reading direction by a tenth of the width while fading
+        // in (emphasized, 320 ms) and the old one fades out (180 ms). Back and predictive back
+        // reverse it. With Remove animations on, screens simply change.
+        val towardEnd = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
+        val forward: () -> ContentTransform = {
+            (slideInHorizontally(WMMotion.enter()) { towardEnd * it / 10 } + fadeIn(WMMotion.enter())) togetherWith fadeOut(WMMotion.exit())
+        }
+        val backward: () -> ContentTransform = {
+            fadeIn(WMMotion.enter()) togetherWith (slideOutHorizontally(WMMotion.exit()) { towardEnd * it / 10 } + fadeOut(WMMotion.exit()))
+        }
         NavDisplay(
             backStack = backStack,
             modifier = Modifier.fillMaxSize().windowInsetsPadding(shellInsets).consumeWindowInsets(shellInsets),
@@ -176,6 +213,9 @@ private fun MainTabs(app: AppViewModel) {
                 rememberViewModelStoreNavEntryDecorator<NavKey>(viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current)),
             ),
             sceneStrategies = listOf(listDetail),
+            transitionSpec = { forward() },
+            popTransitionSpec = { backward() },
+            predictivePopTransitionSpec = { backward() },
             entryProvider = entries(backStack, app),
         )
     }
