@@ -370,6 +370,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
     LaunchedEffect(s.reuse, sounds, s.challenges) {
         val source = s.reuse
         if (source != null && !reused) {
+            selectedPreset = ""
             label = source.label
             window = LocalWindow(source.recurrence.days ?: listOf(1, 2, 3, 4, 5), source.localTime, source.localTime)
             sound = source.soundId.takeIf { it in sounds } ?: "bundled:rise.gentle"
