@@ -40,6 +40,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.wakeme.R
 import app.wakeme.ui.challenges.ChallengeEditorScreen
+import app.wakeme.ui.friends.CircleScreen
+import app.wakeme.ui.routines.GuestHome
 import app.wakeme.ui.challenges.ChallengesScreen
 import app.wakeme.ui.friends.FriendDetailScreen
 import app.wakeme.ui.friends.FriendsScreen
@@ -69,7 +71,7 @@ fun WakeMeRoot(app: AppViewModel) {
         is Gate.Invite -> InviteScreen(g.preview, onAccept = { app.acceptInvite(g.token) }, onDecline = app::declineInvite)
         Gate.Ready -> ReadyScreen(onContinue = { app.finishSelfSetup(openRoutineEditor = true) }, onSkip = { app.finishSelfSetup(openRoutineEditor = false) })
         Gate.Main -> MainTabs(app)
-        Gate.Guest -> app.wakeme.ui.routines.GuestHome(onSignIn = app::signInFromGuest)
+        Gate.Guest -> GuestHome(onSignIn = app::signInFromGuest)
     }
     error?.let {
         AlertDialog(
@@ -135,7 +137,7 @@ private fun NavGraph(nav: NavHostController, app: AppViewModel, modifier: Modifi
         modifier = modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp),
     ) {
         composable("friends") { FriendsScreen(onOpen = { nav.navigate("friend/$it") }, onOpenCircle = { nav.navigate("circle/$it") }) }
-        composable("circle/{id}", listOf(navArgument("id") { type = NavType.StringType })) { app.wakeme.ui.friends.CircleScreen(circleId = it.arguments!!.getString("id")!!, onMessages = { c -> nav.navigate("conversation/$c") }, onBack = { nav.popBackStack() }) }
+        composable("circle/{id}", listOf(navArgument("id") { type = NavType.StringType })) { CircleScreen(circleId = it.arguments!!.getString("id")!!, onMessages = { c -> nav.navigate("conversation/$c") }, onBack = { nav.popBackStack() }) }
         composable("friend/{id}", listOf(navArgument("id") { type = NavType.StringType })) {
             FriendDetailScreen(
                 friendshipId = it.arguments!!.getString("id")!!,
