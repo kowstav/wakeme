@@ -11,12 +11,17 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -95,23 +100,28 @@ private fun MainTabs(app: AppViewModel) {
         }
     }
     val current = nav.currentBackStackEntryAsState().value?.destination?.route
-    Scaffold(
-        bottomBar = {
-            if (current in tabs.map { it.route }) {
-                NavigationBar {
-                    tabs.forEach { t ->
-                        NavigationBarItem(
-                            selected = current == t.route,
-                            onClick = { nav.navigate(t.route) { popUpTo("friends"); launchSingleTop = true } },
-                            icon = { Icon(t.icon, contentDescription = null) },
-                            label = { Text(stringResource(t.label)) },
-                        )
-                    }
-                }
+    // android/skills jetpack-compose/adaptive, step 2: a bottom bar on phones, a navigation rail on
+    // tablets and unfolded foldables. Shown only on the four tab screens, as before.
+    val isNavBarVisible = current in tabs.map { it.route }
+    val navState = rememberNavigationSuiteScaffoldState()
+    LaunchedEffect(isNavBarVisible) { if (isNavBarVisible) navState.show() else navState.hide() }
+    NavigationSuiteScaffold(
+        navigationSuiteItems = {
+            tabs.forEach { t ->
+                item(
+                    selected = current == t.route,
+                    onClick = { nav.navigate(t.route) { popUpTo("friends"); launchSingleTop = true } },
+                    icon = { Icon(t.icon, contentDescription = null) },
+                    label = { Text(stringResource(t.label)) },
+                )
             }
         },
-    ) { padding ->
-        NavGraph(nav, app, Modifier.padding(padding))
+        state = navState,
+    ) {
+        // The adaptive scaffold doesn't pass insets down: keep content clear of the status bar,
+        // cutouts and side bars here; screens add the bottom (navigation bar, keyboard) themselves.
+        val shellInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        NavGraph(nav, app, Modifier.windowInsetsPadding(shellInsets).consumeWindowInsets(shellInsets))
     }
 }
 

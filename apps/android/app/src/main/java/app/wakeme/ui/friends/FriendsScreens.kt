@@ -8,6 +8,12 @@ import app.wakeme.ui.permissions.notificationsAllowed
 import app.wakeme.ui.permissions.notificationsAsked
 import app.wakeme.ui.permissions.rememberNotificationAsk
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,7 +78,7 @@ fun FriendsScreen(onOpen: (String) -> Unit, onOpenCircle: (String) -> Unit = {},
         vm.refreshReadiness()
         onPauseOrDispose { }
     }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
             Gap()
             Text("Friends", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
@@ -206,7 +212,7 @@ fun FriendDetailScreen(
     LaunchedEffect(s.sentTick) { if (s.sentTick > 0) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM) }
     LaunchedEffect(s.failTick) { if (s.failTick > 0) view.performHapticFeedback(HapticFeedbackConstants.REJECT) }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         Text(name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
 
         // ---- Send a quack: preview (local only) is a different control from Send.

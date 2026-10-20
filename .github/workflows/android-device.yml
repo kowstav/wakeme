@@ -212,6 +212,15 @@ jobs:
           grep -q "^OK (" "$RUNNER_TEMP/evidence/journey.txt"
           # JUnit reports a skipped test as OK; a journey that didn't run is a failure here.
           if grep -q "AssumptionViolatedException" "$RUNNER_TEMP/evidence/journey.txt"; then echo "::error::journey skipped"; exit 1; fi
+      - name: Large-screen screenshot (doc 06 resizability; navigation rail on wide screens)
+        if: always() && steps.boot.outcome == 'success'
+        run: |
+          # After the journey the app is signed in: show the main tabs at tablet size.
+          adb shell wm size 2560x1600; adb shell wm density 280; sleep 2
+          adb shell am force-stop "$APP_ID"
+          adb shell am start -W -n "$APP_ID/app.wakeme.MainActivity" > /dev/null; sleep 8
+          adb exec-out screencap -p > "$RUNNER_TEMP/evidence/40-large-screen.png"
+          adb shell wm size reset; adb shell wm density reset
       - name: Collect evidence
         if: always()
         run: |

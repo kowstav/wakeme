@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -133,7 +134,7 @@ fun PaywallScreen(onClose: () -> Unit, vm: PaywallViewModel = hiltViewModel()) {
     val alreadyPlus = s.status?.plan == "plus"
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
+        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
         verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
     ) {
         QuietButton("Continue free", onClick = onClose, modifier = Modifier.align(Alignment.End))

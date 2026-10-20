@@ -1,6 +1,7 @@
 package app.wakeme.ui.grants
 
 import android.app.TimePickerDialog
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -162,7 +163,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
     val f = s.friend ?: return
     val name = f.user.displayName
     val d = s.draft
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         Text("What can $name do?", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         Body("You're giving $name permission to help you, within limits you set. You can change or remove this anytime. It only works one way: it doesn't give you anything on $name's phone.")
         Body("Being in a circle together doesn't change these settings. Only you can change them.")

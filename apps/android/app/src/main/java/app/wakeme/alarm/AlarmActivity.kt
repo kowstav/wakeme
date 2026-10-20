@@ -2,6 +2,7 @@ package app.wakeme.alarm
 
 import android.os.Bundle
 import android.os.UserManager
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -50,6 +51,7 @@ import java.time.format.FormatStyle
 class AlarmActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge() // content already keeps clear of the bars (safeDrawingPadding)
         val sessions = AlarmEntryPoints.sessions(this)
         setContent {
             WakeMeTheme(dark = true) {

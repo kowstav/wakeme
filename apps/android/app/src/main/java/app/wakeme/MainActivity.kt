@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import app.wakeme.designsystem.WakeMeTheme
+import app.wakeme.push.NotificationRoutes
 import app.wakeme.ui.AppViewModel
 import app.wakeme.ui.WakeMeRoot
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,7 +34,9 @@ class MainActivity : ComponentActivity() {
         if (uri != null && uri.host == "wakeme.app" && uri.pathSegments.firstOrNull() == "i") {
             uri.pathSegments.getOrNull(1)?.takeIf { Regex("^[A-Za-z0-9_-]{20,64}$").matches(it) }?.let { app.onInviteLink(it) }
         }
-        intent?.getStringExtra(EXTRA_ROUTE)?.let { app.openRoute(it) }
+        // This activity is exported (launcher, invite links), so any app can start it: only the
+        // routes this app's own notifications create are followed, with plain ids.
+        intent?.getStringExtra(EXTRA_ROUTE)?.takeIf { NotificationRoutes.isAllowed(it) }?.let { app.openRoute(it) }
     }
 
     companion object {

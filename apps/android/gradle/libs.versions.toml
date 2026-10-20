@@ -56,6 +56,8 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
+# Adaptive navigation (bottom bar on phones, rail on tablets and unfolded foldables); BOM-managed.
+compose-material3-navsuite = { module = "androidx.compose.material3:material3-adaptive-navigation-suite" }
 compose-material-icons = { module = "androidx.compose.material:material-icons-extended" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }

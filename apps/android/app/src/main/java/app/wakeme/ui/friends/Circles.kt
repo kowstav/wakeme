@@ -2,6 +2,7 @@ package app.wakeme.ui.friends
 
 import android.content.Intent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -134,7 +135,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
     LaunchedEffect(circleId) { vm.load(circleId) }
     LaunchedEffect(s.left) { if (s.left) onBack() }
     val d = s.detail
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         if (d == null) {
             Body("Loading…")
             return@Column

@@ -29,6 +29,9 @@ class AlarmReceiver : BroadcastReceiver() {
 /** Re-registers alarms after reboot (including before first unlock), app update, time or zone change. */
 class RescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        // Exported for the system broadcasts in the manifest (all protected, so only the system
+        // sends them); an explicit intent from another app with any other action is ignored.
+        if (intent.action !in SYSTEM_ACTIONS) return
         val scheduler = AlarmEntryPoints.scheduler(context)
         if (intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED) {
             scheduler.rescheduleFromBootMirror()
@@ -48,3 +51,13 @@ class RescheduleReceiver : BroadcastReceiver() {
         }
     }
 }
+
+/** The protected system broadcasts RescheduleReceiver is declared for (AndroidManifest.xml). */
+private val SYSTEM_ACTIONS = setOf(
+    Intent.ACTION_BOOT_COMPLETED,
+    Intent.ACTION_LOCKED_BOOT_COMPLETED,
+    Intent.ACTION_MY_PACKAGE_REPLACED,
+    Intent.ACTION_TIME_CHANGED,
+    Intent.ACTION_TIMEZONE_CHANGED,
+    AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
+)

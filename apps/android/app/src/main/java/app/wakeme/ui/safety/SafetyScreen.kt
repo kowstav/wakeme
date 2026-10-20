@@ -7,6 +7,11 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +44,7 @@ import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.LatestLocationDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.data.net.SafetySessionDto
+import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.DangerButton
@@ -187,7 +193,7 @@ fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewM
     var composing by remember { mutableStateOf<String?>(null) } // "share" | "checkin" | "sos"
     LaunchedEffect(focusSessionId) { if (focusSessionId != null) vm.load() }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
             Gap()
             Text("Safety", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
@@ -375,7 +381,15 @@ private fun StartSheet(
                     item { SystemLocationButton(onResult = { granted -> buttonGranted = granted; permissionDenied = !granted }) }
                 }
                 if (buttonGranted) item { StatusPill("Your location will be included.", Tone.Info) }
-                if (permissionDenied) item { StatusPill("Location is off for Wake Me, so only the alert is sent, with no location.", Tone.Warning) }
+                if (permissionDenied) {
+                    item { StatusPill("Location is off for Wake Me, so only the alert is sent, with no location.", Tone.Warning) }
+                    // Android doesn't show the prompt again after a permanent denial: offer the app's settings.
+                    item {
+                        QuietButton("Open Wake Me settings", onClick = {
+                            runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", context.packageName, null))) }
+                        })
+                    }
+                }
             }
         },
         confirmButton = {

@@ -58,7 +58,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 | App-switcher masking (iOS) / `FLAG_SECURE` (Android) on sensitive screens | 02 §10 | implemented 2026-10-20 as recents/app-switcher masking, no FLAG_SECURE (ADR 0012); not observed |
 | iOS App Intents/widgets for senders | 06 (iOS opportunities) | not written |
 | Android 17 session location button for "Share my location now"/SOS | 06, 04 §9 | implemented 2026-10-20 for SOS (View artifact 1.0.0-alpha01); not exercised on an emulator or phone |
-| Large-screen/split-screen check of quiz keyboard, chess board, grant editor, alarm screen | 06 (Android 17) | not checked (no orientation lock found) |
+| Large-screen/split-screen check of quiz keyboard, chess board, grant editor, alarm screen | 06 (Android 17) | adaptive shell (navigation rail on wide screens) and a tablet-size CI screenshot added 2026-10-20; split-screen and foldable postures not yet checked |
 | "Thanks, Maya" light reaction after a completed wake | 03 §4B | not written |
 | Focus supervision: iOS FamilyControls/ManagedSettings/DeviceActivity extensions with shield → app; Android focus with deterministic, user-approved rules | 01 §6, 03 §4E, 04 §8, 06 | server module only (flag off) |
 | Reusable shared routines beyond waking (study, gym, practice) | 04 §9 | not written |
@@ -70,7 +70,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 | Usability rounds, interviews, pilot, competitor hands-on study, trademark/domain check | 01 §5, §7; 03 §1, §9 | owner |
 | Legal/privacy review, launch region, store submission | 04 §10, §18 | owner |
 | Spotify written approval | 01 §6 | owner (excluded until approved) |
-| Doc 05 skills installed and pinned with a review record | 05 §3 | owner approval needed to download third-party skill code |
+| Doc 05 skills installed and pinned with a review record | 05 §3 | android/skills: 8 relevant skills installed 2026-10-20 at ed0a272 in `.claude/skills` (REVIEW.md) and applied to the Android app; SwiftUI, Swift Concurrency, HIG and Trail of Bits skills not yet requested |
 
 ## Decisions
 
@@ -86,7 +86,7 @@ Recorded in `docs/adr` (0001–0011); threat model with control-to-test mapping 
 - Routines are armed 8 days ahead (at most 8 occurrences). A phone that never runs Wake Me for 8 days stops ringing them, and friends see "not yet confirmed". On iPhone, a routine without a challenge has no follow-up (nothing on the alarm could cancel it).
 - Retention values (30 days request metadata and AI prompts, 45 days sync feed, 365 days audit) are proposals pending legal review.
 - Location shares send a fix only when the OS delivers one (Android: every 60 s or 25 m; iOS: live updates, which pause while the phone is still). A phone left still may send nothing new, so friends see the true capture time and, after 10 minutes, a warning. Whether to resend an unchanged position with a fresh time needs real-device observation first.
-- **Doc 05 skills are not installed or pinned** (android/skills, SwiftUI and Swift Concurrency skills, HIG, Trail of Bits, etc.). Installing them needs `/plugin` commands run by the owner in Claude Code, then a review record (URL, licence, commit, scripts, permissions) per doc 05 §3. Work so far used official docs and SDK declarations instead.
+- **Doc 05 skills**: Google's android/skills installed for this repo on the owner's request (8 relevant skills, pinned at ed0a272, reviewed in `.claude/skills/REVIEW.md`). The iOS skills listed in doc 05 (SwiftUI, Swift Concurrency, HIG) and Trail of Bits are not installed; installing them is the owner's call.
 - Full apps were built before the Stage 0 device experiments (doc 04 §2) could run, because no physical devices are available to this work; the Stage 0 exit gate is still open and its results may change promises.
 - Android instrumented tests use Espresso 3.8.0-alpha01 (test-only, never shipped): the first release that injects input on Android 17. Move to the stable release when it ships.
 

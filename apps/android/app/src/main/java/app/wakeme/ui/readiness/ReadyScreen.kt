@@ -1,6 +1,7 @@
 package app.wakeme.ui.readiness
 
 import android.content.Context
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -139,7 +140,7 @@ fun ReadinessSection(vm: ReadyViewModel = hiltViewModel()) {
 fun ReadyScreen(onContinue: () -> Unit, continueLabel: String = "Set my first wake-up", onSkip: (() -> Unit)? = null, vm: ReadyViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
+        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
         verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
     ) {
         Text("Let's make sure your alarm rings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)

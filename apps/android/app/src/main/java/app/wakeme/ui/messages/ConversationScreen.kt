@@ -3,6 +3,7 @@ package app.wakeme.ui.messages
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -180,7 +181,8 @@ fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltV
         onDispose { vm.setVisible(false) }
     }
 
-    Column(Modifier.fillMaxSize().imePadding().padding(horizontal = WakeMeTokens.spaceMd)) {
+    // Bottom: the navigation bar or, when typing, the keyboard (the shell handles top and sides).
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = WakeMeTokens.spaceMd)) {
         Text(s.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary, modifier = Modifier.padding(vertical = WakeMeTokens.spaceSm))
         if (s.offline) StatusPill("You're offline. Showing messages loaded earlier.", Tone.Warning)
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {

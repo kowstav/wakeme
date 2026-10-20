@@ -2,6 +2,7 @@ package app.wakeme.ui.routines
 
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -213,7 +214,7 @@ fun RoutineDetailScreen(planId: String, onBack: () -> Unit, vm: RoutinesViewMode
     val s by vm.state.collectAsState()
     val p = vm.get(planId) ?: return
     val mine = p.owner.id == s.myId
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
         Text("Wake-up routine", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         StatusPill(label, tone)
@@ -334,7 +335,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
             if (!days.all { isWithinAnyWindow(window.start, it, limits.windows) }) window = window.copy(start = w.start, end = w.start)
         }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         if (ownerId != null) Body("${s.friendName ?: "Your friend"} sees exactly this and decides. Nothing changes on their phone until they accept.")
         Body("Time and days")
