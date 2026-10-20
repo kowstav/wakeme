@@ -108,7 +108,7 @@ jobs:
           src, dst = sys.argv[1], sys.argv[2]
           for test in json.load(open(os.path.join(src, "manifest.json"))):
               for a in test.get("attachments", []):
-                  if not a["exportedFileName"].lower().endswith(".png"):
+                  if not a["exportedFileName"].lower().endswith((".png", ".jpg", ".jpeg", ".heic")):
                       continue  # debug descriptions and other text attachments
                   name = a.get("suggestedHumanReadableName", a["exportedFileName"]).split("_")[0]
                   name = re.sub(r"[^A-Za-z0-9.-]+", "-", name)

@@ -160,6 +160,7 @@ final class LaunchTests: XCTestCase {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         allowSystemPrompt(springboard)
         try must(app.staticTexts["07:00 · Weekdays"].waitForExistence(timeout: 20), "the guest wake-up is listed")
+        shot(app, "08b-guest-saved")
         try must(app.staticTexts["Ready on this phone"].waitForExistence(timeout: 10), "AlarmKit armed it on this phone")
         shot(app, "09-guest-wake-up")
         // Friends need an account; the wake-up moves to it.

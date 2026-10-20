@@ -49,7 +49,8 @@ struct GuestView: View {
             .background(WMColor.surface)
             .navigationTitle("Your wake-ups")
             .sheet(isPresented: $creating) {
-                RoutineEditorView(guest: true) { reload() }
+                // Arms anything the first install missed (alarm access granted while it was saving).
+                RoutineEditorView(guest: true) { Task { await armAndReload() } }
             }
             .task { await armAndReload() }
             .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await armAndReload() } } }

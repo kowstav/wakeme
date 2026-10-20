@@ -6,6 +6,7 @@ import android.content.Intent
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import java.io.FileInputStream
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
@@ -57,8 +58,16 @@ class FocusShieldTest {
     fun aChosenAppShowsTheShieldOnlyDuringFocus() {
         val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
         assumeTrue("focus service not enabled on this device: $enabled", enabled.contains("FocusShieldService"))
-        // Keep accessibility services bound while this run uses UiAutomation, and wait for the bind.
-        instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+        // `am instrument` force-stops the app, which unbinds its accessibility service while the
+        // setting still lists it (run 30). Writing the setting again makes the system bind it, as
+        // turning it off and on in Settings would. UiAutomation keeps other services bound.
+        val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+        fun shell(command: String) = automation.executeShellCommand(command).use { pfd -> FileInputStream(pfd.fileDescriptor).use { it.readBytes() } }
+        if (!serviceBound()) {
+            shell("settings delete secure enabled_accessibility_services")
+            shell("settings put secure enabled_accessibility_services $enabled")
+            shell("settings put secure accessibility_enabled 1")
+        }
         assertTrue("the system binds the focus service", waitFor(15_000) { serviceBound() })
         val settingsPkg = context.packageManager.resolveActivity(Intent(Settings.ACTION_SETTINGS), 0)?.activityInfo?.packageName ?: "com.android.settings"
         val store = FocusStore(context)

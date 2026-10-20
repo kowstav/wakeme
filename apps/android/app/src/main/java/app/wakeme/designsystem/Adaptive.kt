@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -66,7 +68,10 @@ fun AdaptiveList(modifier: Modifier = Modifier, contentPadding: PaddingValues = 
 
 /** A row across every column, kept to a readable width. Children stack as they did in a list item. */
 fun LazyGridScope.fullWidth(key: Any? = null, content: @Composable ColumnScope.() -> Unit) {
-    item(key = key, span = { GridItemSpan(maxLineSpan) }) { Column(Modifier.widthIn(max = ReadableWidth), content = content) }
+    // Grid items get an exact width; wrapContentWidth lets the column be narrower than the row.
+    item(key = key, span = { GridItemSpan(maxLineSpan) }) {
+        Column(Modifier.fillMaxWidth().wrapContentWidth(Alignment.Start).widthIn(max = ReadableWidth), content = content)
+    }
 }
 
 /**
