@@ -69,6 +69,13 @@
             </intent-filter>
         </activity>
 
+        <receiver android:name=".widget.QuickActionsReceiver" android:exported="true" android:label="@string/quick_actions_widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_actions_widget" />
+        </receiver>
+
         <!-- Focus (ADR 0014): the shield over an app the person chose to keep closed, and the narrowly
              scoped accessibility service that shows it. Enabled per build (release: off until Play
              approves the accessibility declaration). -->

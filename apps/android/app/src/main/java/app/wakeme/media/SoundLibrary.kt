@@ -61,7 +61,17 @@ internal class PrivateSoundStorage(http: OkHttpClient) {
     suspend fun download(signed: SoundDownload): ByteArray = withContext(Dispatchers.IO) {
         val bytes = client.newCall(Request.Builder().url(url(signed.url)).build()).await().use { response ->
             check(response.isSuccessful) { "Couldn't download this sound." }
-            response.body.byteStream().use { it.readNBytes(MAX_SOUND_BYTES + 1) }
+            response.body.byteStream().use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var remaining = MAX_SOUND_BYTES + 1
+                while (remaining > 0) {
+                    val count = input.read(buffer, 0, minOf(buffer.size, remaining))
+                    if (count <= 0) break
+                    output.write(buffer, 0, count); remaining -= count
+                }
+                output.toByteArray()
+            }
         }
         check(bytes.size in 1..MAX_SOUND_BYTES && soundDigest(bytes) == signed.sha256) { "This sound couldn't be verified. Built-in sounds still work." }
         check(signed.mime in setOf("audio/wav", "audio/mp4"))

@@ -28,6 +28,7 @@ data class ActiveWake(
     val routeType: String = "unknown",
     val playbackFailure: String? = null,
     val startedAt: Long,
+    val usedFallbackSound: Boolean = false,
 ) {
     val session: WakeSession get() = WakeSession(planId ?: commandId.orEmpty(), occurrenceKey, state, hasFollowUp)
 }

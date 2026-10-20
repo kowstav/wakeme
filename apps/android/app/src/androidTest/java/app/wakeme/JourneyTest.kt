@@ -194,6 +194,59 @@ class JourneyTest {
         val circleId = shared.getString("circleId")
         post("/v1/circles/$circleId/leave", alex, JSONObject())
         check(alexChallenges().none { it.getString("id") == shared.getString("id") }) { "Leaving the circle kept access to its quiz" }
+
+        tap("Routines")
+        tap("New wake-up")
+        tap("Study")
+        waitFor("18:00", substring = true)
+        tap("Save wake-up")
+        waitInList("Study")
+        tap("Study")
+        tap("Use this routine again")
+        waitFor("Study")
+        compose.activityRule.scenario.recreate()
+        waitFor("18:00", substring = true)
+        waitFor("Study")
+        DeviceEvidence.screenshot("54-reusable-study-routine")
+        tap("Cancel")
+
+        tap("Friends")
+        tap("Alex")
+        tap("Change permissions")
+        tap("Wake buddy")
+        tap("Save my rules")
+        waitFor("Change permissions")
+        val buddyPlan = post("/v1/alarm-plans", alex, JSONObject()
+            .put("ownerId", samId).put("label", "Buddy morning").put("localTime", "07:00")
+            .put("timeZone", "UTC").put("timeZonePolicy", "fixed")
+            .put("recurrence", JSONObject().put("kind", "weekly").put("days", org.json.JSONArray(listOf(1, 2, 3, 4, 5))))
+            .put("soundId", "bundled:rise.gentle").put("ringSeconds", 60))
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        tap("Routines")
+        waitInList("Buddy morning")
+        tap("Buddy morning")
+        tap("Accept this version")
+        waitFor("Active version")
+        val conversationId = (0 until alexFriends.length()).map { alexFriends.getJSONObject(it) }
+            .single { it.getJSONObject("user").getString("id") == samId }.getString("conversationId")
+        fun thanksCount() = get("/v1/conversations/$conversationId/messages", alex).getJSONArray("messages").let { array ->
+            (0 until array.length()).count { array.getJSONObject(it).optString("body") == "Thanks, Alex 🦆" }
+        }
+        check(thanksCount() == 0)
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.startActivity(android.content.Intent(activity, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_ROUTE, "wake-thanks-plan/${buddyPlan.getString("id")}"))
+        }
+        waitFor("Send thanks")
+        check(thanksCount() == 0) { "Opening the thanks screen posted automatically" }
+        DeviceEvidence.screenshot("55-optional-thanks")
+        tap("Send thanks")
+        waitFor("Thanks sent.")
+        check(thanksCount() == 1)
+        compose.activityRule.scenario.recreate()
+        waitFor("Thanks sent.")
+        check(thanksCount() == 1) { "Recreation sent a second thanks" }
+        tap("Done")
     }
 
     /** Waits for text that may be further down a lazy list, scrolling each list towards it. */

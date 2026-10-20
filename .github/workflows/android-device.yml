@@ -263,8 +263,8 @@ jobs:
           fi
           echo "--- observations ---"
           grep -h "WakeMeEvidence" "$RUNNER_TEMP/evidence/logcat.txt" || true
-          cat "$RUNNER_TEMP"/evidence/instrumentation.txt "$RUNNER_TEMP"/evidence/journey.txt "$RUNNER_TEMP"/evidence/cold-start.txt 2>/dev/null | grep -E "TotalTime|^OK|FAILURES|Tests run|INSTRUMENTATION_STATUS: test=|INSTRUMENTATION_STATUS_CODE" || true
-          echo "--- test failures ---"; grep -h -A20 "stack=" "$RUNNER_TEMP"/evidence/instrumentation.txt "$RUNNER_TEMP"/evidence/journey.txt 2>/dev/null | head -80 || true
+          cat "$RUNNER_TEMP"/evidence/instrumentation.txt "$RUNNER_TEMP"/evidence/focus.txt "$RUNNER_TEMP"/evidence/journey.txt "$RUNNER_TEMP"/evidence/cold-start.txt 2>/dev/null | grep -E "TotalTime|^OK|FAILURES|Tests run|INSTRUMENTATION_STATUS: test=|INSTRUMENTATION_STATUS_CODE" || true
+          echo "--- test failures ---"; grep -h -A20 "stack=" "$RUNNER_TEMP"/evidence/instrumentation.txt "$RUNNER_TEMP"/evidence/focus.txt "$RUNNER_TEMP"/evidence/journey.txt 2>/dev/null | head -80 || true
           echo "--- crash buffer ---"; timeout 20 adb logcat -b crash -d 2>/dev/null | head -150 || true
           echo "--- crashes ---"; grep -E "FATAL EXCEPTION|AndroidRuntime: Process: $APP_ID" -A12 "$RUNNER_TEMP/evidence/logcat.txt" || echo "no app crash in logcat"
           echo "--- system process ---"; grep -E "FATAL EXCEPTION IN SYSTEM PROCESS|WATCHDOG|Watchdog: |system_server.*(died|crash)|lowmemorykiller|Low on memory" -A6 "$RUNNER_TEMP/evidence/logcat.txt" | head -80 || true

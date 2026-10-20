@@ -64,6 +64,7 @@ import app.wakeme.ui.routines.GuestHome
 import app.wakeme.ui.routines.RoutineDetailScreen
 import app.wakeme.ui.routines.RoutineEditorScreen
 import app.wakeme.ui.routines.RoutinesScreen
+import app.wakeme.ui.routines.WakeThanksScreen
 import app.wakeme.ui.safety.SafetyScreen
 import app.wakeme.ui.you.YouScreen
 
@@ -221,10 +222,10 @@ private fun entries(backStack: NavBackStack<NavKey>, app: AppViewModel) = entryP
         )
     }
     entry<Route.Routine>(metadata = ListDetailSceneStrategy.detailPane(routines)) { key ->
-        Readable { RoutineDetailScreen(planId = key.id, onBack = { backStack.close(key) }) }
+        Readable { RoutineDetailScreen(planId = key.id, onBack = { backStack.close(key) }, onReuse = { backStack.openFrom(Route.Routines, Route.RoutineNew(reuseId = key.id)) }) }
     }
     entry<Route.RoutineNew>(metadata = ListDetailSceneStrategy.detailPane(routines)) { key ->
-        Readable { RoutineEditorScreen(ownerId = key.ownerId, onDone = { backStack.close(key) }) }
+        Readable { RoutineEditorScreen(ownerId = key.ownerId, onDone = { backStack.close(key) }, reuseId = key.reuseId) }
     }
 
     // ---- Challenges
@@ -247,6 +248,7 @@ private fun entries(backStack: NavBackStack<NavKey>, app: AppViewModel) = entryP
     entry<Route.Safety> { key -> Readable { SafetyScreen(focusSessionId = key.focusSessionId) } }
     entry<Route.Focus> { Readable { FocusScreen() } }
     entry<Route.VoiceSounds> { Readable { VoiceSoundsScreen() } }
+    entry<Route.WakeThanks> { key -> Readable { WakeThanksScreen(key.kind, key.id, onDone = { backStack.close(key) }) } }
     entry<Route.You> {
         Readable {
             YouScreen(

@@ -150,8 +150,8 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     // ------------------------------------------------------------ messages
     suspend fun conversations() = api.get("/v1/conversations", ConversationsDto.serializer()).conversations
     suspend fun messages(conversationId: String) = api.get("/v1/conversations/$conversationId/messages", MessagesDto.serializer()).messages
-    suspend fun sendMessage(conversationId: String, text: String) =
-        api.post("/v1/conversations/$conversationId/messages", buildJsonObject { put("body", text); put("clientId", "c_" + UUID.randomUUID().toString().replace("-", "")) }, MessageDto.serializer(), idempotent = true)
+    suspend fun sendMessage(conversationId: String, text: String, clientId: String = "c_" + UUID.randomUUID().toString().replace("-", "")) =
+        api.post("/v1/conversations/$conversationId/messages", buildJsonObject { put("body", text); put("clientId", clientId) }, MessageDto.serializer(), idempotent = true)
     /** One of the server's REACTIONS; replaces this user's previous reaction. */
     suspend fun react(messageId: String, emoji: String) = api.post("/v1/messages/$messageId/reactions", buildJsonObject { put("emoji", emoji) }, JsonObject.serializer())
     suspend fun unreact(messageId: String) = api.delete("/v1/messages/$messageId/reactions", JsonObject.serializer())

@@ -2,6 +2,8 @@ package app.wakeme.alarm
 
 import android.os.Bundle
 import android.os.UserManager
+import android.content.Intent
+import app.wakeme.MainActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
@@ -25,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -64,10 +67,24 @@ class AlarmActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         val sessions = AlarmEntryPoints.sessions(this)
         setContent {
+            var completed by rememberSaveable { mutableStateOf(false) }
+            var thanksRoute by rememberSaveable { mutableStateOf<String?>(null) }
             WakeMeTheme(dark = true) {
                 val active by sessions.active.collectAsState()
                 val a = active
-                if (a == null) {
+                if (completed) {
+                    Readable {
+                        Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+                            Text("You're up", style = MaterialTheme.typography.headlineLarge, color = WM.colors.alarmText)
+                            Body("Your wake session has ended.", color = WM.colors.alarmText)
+                            if (thanksRoute != null) SecondaryButton("Thank your wake buddy", onClick = {
+                                startActivity(Intent(this@AlarmActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, thanksRoute))
+                                finish()
+                            })
+                            PrimaryButton("Done", onClick = { finish() })
+                        }
+                    }
+                } else if (a == null) {
                     LaunchedEffect(Unit) { finish() }
                 } else {
                     key(a.planId, a.commandId, a.occurrenceKey, a.version) {
@@ -75,14 +92,20 @@ class AlarmActivity : ComponentActivity() {
                             wake = a,
                             loadChallenge = { id -> loadChallenge(id) },
                             onStop = { AlarmService.send(this, AlarmService.ACTION_STOP_SOUND) },
-                            onImUp = { AlarmService.send(this, AlarmService.ACTION_IM_UP); finish() },
-                            onComplete = { AlarmService.send(this, AlarmService.ACTION_COMPLETE); finish() },
+                            onImUp = { AlarmService.send(this, AlarmService.ACTION_IM_UP); completed = true; thanksRoute = makeThanksRoute(a) },
+                            onComplete = { AlarmService.send(this, AlarmService.ACTION_COMPLETE); completed = true; thanksRoute = makeThanksRoute(a) },
+                            onCheckIn = { AlarmService.send(this, AlarmService.ACTION_CHECK_IN); completed = true; thanksRoute = makeThanksRoute(a) },
                             onEscape = { AlarmService.send(this, AlarmService.ACTION_ESCAPE); finish() },
                         )
                     }
                 }
             }
         }
+    }
+
+    private fun makeThanksRoute(wake: ActiveWake): String? {
+        if (wake.helperName == null || !getSystemService(UserManager::class.java).isUserUnlocked) return null
+        return wake.commandId?.let { "wake-thanks-command/$it" } ?: wake.planId?.takeUnless { app.wakeme.core.isLocalPlan(it) }?.let { "wake-thanks-plan/$it" }
     }
 
     /** Challenges run from the installed, signature-verified local copy. Not readable before first unlock. */
@@ -104,18 +127,24 @@ fun AlarmScreen(
     onComplete: () -> Unit,
     onEscape: () -> Unit,
     clockText: String? = null,
+    onCheckIn: () -> Unit = onComplete,
 ) {
     var challenge by remember { mutableStateOf<ChallengeDefinition?>(null) }
     var challengeMissing by remember { mutableStateOf(false) }
     var running by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(wake.challengeRevisionId) {
+    var resumes by remember { mutableStateOf(0) }
+    LifecycleResumeEffect(wake.challengeRevisionId) {
+        resumes++
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(wake.challengeRevisionId, resumes) {
         wake.challengeRevisionId?.let { id -> challenge = loadChallenge(id); challengeMissing = challenge == null }
     }
     val c = WM.colors
     if (running && challenge != null) {
         ChallengeRunner(
             definition = challenge!!,
-            onComplete = { onComplete() },
+            onComplete = { usedFallback -> if (usedFallback) onCheckIn() else onComplete() },
             onEscape = onEscape,
             escapeLabel = stringResource(R.string.alarm_need_to_stop),
             sessionKey = "${wake.planId ?: wake.commandId}:${wake.occurrenceKey}:${wake.version}",
@@ -139,6 +168,7 @@ fun AlarmScreen(
                 Text(clockText ?: now.format(formatter), fontSize = 64.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = c.alarmText)
                 if (wake.label.isNotBlank()) Text(wake.label, style = MaterialTheme.typography.headlineSmall, color = c.alarmText)
                 wake.helperName?.let { Text(stringResource(R.string.alarm_from_friend, it), style = MaterialTheme.typography.titleLarge, color = c.alarmText) }
+                if (wake.usedFallbackSound) Body("The voice recording wasn't available. Using the built-in Gentle rise sound.", color = c.alarmText)
                 when {
                     wake.playbackFailure == "audio_focus_denied" -> Body("Sound is paused because another call or audio is active. Vibration continues.", color = c.alarmText)
                     wake.ringing && wake.routeType == "bluetooth" -> Body("Playing through Bluetooth audio. Your phone may be quieter than expected.", color = c.alarmText)

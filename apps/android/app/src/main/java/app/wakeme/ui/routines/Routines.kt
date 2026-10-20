@@ -33,6 +33,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -226,7 +228,7 @@ private fun PlanCard(p: PlanDto, myId: String?, onOpen: (String) -> Unit) {
 }
 
 @Composable
-fun RoutineDetailScreen(planId: String, onBack: () -> Unit, vm: RoutinesViewModel = hiltViewModel()) {
+fun RoutineDetailScreen(planId: String, onBack: () -> Unit, onReuse: () -> Unit = {}, vm: RoutinesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     val p = vm.get(planId) ?: return
     val mine = p.owner.id == s.myId
@@ -247,6 +249,7 @@ fun RoutineDetailScreen(planId: String, onBack: () -> Unit, vm: RoutinesViewMode
         if (mine && p.state in setOf("active", "paused")) {
             SecondaryButton(if (p.state == "paused") "Resume" else "Pause", onClick = { vm.pause(p, p.state != "paused") })
         }
+        if (p.accepted != null) SecondaryButton("Use this routine again", onClick = onReuse)
         if (p.state !in setOf("cancelled", "declined")) DangerButton("End this routine", onClick = { vm.cancel(p); onBack() })
     }
 }
@@ -274,6 +277,8 @@ data class EditorState(
     val friendName: String? = null,
     val limits: AlarmLimits? = null,
     val canAssignChallenges: Boolean = true,
+    val reuse: PlanVersionDto? = null,
+    val reuseChecked: Boolean = false,
 )
 
 @HiltViewModel
@@ -308,6 +313,11 @@ class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, pri
 
     fun exactAlarmsAllowed() = readiness.state().readyForWake
 
+    fun loadReusable(id: String) = viewModelScope.launch {
+        runCatching { api.plan(id).accepted }.onSuccess { _s.value = _s.value.copy(reuse = it, reuseChecked = true) }
+            .onFailure { _s.value = _s.value.copy(reuseChecked = true, error = "Couldn't load that routine. You can still make a new one.") }
+    }
+
     /** A suggestion stays inside what the friend allowed; their grant says what that is. */
     fun loadFriend(ownerId: String) = viewModelScope.launch {
         runCatching { api.friends() }.getOrNull()?.firstOrNull { it.user.id == ownerId }?.let { f ->
@@ -321,30 +331,55 @@ class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, pri
     }
 }
 
+private val RoutineWindowSaver = listSaver<LocalWindow, String>(
+    save = { listOf(it.days.joinToString(","), it.start, it.end) },
+    restore = { LocalWindow(it[0].split(',').map(String::toInt), it[1], it[2]) },
+)
+
 @Composable
-fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = false, vm: RoutineEditorViewModel = hiltViewModel()) {
+fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = false, reuseId: String? = null, vm: RoutineEditorViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     val customSounds by vm.sounds.ready.collectAsState()
     val context = LocalContext.current
     LaunchedEffect(s.done) { if (s.done) onDone() }
     LaunchedEffect(ownerId) { ownerId?.let(vm::loadFriend) }
-    var window by remember { mutableStateOf(LocalWindow(listOf(1, 2, 3, 4, 5), "07:00", "07:01")) }
-    var label by remember { mutableStateOf("") }
-    var sound by remember { mutableStateOf("bundled:rise.gentle") }
-    var ring by remember { mutableStateOf(90) }
-    var followUp by remember { mutableStateOf(false) }
-    var followTravel by remember { mutableStateOf(false) }
-    var challengeRevision by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(reuseId) { reuseId?.let(vm::loadReusable) }
+    var window by rememberSaveable(stateSaver = RoutineWindowSaver) { mutableStateOf(LocalWindow(listOf(1, 2, 3, 4, 5), "07:00", "07:01")) }
+    var label by rememberSaveable { mutableStateOf("") }
+    var sound by rememberSaveable { mutableStateOf("bundled:rise.gentle") }
+    var ring by rememberSaveable { mutableStateOf(90) }
+    var followUp by rememberSaveable { mutableStateOf(false) }
+    var followTravel by rememberSaveable { mutableStateOf(false) }
+    var challengeRevision by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedPreset by rememberSaveable { mutableStateOf("Wake-up") }
+    var reused by rememberSaveable(reuseId) { mutableStateOf(false) }
+    var timeZone by rememberSaveable { mutableStateOf(ZoneId.systemDefault().id) }
+    var appliedLimits by rememberSaveable(ownerId) { mutableStateOf(false) }
     val limits = s.limits
     val sounds = if (ownerId == null) listOf("bundled:rise.gentle", "bundled:bell.bright", "bundled:pulse.wake", "bundled:quack.double") + (if (guest) emptyList() else customSounds) else limits?.sounds.orEmpty()
-    val rings = listOf(30, 60, 90, 120).filter { ownerId == null || limits == null || it <= limits.maxAlarmSeconds }.ifEmpty { listOfNotNull(limits?.maxAlarmSeconds) }
+    val rings = (listOf(30, 60, 90, 120) + ring).distinct().sorted().filter { ownerId == null || limits == null || it <= limits.maxAlarmSeconds }.ifEmpty { listOfNotNull(limits?.maxAlarmSeconds) }
     val followUpDelay = minOf(180, if (ownerId == null) 180 else limits?.followUp?.maxDelaySeconds ?: 180)
     val canFollowUp = ownerId == null || limits?.followUp?.allowed == true
+    LaunchedEffect(s.reuse, sounds, s.challenges) {
+        val source = s.reuse
+        if (source != null && !reused) {
+            label = source.label
+            window = LocalWindow(source.recurrence.days ?: listOf(1, 2, 3, 4, 5), source.localTime, source.localTime)
+            sound = source.soundId.takeIf { it in sounds } ?: "bundled:rise.gentle"
+            ring = source.ringSeconds
+            timeZone = source.timeZone
+            followTravel = source.timeZonePolicy == "device"
+            // The new owner chooses a challenge they can still access; sharing never copies authority.
+            challengeRevision = null
+            followUp = false
+            reused = true
+        }
+    }
     // A suggestion must ring inside the friend's wake hours on every chosen day (the server checks too).
     val outsideHours = ownerId != null && limits != null && !window.days.all { isWithinAnyWindow(window.start, it, limits.windows) }
     // Start from choices inside what they allowed.
     LaunchedEffect(limits) {
-        if (ownerId == null || limits == null) return@LaunchedEffect
+        if (ownerId == null || limits == null || appliedLimits) return@LaunchedEffect
         limits.sounds.firstOrNull()?.let { sound = it }
         if (ring !in rings) ring = rings.last()
         limits.windows.firstOrNull()?.let { w ->
@@ -352,13 +387,33 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
             window = window.copy(days = days)
             if (!days.all { isWithinAnyWindow(window.start, it, limits.windows) }) window = window.copy(start = w.start, end = w.start)
         }
+        appliedLimits = true
     }
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         if (ownerId != null) Body("${s.friendName ?: "Your friend"} sees exactly this and decides. Nothing changes on their phone until they accept.")
+        Body("Use routines for waking, study, gym or practice. These are reminders you choose; Wake Me doesn't verify attendance or penalize missed days.")
+        if (reuseId != null) Body("This creates a new routine for you. Your existing routine and your friends' permissions stay as they are. Choose any challenge again.")
+        Text("Start with", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+            listOf("Wake-up", "Study", "Gym", "Language practice", "Music practice").forEach { preset ->
+                FilterChip(selected = selectedPreset == preset, onClick = {
+                    selectedPreset = preset
+                    label = if (preset == "Wake-up") "" else preset
+                    ring = if (preset == "Wake-up") 90 else 30
+                    if (ownerId != null) ring = minOf(ring, limits?.maxAlarmSeconds ?: ring)
+                    if (ownerId == null) {
+                        val at = if (preset == "Wake-up" || preset == "Gym") "07:00" else "18:00"
+                        window = LocalWindow(if (preset == "Gym") listOf(1, 3, 5) else listOf(1, 2, 3, 4, 5), at, at)
+                        timeZone = ZoneId.systemDefault().id
+                    }
+                }, label = { Text(preset) })
+            }
+        }
         Body("Time and days")
         DayChips(window.days) { window = window.copy(days = it) }
         TimeOfDayButton("Rings at", window.start) { window = window.copy(start = it, end = it) }
+        if (ownerId == null) Body("Time zone: $timeZone")
         if (limits != null && ownerId != null) {
             Body("${s.friendName ?: "They"} allow wake-ups: " + limits.windows.joinToString("; ") { "${daysText(Recurrence.weekly(it.days))} ${it.start}–${it.end}" } + ". It rings at this time in their time zone.")
             if (outsideHours) StatusPill("That's outside the wake hours ${s.friendName ?: "they"} chose.", Tone.Warning)
@@ -371,6 +426,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
             }
         }
         Text("Ring for", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+        if (sound.startsWith("media:")) Body("If this recording isn't available, Gentle rise rings instead. Recordings aren't available before the first unlock after restarting your phone.")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             rings.forEach { v -> FilterChip(selected = ring == v, onClick = { ring = v }, label = { Text("${v}s") }) }
         }
@@ -388,12 +444,12 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
         }
         if (ownerId == null) SettingRow("Follow my phone when I travel", "Off keeps the time in your home time zone.", followTravel) { followTravel = it }
         if (!vm.exactAlarmsAllowed()) StatusPill("This phone can't ring alarms on time yet. Allow “Alarms & reminders” first.", Tone.Warning)
-        PrimaryButton(if (s.saving) "Saving…" else if (ownerId == null) "Save wake-up" else "Send suggestion", enabled = !s.saving && !outsideHours && sound in sounds, onClick = {
+        PrimaryButton(if (s.saving) "Saving…" else if (ownerId == null) "Save wake-up" else "Send suggestion", enabled = !s.saving && (reuseId == null || s.reuseChecked) && !outsideHours && sound in sounds && ring in rings, onClick = {
             val terms =
                 PlanTerms(
                     label = label,
                     localTime = window.start,
-                    timeZone = ZoneId.systemDefault().id,
+                    timeZone = timeZone,
                     timeZonePolicy = if (followTravel) "device" else "fixed",
                     recurrence = Recurrence.weekly(window.days),
                     soundId = sound,
