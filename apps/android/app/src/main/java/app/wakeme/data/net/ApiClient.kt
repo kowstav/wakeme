@@ -4,6 +4,7 @@ import app.wakeme.config.AppConfig
 import app.wakeme.data.auth.SessionManager
 import app.wakeme.data.device.DeviceIdentity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -42,7 +43,11 @@ private val JSON_TYPE = "application/json".toMediaType()
 suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
     enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) = cont.resumeWithException(e)
-        override fun onResponse(call: Call, response: Response) = cont.resume(response) { _, _, _ -> response.close() }
+        // Cancelled after the response arrived (the screen went away): close it off the main thread.
+        // Closing can touch the socket, and an exception thrown here would crash the app (run 28).
+        override fun onResponse(call: Call, response: Response) = cont.resume(response) { _, _, _ ->
+            Dispatchers.IO.asExecutor().execute { runCatching { response.close() } }
+        }
     })
     cont.invokeOnCancellation { cancel() }
 }
