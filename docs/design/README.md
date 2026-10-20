@@ -1,0 +1,67 @@
+# Design contract and review log (doc 03 §9)
+
+## 1. Product truth (what every screen must stay true to)
+
+- Headline: **Alert your friends. Wake each other up.** Supporting line: "From "where are you?" to
+  "we've got this."" The first screen makes contacting a trusted friend obvious.
+- Two behaviours share one set of friends and permissions: **I need you now** (quack, wake
+  request) and **Help me become better** (shared wake-ups, focus, personal challenges).
+- **The recipient owns every permission.** Friendship and circles grant nothing; grants are
+  directional, bounded, versioned and revocable; consent is part of the value ("You decide what
+  each friend can do"), not a legal settings page.
+- **Literal status.** Sent ≠ phone received ≠ heard ≠ awake. "Ready on this phone" only after the
+  phone reported what the OS accepted. "Challenge completed" is not "guaranteed awake".
+- **Always a way out.** Stop, End focus, the accessible check-in and revocation never wait for the
+  network, a friend, AI or a subscription.
+
+## 2. Visual direction: warm daylight + quiet night
+
+Source of truth: `packages/design-tokens/tokens.json` (generated into both apps; all 14 contrast
+pairs pass WCAG in light and dark, see `contrast-report.md`).
+
+| Rule | Why |
+|---|---|
+| Off-white surfaces, dark ink; deep low-glare night surfaces | Calm legibility (doc 03 §2) |
+| Duck yellow (`accent`) is a fill; text on light backgrounds uses `accentText` | Yellow text on cream failed AA (run 13) |
+| Blue only for information; red only for destructive actions and SOS | Urgency keeps its meaning |
+| Status is words plus a dot, never colour alone (`StatusPill`) | Colour-vision differences |
+| One primary action per screen; 44 pt / 48 dp minimum targets | Sleepy and one-handed use |
+| Native navigation: tab bar on iPhone; bottom bar on Android phones, rail on tablets | Platform-native, adaptive (doc 06) |
+| Dialogs on the raised surface, not Material's default tint | Run 19 review |
+| One signature motion (the quack hop) with a Reduce Motion alternative; calm haptics | Doc 03 §2 |
+
+## 3. Components (same names on both platforms)
+
+`PrimaryButton`, `SecondaryButton` (visibly disabled at 38–45 % when unavailable), `QuietButton`,
+`DangerButton` (destructive/SOS only), `WMCard`, `StatusPill`, `SettingRow` (whole row toggles),
+`Stepper` (Android: 48 dp −/+ spoken as Fewer/More), `QuackSent`, app-switcher cover /
+`HideFromRecents` on Safety and Messages (ADR 0012).
+
+## 4. Copy rules
+
+- Literal and kind: "Alex hasn't turned this on for you." "You're offline. Nothing was sent."
+- Never "Your friend owns your phone"; say "You're giving Sam permission to help you focus for up
+  to 30 minutes."
+- Explain before every system prompt (notifications, alarms, Screen Time, accessibility,
+  location), at the moment it's needed, never at sign-up.
+- No paywall, feed or upsell during an alarm, a focus shield or a safety flow.
+
+## 5. What is not done (owner / people needed)
+
+- Reference collection and three distinct directions for two core screens (doc 03 §9 steps 2–4):
+  the current direction was chosen in the research pack; alternatives were not produced.
+- Five-person usability rounds and the 90 % targets (doc 03 §9 step 8): need participants.
+- Real-device screenshots (small/large phones, tablets) for store listings.
+
+## 6. Screenshot review log
+
+Screenshots come from CI (printed into job logs; see ADR 0009 — not device evidence).
+
+| Run | Platform | Reviewed | Findings (fixed unless noted) |
+|---|---|---|---|
+| Android 13 | Android 16 emulator | 2026-10-19 | Yellow text buttons below AA → `accentText`; sound ids shown → names |
+| Android 19 | Android 16/17 | 2026-10-19 | Lavender default dialogs; check-in summary cut off |
+| iOS 21 | iPhone 17 Pro simulator | 2026-10-19 | Incoming SOS listed below "Start" → friends' shares first |
+| Android 20 | Android 16/17 | 2026-10-19 | Disabled "Send quack" looked tappable; switch subtitle under the switch; bare −/+ steppers |
+| Android 26+ | Android 16/17 | pending | Home card, quack hop, guest home, circles, focus shield, tablet-size rail (40-large-screen) |
+| iOS 30+ | iPhone simulator | pending | Guest home, push received, circles, Focus permission step, paywall (store unavailable) |

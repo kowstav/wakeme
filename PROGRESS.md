@@ -64,7 +64,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 | Reusable shared routines beyond waking (study, gym, practice) | 04 §9 | not written |
 | App Attest / Play Integrity evaluation | 02 §10 | not evaluated (needs an ADR) |
 | Error reporting / OpenTelemetry vendor | 02 §2 | owner decision (vendor choice); structured logs only |
-| Design process: references, three directions, screenshots on small/large devices, dark, large text, denied permissions | 03 §9 | partial (CI screenshots); `docs/design` empty |
+| Design process: references, three directions, screenshots on small/large devices, dark, large text, denied permissions | 03 §9 | design contract and screenshot review log in `docs/design` (2026-10-20); three directions, references and usability rounds still to do (owner/people) |
 | Stage 0 experiments, capability matrix, soak tests | 04 §2, §5, 06 experiments | owner (physical phones); `docs/device-results` empty |
 | Entitlements (AlarmKit distribution, Family Controls, Time Sensitive, APNs keys), developer accounts, signing | 04 §10 | owner |
 | Usability rounds, interviews, pilot, competitor hands-on study, trademark/domain check | 01 §5, §7; 03 §1, §9 | owner |
