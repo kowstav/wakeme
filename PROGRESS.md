@@ -54,7 +54,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 | Signature quack animation with a Reduced Motion alternative; send/warning haptics | 03 §2 | implemented 2026-10-20, both apps; haptics not observable in CI |
 | User-recorded voice sounds (rights attestation, upload, scan, recipient approval) | 01 §6, 02 §5 `media_assets` | server media upload exists; no app recording |
 | Private circles (create, members, circle chat, shared challenges) in the apps | 04 §6, 02 §5 | implemented 2026-10-20 on both apps (create, members, invite, chat, rename, remove, leave); circle-scoped challenges not yet; CI pending |
-| iOS invite links (universal links) and an inviter preview before accepting | 03 §5 step 4 | not written: iOS redeems a typed code straight away (Android shows the preview) |
+| iOS invite links (universal links) and an inviter preview before accepting | 03 §5 step 4 | code preview implemented 2026-10-20 (who invited you and what accepting means, then Accept); universal links need the owner's associated-domains entitlement and a hosted apple-app-site-association file |
 | App-switcher masking (iOS) / `FLAG_SECURE` (Android) on sensitive screens | 02 §10 | implemented 2026-10-20 as recents/app-switcher masking, no FLAG_SECURE (ADR 0012); not observed |
 | iOS App Intents/widgets for senders | 06 (iOS opportunities) | not written |
 | Android 17 session location button for "Share my location now"/SOS | 06, 04 §9 | implemented 2026-10-20 for SOS (View artifact 1.0.0-alpha01); not exercised on an emulator or phone |

@@ -12,6 +12,7 @@ struct FriendsView: View {
     @State private var message: String?
 
     @State private var nextAlarm: (fireAt: Date, label: String)?
+    @State private var pendingInvite: InvitePreviewDTO?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -61,7 +62,7 @@ struct FriendsView: View {
                     TextField("Have a code?", text: $code)
                         .textInputAutocapitalization(.characters).autocorrectionDisabled()
                         .onChange(of: code) { _, v in if v.count > 11 { code = String(v.prefix(11)) } }
-                    Button("Join") { Task { await redeem() } }.disabled(code.count < 9)
+                    Button("Join") { Task { await preview() } }.disabled(code.count < 9)
                 }
             }
             if app.offline { Section { StatusPill(text: "Offline · showing nothing new. Your alarms still work.", tone: .warning) } }
@@ -74,6 +75,16 @@ struct FriendsView: View {
         .task { await load() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { nextAlarm = WakeAlarms.shared.nextMainAlarm() } }
         .sheet(item: $invite) { inv in InviteSheet(invite: inv) }
+        .alert(inviteTitle, isPresented: Binding(get: { pendingInvite != nil }, set: { if !$0 { pendingInvite = nil } })) {
+            if let p = pendingInvite, !p.ownInvite, !p.alreadyConnected {
+                Button("Accept") { pendingInvite = nil; Task { await redeem() } }
+                Button("Not now", role: .cancel) { pendingInvite = nil }
+            } else {
+                Button("OK") { pendingInvite = nil; code = "" }
+            }
+        } message: {
+            Text(inviteMessage)
+        }
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
     }
 
@@ -100,6 +111,29 @@ struct FriendsView: View {
 
     private func createInvite() async {
         do { invite = try await app.api.createInvite() } catch { message = (error as? APIError)?.message ?? "Couldn't create an invite." }
+    }
+
+    private var inviteTitle: String {
+        guard let p = pendingInvite else { return "" }
+        return p.kind == "circle" ? "\(p.inviter.displayName) invited you to \(p.circle?.name ?? "a circle")" : "\(p.inviter.displayName) wants to quack you"
+    }
+
+    private var inviteMessage: String {
+        guard let p = pendingInvite else { return "" }
+        if p.ownInvite { return "This is your own invite. Share it with a friend." }
+        if p.alreadyConnected { return "You're already connected." }
+        return p.kind == "circle"
+            ? "Joining doesn't give anyone in it any permissions on your phone."
+            : "Accepting doesn't give \(p.inviter.displayName) any permissions. Next you choose exactly what they can do, if anything."
+    }
+
+    /// Doc 03 §5 step 4: say who invited you, and what accepting means, before anything happens.
+    private func preview() async {
+        do {
+            pendingInvite = try await app.api.previewInvite(token: nil, code: code)
+        } catch {
+            message = (error as? APIError)?.message ?? "That code didn't work."
+        }
     }
 
     private func redeem() async {
