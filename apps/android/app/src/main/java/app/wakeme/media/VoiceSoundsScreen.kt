@@ -87,7 +87,8 @@ class VoiceSoundsViewModel @Inject constructor(
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                 setAudioEncodingBitRate(48_000); setAudioSamplingRate(44_100)
-                setMaxDuration(MAX_SOUND_MS); setMaxFileSize(MAX_SOUND_BYTES.toLong())
+                // Leave room for the AAC encoder's final frames within the server's 30 s limit.
+                setMaxDuration(MAX_SOUND_MS - 500); setMaxFileSize(MAX_SOUND_BYTES.toLong())
                 setOutputFile(file.absolutePath)
                 setOnInfoListener { _, what, _ -> if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED || what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) stopRecording() }
                 setOnErrorListener { _, _, _ -> discard(); state = state.copy(message = "Recording stopped. Please try again.") }

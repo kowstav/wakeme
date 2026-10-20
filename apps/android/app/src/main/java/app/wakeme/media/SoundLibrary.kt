@@ -99,7 +99,7 @@ class SoundLibrary @Inject constructor(@ApplicationContext private val context: 
     }
     suspend fun delete(id: String) {
         api.delete("/v1/media/$id", OkDto.serializer())
-        withContext(Dispatchers.IO) { file(id).delete() }
+        withContext(Dispatchers.IO) { file(id).delete(); File(context.cacheDir, "voice-preview-$id.audio").delete() }
         refresh()
     }
 
@@ -129,9 +129,15 @@ class SoundLibrary @Inject constructor(@ApplicationContext private val context: 
     }
 
     suspend fun refresh() = mutex.withLock {
-        val allowed = (own().filter { it.state == "clean" } + offers().filter { it.state == "approved" }.map { it.media }).distinctBy { it.id }
+        val mine = own().filter { it.state == "clean" }
+        val offered = offers()
+        val allowed = (mine + offered.filter { it.state == "approved" }.map { it.media }).distinctBy { it.id }
         val ids = allowed.map { it.id }.toSet()
-        withContext(Dispatchers.IO) { directory.listFiles()?.filter { it.extension == "audio" && it.nameWithoutExtension !in ids }?.forEach { it.delete() } }
+        val previewIds = (mine.map { it.id } + offered.map { it.media.id }).toSet()
+        withContext(Dispatchers.IO) {
+            directory.listFiles()?.filter { it.extension == "audio" && it.nameWithoutExtension !in ids }?.forEach { it.delete() }
+            context.cacheDir.listFiles()?.filter { it.name.startsWith("voice-preview-") && it.name.removePrefix("voice-preview-").removeSuffix(".audio") !in previewIds }?.forEach { it.delete() }
+        }
         val cached = mutableListOf<String>()
         for (sound in allowed) {
             try {
