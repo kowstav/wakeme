@@ -104,6 +104,7 @@ class ChallengeInstaller @Inject constructor(private val api: ApiClient, private
  */
 @Singleton
 class SyncEngine @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val api: ApiClient,
     private val db: LocalDb,
     private val prefs: Prefs,
@@ -127,6 +128,18 @@ class SyncEngine @Inject constructor(
     suspend fun sync() = mutex.withLock {
         // Local first: keep routines armed over the window even when the server can't be reached.
         arming.topUpAll()
+        val boot = app.wakeme.alarm.BootAlarms(context)
+        val account = prefs.currentMe()?.id
+        if (account != null) for (id in boot.pendingEnds(account)) {
+            try {
+                api.delete("/v1/alarm-plans/$id", PlanDto.serializer())
+                boot.acknowledgeEnd(id)
+                _changes.tryEmit("all")
+            } catch (e: app.wakeme.data.net.ApiException) {
+                if (e.status == 404) boot.acknowledgeEnd(id)
+                // Keep other errors pending without blocking grant revocations and other sync work.
+            }
+        }
         // Audio availability never blocks the installed alarm path. Failed/missing downloads fall back.
         try { sounds.refresh() } catch (e: CancellationException) { throw e } catch (_: Exception) { }
         val cursor = prefs.cursor()
@@ -207,6 +220,11 @@ class SyncEngine @Inject constructor(
 
     private suspend fun applyPlan(plan: PlanDto, myId: String, me: MeDto? = null) {
         if (plan.owner.id != myId) return
+        if (app.wakeme.alarm.BootAlarms(context).isEnded(plan.id)) {
+            scheduler.cancelPlan(plan.id)
+            db.routines().delete(plan.id)
+            return
+        }
         val current = me ?: prefs.currentMe()
         if (current != null && !isPrimary(current)) {
             // Not the ringing phone: remove any local copy silently; the primary reports installation.

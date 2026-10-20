@@ -65,6 +65,7 @@ class AlarmService : Service() {
             stopSelf()
             return
         }
+        if (BootAlarms(this).isEnded(alarm.planId)) { stopSelf(); return }
         val helper = if (unlocked) runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().get(requestCode)?.helperName } else null
         val challenge = alarm.challengeRevisionId
         val hasFollowUp = alarm.role == AlarmRole.MAIN.name && alarm.planId != null &&

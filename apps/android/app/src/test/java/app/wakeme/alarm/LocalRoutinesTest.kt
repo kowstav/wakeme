@@ -65,6 +65,18 @@ class LocalRoutinesTest {
     }
 
     @Test
+    fun anEndedRoutineCannotBeReinstalledOrToppedUpFromAnOldSnapshot() = runTest {
+        local.save(weekdays)
+        val routine = local.routines.first().single().first
+        val context: Context = RuntimeEnvironment.getApplication()
+        BootAlarms(context).endPlan(routine.planId, "account-a")
+        scheduler.cancelPlan(routine.planId)
+        assertTrue(scheduler.installRoutine(routine, null) is ScheduleResult.Abandoned)
+        assertEquals(false, scheduler.topUp(routine, null))
+        assertTrue(scheduler.armed(routine.planId).isEmpty())
+    }
+
+    @Test
     fun withoutExactAlarmsItIsKeptButNotArmed() = runTest {
         ShadowAlarmManager.setCanScheduleExactAlarms(false)
         local.save(weekdays)

@@ -20,14 +20,15 @@ import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
-class WakeThanksViewModel @Inject constructor(private val api: WakeMeApi, saved: SavedStateHandle) : ViewModel() {
+class WakeThanksViewModel @Inject constructor(private val api: WakeMeApi, private val saved: SavedStateHandle) : ViewModel() {
     var friend by mutableStateOf<FriendDto?>(null); private set
     var busy by mutableStateOf(false); private set
-    var sent by mutableStateOf(false); private set
+    var sent by mutableStateOf(saved.get<Boolean>("thanksSent") == true); private set
     var message by mutableStateOf("Loading your wake buddy…"); private set
     private val clientId: String = saved.get<String>("thanksClientId") ?: ("c_" + UUID.randomUUID().toString().replace("-", "")).also { saved["thanksClientId"] = it }
 
     fun load(kind: String, id: String) = viewModelScope.launch {
+        if (sent) { message = "Thanks sent."; return@launch }
         try {
             val me = api.me()
             val actorId = if (kind == "command") {
@@ -50,7 +51,7 @@ class WakeThanksViewModel @Inject constructor(private val api: WakeMeApi, saved:
         busy = true
         try {
             api.sendMessage(recipient.conversationId ?: return@launch, "Thanks, ${recipient.user.displayName} 🦆", clientId)
-            sent = true; message = "Thanks sent."
+            sent = true; saved["thanksSent"] = true; message = "Thanks sent."
         } catch (_: Exception) { message = "Couldn't confirm it was sent. You can retry when connected; this message uses the same receipt to avoid a duplicate." }
         finally { busy = false }
     }

@@ -51,6 +51,7 @@ class AlarmScheduler @Inject constructor(@ApplicationContext private val context
     fun canScheduleExact(): Boolean = alarmManager.canScheduleExactAlarms()
 
     suspend fun installRoutine(routine: InstalledRoutine, helperName: String?, now: Instant = Instant.now()): ScheduleResult {
+        if (boot.isEnded(routine.planId)) return ScheduleResult.Abandoned
         val started = generation
         cancelPlan(routine.planId)
         val alarms = scheduleFor(routine, now, ZoneId.systemDefault())
@@ -72,6 +73,7 @@ class AlarmScheduler @Inject constructor(@ApplicationContext private val context
      * Local data only. Returns true when alarms were added.
      */
     suspend fun topUp(routine: InstalledRoutine, helperName: String?, now: Instant = Instant.now()): Boolean {
+        if (boot.isEnded(routine.planId)) return false
         val started = generation
         if (!canScheduleExact()) return false
         val rows = db.alarms().forPlan(routine.planId)
@@ -88,14 +90,14 @@ class AlarmScheduler @Inject constructor(@ApplicationContext private val context
 
     /** Signed out while this plan's alarms were being registered: remove them again. */
     private suspend fun abandoned(planId: String, started: Int): Boolean {
-        if (generation == started) return false
+        if (generation == started && !boot.isEnded(planId)) return false
         cancelPlan(planId)
         return true
     }
 
     /** Alarms still ahead for a routine, soonest first. */
     suspend fun armed(planId: String, now: Instant = Instant.now()): List<ScheduledAlarmEntity> =
-        db.alarms().forPlan(planId).filter { it.fireAt > now.toEpochMilli() }.sortedBy { it.fireAt }
+        if (boot.isEnded(planId)) emptyList() else db.alarms().forPlan(planId).filter { it.fireAt > now.toEpochMilli() }.sortedBy { it.fireAt }
 
     /** Rows of alarms that rang more than a day ago are bookkeeping only. */
     suspend fun pruneRang(now: Instant = Instant.now()) {
@@ -128,12 +130,16 @@ class AlarmScheduler @Inject constructor(@ApplicationContext private val context
     }
 
     private suspend fun register(entity: ScheduledAlarmEntity) {
+        if (boot.isEnded(entity.planId)) return
         setAlarmClock(entity)
         db.alarms().upsert(entity)
+        // End may have raced an in-flight install. Keep both the mirror and DB from reviving it.
+        if (boot.isEnded(entity.planId)) { cancel(entity.requestCode); return }
         mirrorForBoot()
     }
 
     private fun setAlarmClock(entity: ScheduledAlarmEntity) {
+        if (boot.isEnded(entity.planId)) return
         val show = PendingIntent.getActivity(context, entity.requestCode, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(entity.fireAt, show), firePendingIntent(entity.requestCode))
     }
@@ -176,6 +182,8 @@ class AlarmScheduler @Inject constructor(@ApplicationContext private val context
     suspend fun rescheduleAll(recompute: Boolean) {
         reconcileBootCancellations()
         val now = System.currentTimeMillis()
+        // A clock/reboot/update recovery is for installed routines. Never replay a fresh command.
+        for (a in db.alarms().all().filter { it.commandId != null }) cancel(a.requestCode)
         for (a in db.alarms().all()) {
             if (a.fireAt < now - 60_000) db.alarms().delete(a.requestCode)
         }
@@ -184,7 +192,6 @@ class AlarmScheduler @Inject constructor(@ApplicationContext private val context
             val helper = if (r.ownerIsCreator) null else r.creatorName
             if (recompute) installRoutine(routine, helper) else topUp(routine, helper)
         }
-        for (a in db.alarms().all().filter { it.commandId != null && it.fireAt >= now }) register(a)
     }
 
     /** Pre-unlock path: credential-encrypted Room isn't readable yet, so use the device-protected mirror. */

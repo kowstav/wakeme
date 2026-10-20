@@ -10,6 +10,7 @@ import app.wakeme.data.local.ScheduledAlarmEntity
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
@@ -21,6 +22,9 @@ import org.robolectric.shadows.ShadowAlarmManager
 @Config(sdk = [35], application = Application::class)
 class BootAlarmsTest {
     private val context: Context get() = RuntimeEnvironment.getApplication()
+    @Before fun clearMirror() {
+        context.createDeviceProtectedStorageContext().getSharedPreferences("boot_alarms", Context.MODE_PRIVATE).edit().clear().commit()
+    }
     private fun alarm(code: Int, role: String) = BootAlarm(code, System.currentTimeMillis() + 60_000, "bundled:rise.gentle", 90, "Morning", "plan", null, role, "today", 1, "quiz")
 
     @Test fun bootMirrorRegistersWithoutCredentialStorageAndKeepsChallengeIdentity() {
@@ -59,5 +63,32 @@ class BootAlarmsTest {
             assertTrue(boot.cancelled().isEmpty())
             assertEquals(listOf(120), boot.all().map { it.requestCode })
         } finally { db.close() }
+    }
+
+    @Test fun anOfflineEndSurvivesRestartAndCannotBeRearmedByAStaleMirror() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        val boot = BootAlarms(context)
+        boot.replace(listOf(alarm(130, "MAIN"), alarm(131, "FOLLOW_UP")))
+        boot.reschedule()
+        boot.endPlan("plan", "account-a")
+        val restarted = BootAlarms(context)
+        assertTrue(restarted.all().isEmpty())
+        assertEquals(setOf("plan"), restarted.pendingEnds("account-a"))
+        assertTrue(restarted.pendingEnds("account-b").isEmpty())
+        restarted.reschedule()
+        assertTrue(shadowOf(context.getSystemService(android.app.AlarmManager::class.java)).scheduledAlarms.isEmpty())
+        restarted.acknowledgeEnd("plan")
+        assertTrue(restarted.pendingEnds("account-a").isEmpty())
+        assertTrue("an old server backup still cannot revive an ended routine", restarted.isEnded("plan"))
+    }
+
+    @Test fun bootDoesNotReplayAPastOccurrenceOrAFreshRemoteCommand() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        val now = System.currentTimeMillis()
+        val boot = BootAlarms(context)
+        boot.replace(listOf(alarm(140, "MAIN"), alarm(141, "MAIN").copy(fireAt = now - 1000),
+            alarm(142, "MAIN").copy(planId = null, commandId = "remote-request")))
+        boot.reschedule(now)
+        assertEquals(1, shadowOf(context.getSystemService(android.app.AlarmManager::class.java)).scheduledAlarms.size)
     }
 }

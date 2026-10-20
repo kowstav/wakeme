@@ -38,8 +38,13 @@ class SessionLocationButtonTest {
         onView(withId(R.id.session_location_button)).perform(click())
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+        val sessionConsent = Regex("^(allow|allow once|allow this time|allow for this session|allow precise location|allow & continue|share|share precise location|use precise location|only this time|while using (the app|this app)|continue|got it|turn on)$", RegexOption.IGNORE_CASE)
         fun allowOnce(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
             if (node.viewIdResourceName?.endsWith(":id/permission_allow_one_time_button") == true) return node
+            if (node.packageName?.toString()?.contains("permissioncontroller") == true && sessionConsent.matches(node.text?.toString().orEmpty())) {
+                if (node.isClickable) return node
+                node.parent?.takeIf { it.isClickable }?.let { return it }
+            }
             for (i in 0 until node.childCount) node.getChild(i)?.let { child -> allowOnce(child)?.let { return it } }
             return null
         }
@@ -47,6 +52,14 @@ class SessionLocationButtonTest {
         while (result.get() == null && SystemClock.elapsedRealtime() < deadline) {
             automation.rootInActiveWindow?.let { root -> allowOnce(root)?.performAction(AccessibilityNodeInfo.ACTION_CLICK) }
             Thread.sleep(200)
+        }
+        if (result.get() == null) {
+            DeviceEvidence.screenshot("98-location-permission-dialog")
+            fun describe(node: AccessibilityNodeInfo) {
+                if (node.packageName?.toString()?.contains("permissioncontroller") == true && (!node.text.isNullOrBlank() || node.isClickable)) DeviceEvidence.note("location-dialog", "id=${node.viewIdResourceName}, text=${node.text}, clickable=${node.isClickable}")
+                for (i in 0 until node.childCount) node.getChild(i)?.let(::describe)
+            }
+            automation.rootInActiveWindow?.let(::describe)
         }
         assertEquals("location callback after the user's explicit tap", true, result.get())
         assertEquals(PackageManager.PERMISSION_GRANTED, ContextCompat.checkSelfPermission(instrumentation.targetContext, Manifest.permission.ACCESS_FINE_LOCATION))

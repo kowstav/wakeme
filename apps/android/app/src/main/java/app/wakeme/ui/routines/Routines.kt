@@ -113,7 +113,7 @@ fun daysText(r: Recurrence): String = if (r.kind == "once") "Once on ${r.date}" 
     }
 }
 
-data class RoutinesState(val mine: List<PlanDto> = emptyList(), val helping: List<PlanDto> = emptyList(), val myId: String? = null, val exactAlarmsOk: Boolean = true, val error: String? = null)
+data class RoutinesState(val mine: List<PlanDto> = emptyList(), val helping: List<PlanDto> = emptyList(), val myId: String? = null, val exactAlarmsOk: Boolean = true, val error: String? = null, val pendingEnds: Int = 0)
 
 @HiltViewModel
 class RoutinesViewModel @Inject constructor(
@@ -134,9 +134,10 @@ class RoutinesViewModel @Inject constructor(
 
     fun load() = viewModelScope.launch {
         val me = prefs.currentMe()
+        val boot = app.wakeme.alarm.BootAlarms(context)
         runCatching { api.plans() }
-            .onSuccess { _s.value = RoutinesState(it.mine, it.helping, me?.id, scheduler.canScheduleExact()) }
-            .onFailure { _s.value = _s.value.copy(myId = me?.id, exactAlarmsOk = scheduler.canScheduleExact(), error = if (it is ApiException) it.message else null) }
+            .onSuccess { _s.value = RoutinesState(it.mine.filterNot { p -> boot.isEnded(p.id) }, it.helping.filterNot { p -> boot.isEnded(p.id) }, me?.id, scheduler.canScheduleExact(), pendingEnds = me?.id?.let { id -> boot.pendingEnds(id).size } ?: 0) }
+            .onFailure { _s.value = _s.value.copy(myId = me?.id, exactAlarmsOk = scheduler.canScheduleExact(), pendingEnds = me?.id?.let { id -> boot.pendingEnds(id).size } ?: 0, error = if (it is ApiException) it.message else null) }
     }
 
     fun get(id: String): PlanDto? = (_s.value.mine + _s.value.helping).firstOrNull { it.id == id }
@@ -158,10 +159,14 @@ class RoutinesViewModel @Inject constructor(
         load()
     }
 
-    /** Stops ringing here at once, even offline; once the server confirms, nothing is left for a top-up to re-arm. */
+    /** A durable local stop comes first; sync retries the account mutation under the same identity. */
     fun cancel(plan: PlanDto) = viewModelScope.launch {
-        scheduler.cancelPlan(plan.id)
-        act({ cancelPlan(plan.id) }) { removeLocally(plan.id) }
+        val account = prefs.currentMe()?.id ?: return@launch
+        val boot = app.wakeme.alarm.BootAlarms(context)
+        boot.endPlan(plan.id, account)
+        _s.value = _s.value.copy(mine = _s.value.mine.filterNot { it.id == plan.id }, helping = _s.value.helping.filterNot { it.id == plan.id }, pendingEnds = boot.pendingEnds(account).size)
+        if (app.wakeme.alarm.AlarmEntryPoints.sessions(context).active.value?.planId == plan.id) app.wakeme.alarm.AlarmService.send(context, app.wakeme.alarm.AlarmService.ACTION_ESCAPE)
+        try { removeLocally(plan.id) } finally { SyncWorker.runNow(context) }
     }
 
     fun pause(plan: PlanDto, paused: Boolean) = act({ pausePlan(plan.id, paused) }) { if (paused) removeLocally(plan.id) }
@@ -195,6 +200,7 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
                 StatusPill("Alarms aren't allowed to ring on time yet", Tone.Danger)
                 SecondaryButton("Make this phone ready", onClick = onFixReadiness)
             }
+            if (s.pendingEnds > 0) StatusPill("Ended on this phone · account update waiting to sync", Tone.Warning)
         }
         val proposals = s.mine.filter { it.pending != null }
         if (proposals.isNotEmpty()) fullWidth { SectionTitle("Waiting for you") }
@@ -230,7 +236,8 @@ private fun PlanCard(p: PlanDto, myId: String?, onOpen: (String) -> Unit) {
 @Composable
 fun RoutineDetailScreen(planId: String, onBack: () -> Unit, onReuse: () -> Unit = {}, vm: RoutinesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
-    val p = vm.get(planId) ?: return
+    // Read the observed state before the loading return, so the first API result recomposes this pane.
+    val p = (s.mine + s.helping).firstOrNull { it.id == planId } ?: run { Body("Loading routine…"); return }
     val mine = p.owner.id == s.myId
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
         val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)

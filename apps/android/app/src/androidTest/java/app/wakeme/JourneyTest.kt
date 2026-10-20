@@ -247,6 +247,18 @@ class JourneyTest {
         waitFor("Thanks sent.")
         check(thanksCount() == 1) { "Recreation sent a second thanks" }
         tap("Done")
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        tap("Routines")
+        tap("Study")
+        tap("End this routine")
+        val ownApi = dagger.hilt.android.EntryPointAccessors.fromApplication(
+            InstrumentationRegistry.getInstrumentation().targetContext.applicationContext,
+            app.wakeme.safety.SafetyDeps::class.java,
+        ).api()
+        compose.waitUntil(60_000) {
+            kotlinx.coroutines.runBlocking { ownApi.plans().mine.none { it.accepted?.label == "Study" && it.state in setOf("active", "paused") } }
+        }
+        DeviceEvidence.screenshot("57-routine-end-synced")
     }
 
     /** Waits for text that may be further down a lazy list, scrolling each list towards it. */
@@ -270,7 +282,12 @@ class JourneyTest {
     private fun found(text: String) = compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
 
     private fun waitFor(text: String, timeout: Long = 20_000, substring: Boolean = false) {
-        compose.waitUntil(timeout) { compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
+        try {
+            compose.waitUntil(timeout) { compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
+        } catch (failure: Throwable) {
+            DeviceEvidence.screenshot("99-journey-failure")
+            throw failure
+        }
     }
 
     /** Waits for the text, scrolls it into view when it's in a scrolling container, then taps it. */
