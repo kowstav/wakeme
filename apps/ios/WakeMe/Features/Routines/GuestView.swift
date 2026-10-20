@@ -21,7 +21,7 @@ struct GuestView: View {
                     Section("On this phone") {
                         ForEach(routines, id: \.planId) { r in
                             VStack(alignment: .leading, spacing: WMSpacing.xs) {
-                                Text("\(r.localTime) · \(daysText(r.recurrence))").font(.title3).foregroundStyle(WMColor.textPrimary)
+                                Text("\(Text(r.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(r.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
                                 if !r.label.isEmpty { Text(r.label).foregroundStyle(WMColor.textSecondary) }
                                 if WakeAlarms.shared.authorization == .authorized && WakeAlarms.shared.armedRoutine(planId: r.planId) != nil {
                                     StatusPill(text: "Ready on this phone", tone: .success)

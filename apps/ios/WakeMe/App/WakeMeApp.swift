@@ -69,7 +69,11 @@ struct RootView: View {
         Group {
             switch app.gate {
             case .loading:
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity).background(WMColor.surface)
+                VStack(spacing: WMSpacing.md) {
+                    DuckMark(size: 64)
+                    ProgressView().tint(WMColor.accentText)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity).background(WMColor.surface)
             case .welcome:
                 WelcomeView(onInvite: { app.chooseInvite() }, onSelfSetup: { app.chooseSelfSetup() })
             case .guest:
@@ -93,6 +97,8 @@ struct RootView: View {
                 }
             }
         }
+        // Setup steps crossfade (no sliding: they aren't a spatial stack); Reduce Motion keeps it short.
+        .animation(WMMotion.standard, value: app.gate)
     }
 }
 
@@ -147,7 +153,7 @@ struct DeletionPendingView: View {
                 PrimaryButton(title: working ? "Keeping…" : "Keep my account") { Task { await keep() } }.disabled(working)
                 SecondaryButton(title: "Sign out") { Task { await app.signOut() } }
             }
-            .padding(WMSpacing.md).frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md).frame(maxWidth: WMLayout.readableWidth).frame(maxWidth: .infinity)
         }
         .background(WMColor.surface)
     }
@@ -177,7 +183,7 @@ struct SuspendedView: View {
                     .foregroundStyle(WMColor.textSecondary)
                 SecondaryButton(title: "Sign out") { Task { await app.signOut() } }
             }
-            .padding(WMSpacing.md).frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md).frame(maxWidth: WMLayout.readableWidth).frame(maxWidth: .infinity)
         }
         .background(WMColor.surface)
     }

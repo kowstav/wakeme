@@ -100,7 +100,7 @@ struct GrantEditorView: View {
                     }
                 }
                 if let problem {
-                    Section { Text(problem).foregroundStyle(WMColor.danger) }
+                    Section { Text(problem).foregroundStyle(WMColor.warning) }
                 }
                 if friend.iAllowThem != nil {
                     Section {

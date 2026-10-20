@@ -14,6 +14,8 @@ struct FriendsView: View {
     @State private var nextAlarm: (fireAt: Date, label: String)?
     @State private var pendingInvite: InvitePreviewDTO?
     @Environment(\.scenePhase) private var scenePhase
+    /// The friend's row zooms into their page (system zoom transition; standard push with Reduce Motion).
+    @Namespace private var friendZoom
 
     var body: some View {
         List {
@@ -21,8 +23,8 @@ struct FriendsView: View {
             if let nextAlarm {
                 Section {
                     VStack(alignment: .leading, spacing: WMSpacing.xs) {
-                        Text("Next alarm on this phone").font(.headline).foregroundStyle(WMColor.textPrimary)
-                        Text(nextAlarmText(nextAlarm.fireAt, label: nextAlarm.label)).foregroundStyle(WMColor.textSecondary)
+                        Text("Next alarm on this phone").font(.subheadline.weight(.medium)).foregroundStyle(WMColor.textSecondary)
+                        Text(nextAlarmText(nextAlarm.fireAt, label: nextAlarm.label)).font(.title2.weight(.semibold)).monospacedDigit().foregroundStyle(WMColor.textPrimary)
                         if WakeAlarms.shared.authorization != .authorized {
                             StatusPill(text: "Alarm access is off, so it can't ring.", tone: .warning)
                             SecondaryButton(title: "Open Settings") {
@@ -35,23 +37,24 @@ struct FriendsView: View {
             }
             if loaded && friends.isEmpty {
                 Section {
-                    VStack(alignment: .leading, spacing: WMSpacing.xs) {
-                        Text("Invite someone you trust").font(.headline).foregroundStyle(WMColor.textPrimary)
-                        Text("Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
-                            .foregroundStyle(WMColor.textSecondary)
-                    }
+                    EmptyState(title: "Invite someone you trust",
+                               message: "Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
                 }
             }
             if !friends.isEmpty {
                 Section("Friends") {
                     ForEach(friends) { f in
                         NavigationLink(value: f.friendshipId) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(f.user.displayName).font(.headline).foregroundStyle(WMColor.textPrimary)
-                                Text(summary(f)).font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                            HStack(spacing: WMSpacing.sm) {
+                                FriendAvatar(name: f.user.displayName, key: f.user.id)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(f.user.displayName).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                                    Text(summary(f)).font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                                }
                             }
                             .frame(minHeight: WMSize.minTouchTarget)
                         }
+                        .matchedTransitionSource(id: f.friendshipId, in: friendZoom)
                     }
                 }
             }
@@ -70,7 +73,9 @@ struct FriendsView: View {
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
         .navigationTitle("Friends")
-        .navigationDestination(for: String.self) { id in FriendDetailView(friendshipId: id) }
+        .navigationDestination(for: String.self) { id in
+            FriendDetailView(friendshipId: id).wmZoomTransition(id: id, in: friendZoom)
+        }
         .refreshable { await load() }
         .task { await load() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { nextAlarm = WakeAlarms.shared.nextMainAlarm() } }
@@ -167,7 +172,7 @@ struct InviteSheet: View {
                 .buttonStyle(.borderedProminent).tint(WMColor.accent).foregroundStyle(WMColor.textOnAccent)
                 Spacer()
             }
-            .padding(WMSpacing.md)
+            .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
     }
@@ -199,13 +204,24 @@ struct FriendDetailView: View {
             if let f = friend {
                 let name = f.user.displayName
                 VStack(alignment: .leading, spacing: WMSpacing.md) {
-                    Text(name).font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary)
+                    HStack(spacing: WMSpacing.md) {
+                        FriendAvatar(name: name, key: f.user.id, size: WMLayout.avatarHeader)
+                        VStack(alignment: .leading, spacing: WMSpacing.xxs) {
+                            Text(name).font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                            if f.actions?.first(where: { $0.capability == Capability.nudge })?.availableNow == true {
+                                StatusPill(text: "Quack available now", tone: .success)
+                            }
+                        }
+                    }
                     quackCard(f)
                     wakeCard(f)
                     if let c = lastCommand {
                         WMCard {
                             Text("Last request").font(.headline).foregroundStyle(WMColor.textPrimary)
-                            StatusPill(text: statusText(c.displayStatus), tone: statusTone(c.displayStatus))
+                            StatusPill(text: statusText(c.displayStatus), tone: statusTone(c.displayStatus), announce: true)
+                            if c.capability == Capability.nudge || c.capability == Capability.alarmRequest {
+                                DeliveryTrailView(displayStatus: c.displayStatus, alarm: c.capability == Capability.alarmRequest)
+                            }
                         }
                     }
                     if f.theyAllowMe?.capabilities.contains(Capability.alarmSchedule) == true || !suggested.isEmpty { suggestCard(f) }
@@ -223,7 +239,7 @@ struct FriendDetailView: View {
                     SecondaryButton(title: "Remove \(name) as a friend") { confirmRemove = true }
                     SecondaryButton(title: "Block or report \(name)") { confirmBlock = true }
                 }
-                .padding(WMSpacing.md).frame(maxWidth: 640).frame(maxWidth: .infinity)
+                .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md).frame(maxWidth: WMLayout.readableWidth).frame(maxWidth: .infinity)
                 .sheet(isPresented: $suggesting) { RoutineEditorView(friend: f, onSaved: { await load() }) }
             } else {
                 ProgressView().padding()
@@ -233,8 +249,8 @@ struct FriendDetailView: View {
         .task { await load() }
         // While a request is on its way, show what their phone reports, in words.
         .task(id: lastCommand?.id) { await followLastCommand() }
-        .sensoryFeedback(.success, trigger: sentTick)
-        .sensoryFeedback(.warning, trigger: failTick)
+        .sensoryFeedback(WMHaptic.sent, trigger: sentTick)
+        .sensoryFeedback(WMHaptic.failed, trigger: failTick)
         .sheet(isPresented: $editing) {
             if let f = friend { GrantEditorView(friend: f, onSaved: { await load() }) }
         }
@@ -262,8 +278,18 @@ struct FriendDetailView: View {
     @ViewBuilder private func quackCard(_ f: FriendDTO) -> some View {
         let quack = f.actions?.first { $0.capability == Capability.nudge }
         let sounds = f.theyAllowMe?.limits.nudge?.sounds ?? []
+        let quackTick = lastCommand?.capability == Capability.nudge ? sentTick : 0
         WMCard {
-            Text("Quack").font(.title3.bold()).foregroundStyle(WMColor.textPrimary)
+            HStack(spacing: WMSpacing.sm) {
+                // Replays only after a send the server accepted; says nothing about delivery.
+                QuackBurst(tick: quackTick, height: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Quack").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                    if !sounds.isEmpty {
+                        Text("Only sounds \(f.user.displayName) allowed.").font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                    }
+                }
+            }
             if sounds.count > 1 {
                 Picker("Sound", selection: Binding(get: { quackSound ?? sounds[0] }, set: { quackSound = $0 })) {
                     ForEach(sounds, id: \.self) { Text(soundName($0)).tag($0) }
@@ -274,8 +300,9 @@ struct FriendDetailView: View {
             if let quack, quack.granted, quack.availableNow {
                 PrimaryButton(title: sending == Capability.nudge ? "Sending…" : "Send quack") { Task { await maybeAskThenSend() } }
                     .disabled(sending != nil)
-                if lastCommand?.capability == Capability.nudge, sentTick > 0 {
-                    QuackSent(name: f.user.displayName, tick: sentTick)
+                if quackTick > 0 {
+                    Text("Sent to \(f.user.displayName)").font(.headline).foregroundStyle(WMColor.textPrimary)
+                        .transition(.opacity)
                 }
             } else {
                 Text(reasonText(f.user.displayName, quack?.reason ?? "capability_not_granted")).foregroundStyle(WMColor.textSecondary)
@@ -288,7 +315,7 @@ struct FriendDetailView: View {
         let name = f.user.displayName
         if let wake = f.actions?.first(where: { $0.capability == Capability.alarmRequest }), wake.granted {
             WMCard {
-                Text("Wake alarm").font(.title3.bold()).foregroundStyle(WMColor.textPrimary)
+                Text("Wake alarm").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                 Text("Rings \(name)'s phone for up to \(f.theyAllowMe?.limits.alarm?.maxAlarmSeconds ?? 60) seconds, inside the wake hours they chose.")
                     .foregroundStyle(WMColor.textSecondary)
                 if wake.availableNow {
@@ -307,7 +334,7 @@ struct FriendDetailView: View {
     @ViewBuilder private func suggestCard(_ f: FriendDTO) -> some View {
         let name = f.user.displayName
         WMCard {
-            Text("Wake-ups for \(name)").font(.title3.bold()).foregroundStyle(WMColor.textPrimary)
+            Text("Wake-ups for \(name)").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
             ForEach(suggested) { p in
                 if let v = p.pending ?? p.accepted {
                     VStack(alignment: .leading, spacing: WMSpacing.xxs) {
@@ -356,11 +383,11 @@ struct FriendDetailView: View {
         let name = f.user.displayName
         let mine = f.iAllowThem.flatMap { $0.revokedAt == nil ? $0 : nil }
         WMCard {
-            Text("What \(name) can do on your phone").font(.title3.bold()).foregroundStyle(WMColor.textPrimary)
+            Text("What \(name) can do on your phone").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
             if let g = mine {
                 Text("\(name) can \(g.capabilities.map(capabilityText).sorted().joined(separator: ", ")).").foregroundStyle(WMColor.textPrimary)
                 if g.paused { StatusPill(text: "Paused", tone: .neutral) }
-                PrimaryButton(title: "Change permissions") { editing = true }
+                SecondaryButton(title: "Change permissions") { editing = true }
                 SecondaryButton(title: g.paused ? "Resume \(name)'s permissions" : "Pause \(name)'s permissions") { Task { await pause(g, !g.paused) } }
             } else {
                 Text("Nothing yet. \(name) can't make a sound or set an alarm on your phone.").foregroundStyle(WMColor.textSecondary)
