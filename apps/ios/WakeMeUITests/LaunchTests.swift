@@ -48,11 +48,25 @@ final class LaunchTests: XCTestCase {
 
     /// Records the failure and stops the journey: async tests don't honour
     /// continueAfterFailure, and later steps would only screenshot the wrong screen.
+    @MainActor
     private func must(_ condition: Bool, _ message: String, file: StaticString = #filePath, line: UInt = #line) throws {
         if !condition {
+            // What was on screen (a system alert included) when the step failed.
+            let a = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            a.name = "fail-line-\(line)"
+            a.lifetime = .keepAlways
+            add(a)
             XCTFail(message, file: file, line: line)
             throw StepFailed()
         }
+    }
+
+    /// Accepts a system permission alert (AlarmKit, notifications) if one comes up; slow simulators
+    /// can take several seconds to show it.
+    @MainActor
+    private func allowSystemPrompt(_ springboard: XCUIApplication, timeout: TimeInterval = 15) {
+        let allow = springboard.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Allow")).firstMatch
+        if allow.waitForExistence(timeout: timeout) { allow.tap() }
     }
 
     @MainActor
@@ -144,7 +158,7 @@ final class LaunchTests: XCTestCase {
         shot(app, "08-new-wake-up")
         app.navigationBars["New wake-up"].buttons["Save"].tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        if springboard.buttons["Allow"].waitForExistence(timeout: 8) { springboard.buttons["Allow"].tap() }
+        allowSystemPrompt(springboard)
         try must(app.staticTexts["07:00 · Weekdays"].waitForExistence(timeout: 20), "the guest wake-up is listed")
         try must(app.staticTexts["Ready on this phone"].waitForExistence(timeout: 10), "AlarmKit armed it on this phone")
         shot(app, "09-guest-wake-up")
@@ -227,7 +241,7 @@ final class LaunchTests: XCTestCase {
         try must(hear.waitForExistence(timeout: 15), "the app explains before the system prompt")
         shot(app, "14b-hear-quacks")
         hear.buttons["Allow notifications"].tap()
-        if springboard.buttons["Allow"].waitForExistence(timeout: 8) { springboard.buttons["Allow"].tap() }
+        allowSystemPrompt(springboard)
         try must(app.staticTexts["Alex can send quacks."].waitForExistence(timeout: 15), "the grant is saved and shown in words")
         shot(app, "15-friend-granted")
 
