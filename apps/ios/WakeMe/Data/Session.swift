@@ -53,6 +53,12 @@ actor Session: TokenProvider {
 
     /// Re-authentication for a high-impact action: the new tokens are kept only if the code
     /// belongs to the account already signed in, so a different email can't switch accounts.
+    /// Sign in with Apple (doc 02 §9): Supabase verifies Apple's identity token and the nonce whose
+    /// SHA-256 was put in the Apple request; the app never trusts the token's email by itself.
+    func signInWithApple(idToken: String, rawNonce: String) async throws {
+        try await save(gotrue("/auth/v1/token?grant_type=id_token", ["provider": "apple", "id_token": idToken, "nonce": rawNonce]))
+    }
+
     func confirmEmailCode(_ email: String, code: String) async throws {
         let t = try await gotrue("/auth/v1/verify", ["type": "email", "email": email.trimmingCharacters(in: .whitespaces), "token": code.trimmingCharacters(in: .whitespaces)])
         guard let current = subject, t.user?.id == current else {

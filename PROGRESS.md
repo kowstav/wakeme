@@ -49,7 +49,7 @@ Checked by reading each doc and searching the code. Items are removed from this 
 | iOS receives quacks and wake requests (APNs registration, token refresh, notification handling, receipts) | 01 §6, 02 §7, 03 §4A | implemented 2026-10-20 (code: `PushCenter`, `GrantStore`); CI simulator check pending (dev pushes relayed with `simctl push`; not APNs) |
 | iOS paywall (StoreKit through RevenueCat; trial/grace/expired/restore/refunded/store unavailable states) | 02 §2, 03 §7, 04 §16 | implemented 2026-10-20 (RevenueCat 5.92.0, from You → See Plus); no RevenueCat key or App Store products exist, so only the "store unavailable" state can run in CI |
 | Guest personal alarms before an account | 02 §9, 03 §5.2 | not written (both apps need sign-in) |
-| Sign in with Apple (iOS) / Google (Android) | 02 §9 | Google on Android only; Apple not written |
+| Sign in with Apple (iOS) / Google (Android) | 02 §9 | Google on Android; Sign in with Apple on iOS implemented 2026-10-20 (Supabase id_token grant with hashed nonce); both need the owner's Supabase providers and Apple entitlement to run |
 | Home shows the next alarm and one readiness issue | 03 §3 | implemented 2026-10-20, both apps; not yet seen in screenshots |
 | Signature quack animation with a Reduced Motion alternative; send/warning haptics | 03 §2 | implemented 2026-10-20, both apps; haptics not observable in CI |
 | User-recorded voice sounds (rights attestation, upload, scan, recipient approval) | 01 §6, 02 §5 `media_assets` | server media upload exists; no app recording |

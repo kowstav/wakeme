@@ -47,6 +47,7 @@ targets:
       path: WakeMe/WakeMe.entitlements
       properties:
         aps-environment: development
+        com.apple.developer.applesignin: [Default]
         com.apple.developer.family-controls: true
         com.apple.security.application-groups: [group.app.wakeme.ios]
     info:

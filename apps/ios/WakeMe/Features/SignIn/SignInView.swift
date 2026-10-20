@@ -1,3 +1,5 @@
+import AuthenticationServices
+import CryptoKit
 import SwiftUI
 
 /// Minimal sign-in: email code (no phone number, no contacts). Debug builds without
@@ -8,6 +10,8 @@ struct SignInView: View {
     @State private var code = ""
     @State private var sent = false
     @State private var working = false
+    @State private var appleNonce: String?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView {
@@ -16,6 +20,21 @@ struct SignInView: View {
                 Text("Sign in to keep your friends and settings. We never ask for your phone number or contacts.")
                     .foregroundStyle(WMColor.textSecondary)
                 if AppConfig.supabaseConfigured {
+                    // Doc 02 §9: Apple, then email; never a phone number.
+                    SignInWithAppleButton(.continue) { request in
+                        let raw = UUID().uuidString + UUID().uuidString
+                        appleNonce = raw
+                        request.requestedScopes = [] // a name is asked for on the profile screen; no email needed
+                        request.nonce = SHA256.hash(data: Data(raw.utf8)).map { String(format: "%02x", $0) }.joined()
+                    } onCompletion: { result in
+                        guard case let .success(auth) = result,
+                              let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+                              let token = credential.identityToken.flatMap({ String(data: $0, encoding: .utf8) }),
+                              let nonce = appleNonce else { return } // cancelled: nothing to say
+                        Task { await app.signInWithApple(idToken: token, rawNonce: nonce) }
+                    }
+                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                    .frame(height: WMSize.minTouchTarget)
                     WMCard {
                         Text("Email me a code").font(.headline).foregroundStyle(WMColor.textPrimary)
                         TextField("Email", text: $email)

@@ -112,6 +112,15 @@ final class AppModel {
         }
     }
 
+    func signInWithApple(idToken: String, rawNonce: String) async {
+        do {
+            try await Session.shared.signInWithApple(idToken: idToken, rawNonce: rawNonce)
+            await route()
+        } catch {
+            self.error = (error as? APIError)?.message ?? "Sign in with Apple didn't work. Try again, or use the email code."
+        }
+    }
+
     func devSignIn() async {
         do {
             try await Session.shared.devSignIn()
