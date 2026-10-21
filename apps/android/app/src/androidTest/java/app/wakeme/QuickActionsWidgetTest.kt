@@ -13,7 +13,13 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.ActivityTestRule
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
+import androidx.test.espresso.UiController
+import androidx.test.espresso.ViewAction
+import androidx.test.espresso.matcher.RootMatchers.withDecorView
+import androidx.test.espresso.matcher.ViewMatchers.isDisplayingAtLeast
+import androidx.test.espresso.matcher.ViewMatchers.isRoot
+import org.hamcrest.Matcher
+import org.hamcrest.Matchers.sameInstance
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import app.wakeme.widget.QuickActionsReceiver
@@ -51,17 +57,16 @@ class QuickActionsWidgetTest {
                 activity.activity.setContentView(view, ViewGroup.LayoutParams((320 * density).toInt(), (180 * density).toInt()))
             }
             runBlocking { QuickActionsWidget().update(context, GlanceAppWidgetManager(context).getGlanceIdBy(id)) }
-            fun find(node: View): View? = if (node.contentDescription?.toString() == "Choose a friend to quack") node
-                else (node as? ViewGroup)?.let { group -> (0 until group.childCount).firstNotNullOfOrNull { find(group.getChildAt(it)) } }
             var button: View? = null
             val until = android.os.SystemClock.elapsedRealtime() + 20_000
             while (button == null && android.os.SystemClock.elapsedRealtime() < until) {
-                instrumentation.runOnMainSync { button = find(view) }
+                instrumentation.runOnMainSync { button = findLabel(view, FRIEND_ACTION) }
                 if (button == null) Thread.sleep(200)
             }
             assertNotNull("toolbar rendered with an accessible friend action", button)
             DeviceEvidence.screenshot("53-home-widget-toolbar")
-            onView(withContentDescription("Choose a friend to quack")).perform(click())
+            onView(isRoot()).inRoot(withDecorView(sameInstance(activity.activity.window.decorView)))
+                .perform(waitAndTapWidgetAction(FRIEND_ACTION))
             var opened: MainActivity? = null
             val launchDeadline = android.os.SystemClock.elapsedRealtime() + 10_000
             while (opened == null && android.os.SystemClock.elapsedRealtime() < launchDeadline) {
@@ -76,4 +81,41 @@ class QuickActionsWidgetTest {
             host.stopListening(); host.deleteHost()
         }
     }
+
+    private fun findLabel(node: View, label: String): View? =
+        if (node.contentDescription?.toString() == label) node
+        else (node as? ViewGroup)?.let { group ->
+            (0 until group.childCount).firstNotNullOfOrNull { findLabel(group.getChildAt(it), label) }
+        }
+
+    /**
+     * Glance can replace its RemoteViews after the first render. Resolve the live action inside
+     * one Espresso action, after draining main-thread updates, rather than matching a descendant
+     * that can disappear between the separate render wait, screenshot and Espresso lookup.
+     * The labelled child is not clickable: its nearest clickable ancestor owns the PendingIntent.
+     * Inject one actual pointer tap; do not retry taps or call performClick/PendingIntent directly.
+     */
+    private fun waitAndTapWidgetAction(label: String) = object : ViewAction {
+        override fun getDescription() = "wait for the live widget action '$label' and tap it once"
+        override fun getConstraints(): Matcher<View> = isRoot()
+        override fun perform(controller: UiController, root: View) {
+            val deadline = android.os.SystemClock.elapsedRealtime() + 20_000
+            do {
+                controller.loopMainThreadUntilIdle()
+                val labelled = findLabel(root, label)
+                val target = labelled?.let { child ->
+                    generateSequence(child) { it.parent as? View }.firstOrNull { it.isClickable }
+                }
+                if (target != null && target.isAttachedToWindow && target.isEnabled && isDisplayingAtLeast(90).matches(target)) {
+                    DeviceEvidence.note("widget-action", "labelType=${labelled?.contentDescription?.javaClass?.name}, one pointer tap on the live clickable ancestor")
+                    click().perform(controller, target)
+                    return
+                }
+                controller.loopMainThreadForAtLeast(100)
+            } while (android.os.SystemClock.elapsedRealtime() < deadline)
+            throw AssertionError("The rendered widget action '$label' never became attached, visible and clickable")
+        }
+    }
+
+    private companion object { const val FRIEND_ACTION = "Choose a friend to quack" }
 }

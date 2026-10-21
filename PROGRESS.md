@@ -122,3 +122,10 @@ Physical-device soak matrix (iOS 26/27, Android 17 on Pixel/Samsung/one aggressi
 2. Install the APK on a real Android 17 phone and run the Stage 0 alarm experiment (exact alarm + systemExempted service + USAGE_ALARM, locked and idle, with and without earbuds; a routine left for several days), recording device/OS/build/settings.
 3. iOS on a real phone (needs the owner's Apple developer account): AlarmKit with a full window, `stopIntent` after Stop, background refresh frequency; then APNs.
 4. Legal review of the privacy policy and terms drafts; store listings.
+
+## Independent Android verification (2026-10-21, Codex)
+
+- Ownership agreed with the owner: Claude keeps Daybreak design/UX and Focus binding in PR #2. Codex takes the widget flake and independent CI verification. FocusShieldTest.kt and its workflow step stay untouched until PR #2 merges; no push/dispatch goes to ci/focus-binding-api36.
+- Run 61 failed widget lookup on both emulators even though the failure hierarchy contains the exact action label. The isolated fix resolves the currently attached/visible labelled control and its clickable ancestor inside one Espresso ViewAction, then injects one pointer tap. It retains the real AppWidgetHost, accessible-label check and resumed MainActivity route assertion. No retry of the tap or direct PendingIntent invocation.
+- Added three independent widget instrumentation runs per emulator; each must pass and none may skip. Validation is pending. These runs use the independent branch and cannot cancel Claude's branch runs.
+- [Remaining Android work](docs/android-remaining-work.md) groups completion into eight workstreams: CI/reliability, design acceptance, real auth, push, billing, media, physical-device QA, release/operations. These are broader than individual tickets; most remaining gates require real accounts/devices or owner review.
