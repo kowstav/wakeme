@@ -441,7 +441,9 @@ private fun StartSheet(
  * Android 17's system-rendered location button (doc 06): a tap grants precise location for this
  * session only. On Android 16 and earlier the library shows a look-alike that opens the usual
  * permission prompt. Hosted as a View: the Compose artifact would pull alpha Material3 (see
- * libs.versions.toml). Not yet exercised on an emulator or phone.
+ * libs.versions.toml). Full width: at wrap_content the library sizes the button from its own local
+ * copy of the label, and Android 17's system rendering didn't fit it ("Share precise locatio" in
+ * runs 65, 76 and 80). Exercised on the Android 16 and 17 emulators, not yet on a phone.
  */
 @Composable
 internal fun SystemLocationButton(onResult: (Boolean) -> Unit) {
@@ -463,5 +465,6 @@ internal fun SystemLocationButton(onResult: (Boolean) -> Unit) {
                 })
             }
         },
+        modifier = Modifier.fillMaxWidth(),
     )
 }
