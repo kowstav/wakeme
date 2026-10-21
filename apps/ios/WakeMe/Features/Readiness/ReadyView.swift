@@ -57,7 +57,7 @@ struct ReadyView: View {
                     StatusPill(text: testResult == nil ? "Next step: ring a test alarm" : "Ready on this phone once you've heard it", tone: testResult == nil ? .info : .success)
                 }
             }
-            .padding(WMSpacing.md)
+            .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md)
             .frame(maxWidth: 640)
             .frame(maxWidth: .infinity)
         }

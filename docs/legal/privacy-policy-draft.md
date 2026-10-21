@@ -39,8 +39,13 @@ Wake Me is provided by [legal entity, address]. Contact: [privacy@…]. Wake Me 
 | Reports you file and moderation decisions | To keep people safe | You and our moderators |
 | Security and audit records (sign-ins to admin tools, permission changes, deletions) | Security, abuse investigation, legal obligations | Our systems |
 
-We don't collect your contacts, phone number, advertising identifier or browsing history, and
-we don't use your microphone. Alarm challenges are checked on your phone; we don't receive
+We don't collect your contacts, phone number, advertising identifier or browsing history.
+On Android, the optional Voice sounds feature uses your microphone only after you choose Record,
+for up to 30 seconds while that screen is open. Preview stays on your phone; a separate Upload
+action and rights confirmation sends it to private storage for checking. You choose whether to
+offer it to a friend, who can preview it and approve or decline. Leaving the screen or putting
+the app in the background stops recording. iOS recording is not yet implemented.
+Alarm challenges are checked on your phone; we don't receive
 camera images or sensor recordings.
 
 ## 4. Who we share it with

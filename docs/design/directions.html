@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wake Me Directions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap">
+<style>
+/* Three visual directions for the same two core screens (doc 03 §9 step 3), with real Wake Me
+   content. Direction C ("Daybreak") is the one selected and is what packages/design-tokens holds. */
+:root {
+  --page: #EFEAE0; --page-ink: #1B1A17; --page-sub: #5C5850; --page-card: #FBF8F1; --page-line: #DDD5C6; --tag-bg: #FBE9B0; --tag-ink: #473101; --decide: #F2B705;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page: #0D0C0A; --page-ink: #F3EFE6; --page-sub: #B3ADA2; --page-card: #151311; --page-line: #33302B; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --page: #0D0C0A; --page-ink: #F3EFE6; --page-sub: #B3ADA2; --page-card: #151311; --page-line: #33302B; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--page-ink); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1240px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: clamp(28px, 4vw, 40px); margin: 0 0 8px; letter-spacing: -0.02em; }
+.lede { color: var(--page-sub); max-width: 760px; margin: 0 0 32px; }
+section.dir { border-top: 1px solid var(--page-line); padding-block: 28px 8px; }
+section.dir header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 4px; }
+section.dir h2 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
+.tag { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--tag-bg); color: var(--tag-ink); }
+.dir p.why { color: var(--page-sub); margin: 4px 0 20px; max-width: 820px; }
+.phones { display: flex; flex-wrap: wrap; gap: 20px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 0; }
+.sw { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--page-sub); }
+.sw i { width: 18px; height: 18px; border-radius: 6px; border: 1px solid var(--page-line); display: inline-block; }
+
+/* ---------- phone ---------- */
+.phone { flex: 0 0 300px; height: 620px; border-radius: 36px; padding: 10px; background: #0D0C0A; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.screen { height: 100%; border-radius: 28px; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); display: flex; flex-direction: column; }
+.status { height: 34px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 12px; font-weight: 600; }
+.content { flex: 1; padding: 6px 16px 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.tabs { display: flex; justify-content: space-around; align-items: center; padding: 8px 12px 12px; border-top: 1px solid var(--border); background: var(--card); font-size: 11px; color: var(--sub); }
+.tabs b { color: var(--ink); }
+.tabs span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.tabs .dot { width: 34px; height: 18px; border-radius: 999px; }
+.tabs b .dot { background: var(--tabsel); }
+.title { font-size: 28px; font-weight: var(--title-weight); letter-spacing: var(--title-track); margin: 4px 0 2px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-card); padding: 14px; box-shadow: var(--shadow); }
+.card h3 { margin: 0 0 2px; font-size: 15px; }
+.muted { color: var(--sub); font-size: 13px; }
+.time { font-variant-numeric: tabular-nums; font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.row:last-child { border-bottom: 0; }
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--ink); flex: none; }
+.row .nm { font-weight: 650; font-size: 15px; }
+.chev { margin-left: auto; color: var(--sub); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--sunken); font-size: 12px; font-weight: 600; color: var(--ink); }
+.pill i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 50px; border-radius: var(--r-btn); font-weight: 700; font-size: 16px; }
+.btn.primary { background: var(--btn-bg); color: var(--btn-ink); box-shadow: var(--btn-shadow); }
+.btn.secondary { border: 1.5px solid var(--outline); color: var(--ink); height: 44px; font-weight: 600; font-size: 15px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { padding: 7px 12px; border-radius: var(--r-chip); border: 1.5px solid var(--outline); font-size: 13px; font-weight: 600; }
+.chip.on { background: var(--sel); color: var(--on-sel); border-color: var(--sel-line); }
+.hero { background: var(--hero); border-color: var(--hero-line); }
+.trail { display: flex; align-items: center; gap: 0; margin-top: 4px; }
+.trail .node { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--outline); background: var(--card); flex: none; }
+.trail .node.on { background: var(--success); border-color: var(--success); }
+.trail .bar { flex: 1; height: 3px; background: var(--border); }
+.trail .bar.on { background: var(--success); }
+.trail-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--sub); margin-top: 4px; }
+.trail-labels b { color: var(--ink); }
+.detail-head { display: flex; align-items: center; gap: 12px; }
+.detail-head .av { width: 52px; height: 52px; font-size: 20px; }
+.back { font-size: 15px; color: var(--link); font-weight: 600; }
+.sent { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+
+/* ---------- Direction A: Sunrise (expressive) ---------- */
+.a { --font: "Nunito", ui-rounded, system-ui, sans-serif; --title-weight: 900; --title-track: -0.01em;
+  --bg: #FFF4D6; --card: #FFFFFF; --sunken: #FFE9B8; --border: #F1DFAF; --outline: #C7A456; --ink: #2A1D0A; --sub: #6B5B45;
+  --btn-bg: #FFBE0B; --btn-ink: #2A1D0A; --btn-shadow: 0 4px 0 #D99A00; --r-btn: 999px; --r-card: 26px; --r-chip: 999px;
+  --sel: #FF7A59; --on-sel: #2A1D0A; --sel-line: #FF7A59; --hero: #FFE8A3; --hero-line: #F5CE5E; --success: #1E8C55; --link: #B5420F; --tabsel: #FFD25A;
+  --shadow: 0 2px 0 #F1DFAF; }
+.a.dark { --bg: #24170B; --card: #33230F; --sunken: #43301A; --border: #4A3520; --outline: #9C7E57; --ink: #FFF1D9; --sub: #D8BF98;
+  --btn-bg: #FFBE0B; --btn-shadow: 0 4px 0 #A87600; --hero: #4A3510; --hero-line: #7A5A16; --sel: #FF8F70; --success: #6BD69B; --link: #FFB38F; --tabsel: #6B4D12; --shadow: none; }
+
+/* ---------- Direction B: Linen & Ink (refined) ---------- */
+.b { --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --title-weight: 700; --title-track: -0.025em;
+  --bg: #F6F5F2; --card: #FFFFFF; --sunken: #EEEDE9; --border: #E4E2DD; --outline: #8A8781; --ink: #111111; --sub: #5E5E5A;
+  --btn-bg: #111111; --btn-ink: #FFFFFF; --btn-shadow: none; --r-btn: 12px; --r-card: 14px; --r-chip: 8px;
+  --sel: #111111; --on-sel: #FFFFFF; --sel-line: #111111; --hero: #FFFFFF; --hero-line: #E4E2DD; --success: #2B7449; --link: #111111; --tabsel: #E9E7E1;
+  --shadow: 0 1px 2px rgba(0,0,0,.04); }
+.b.dark { --bg: #0F1011; --card: #1A1B1D; --sunken: #242528; --border: #2C2D30; --outline: #7A7B7F; --ink: #F2F2F0; --sub: #A8A8A3;
+  --btn-bg: #F2F2F0; --btn-ink: #111111; --sel: #F2F2F0; --on-sel: #111111; --sel-line: #F2F2F0; --hero: #1A1B1D; --hero-line: #2C2D30; --success: #6FCF97; --link: #F2F2F0; --tabsel: #2C2D30; --shadow: none; }
+
+/* ---------- Direction C: Daybreak (selected; = tokens.json v2) ---------- */
+.c { --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --title-weight: 800; --title-track: -0.02em;
+  --bg: #FBF8F1; --card: #FFFFFF; --sunken: #F3EEE3; --border: #E2DCCF; --outline: #877F73; --ink: #1B1A17; --sub: #5C5850;
+  --btn-bg: #F2B705; --btn-ink: #1B1A17; --btn-shadow: none; --r-btn: 999px; --r-card: 20px; --r-chip: 12px;
+  --sel: #FBE9B0; --on-sel: #473101; --sel-line: #835C00; --hero: #FFFFFF; --hero-line: #E2DCCF; --success: #2B7449; --link: #835C00; --tabsel: #FBE9B0;
+  --shadow: 0 2px 10px rgba(27,26,23,.06); }
+.c.dark { --bg: #151311; --card: #201E1A; --sunken: #0D0C0A; --border: #33302B; --outline: #79736C; --ink: #F3EFE6; --sub: #B3ADA2;
+  --btn-bg: #F5C518; --sel: #42330A; --on-sel: #FAE39F; --sel-line: #F5C518; --hero: #201E1A; --hero-line: #33302B; --success: #6FCF97; --link: #F5C518; --tabsel: #42330A; --shadow: none; }
+
+table.score { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+table.score th, table.score td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--page-line); vertical-align: top; }
+table.score td.n { text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; }
+.decision { border-left: 4px solid var(--decide); padding: 4px 0 4px 16px; margin: 20px 0 0; }
+.scroll { overflow-x: auto; }
+@media (max-width: 640px) { .phone { flex-basis: 280px; } }
+.phone { max-width: 100%; }
+</style>
+</head>
+<body>
+<main>
+<h1>Three directions, same content</h1>
+<p class="lede">Friends list, a friend's quack card and the delivery trail, in each direction (doc 03 §9 step 3). Content is real Wake Me copy; statuses are literal. These are static HTML studies for choosing a direction. They are not app screenshots, and the native apps were not rendered on this machine.</p>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- The Wake Me duck. Same geometry as DuckMark in Compose and SwiftUI (64-unit box). -->
+    <symbol id="duck" viewBox="0 0 64 64">
+      <path d="M12 37 L5 25 Q13 27 19 32 Z" fill="var(--duck-body, #F2B705)"/>
+      <ellipse cx="30" cy="42" rx="21" ry="14" fill="var(--duck-body, #F2B705)"/>
+      <circle cx="42" cy="22" r="12" fill="var(--duck-body, #F2B705)"/>
+      <path d="M20 40 Q30 34 40 40 Q32 48 22 46 Z" fill="var(--duck-wing, #DDA315)"/>
+      <path d="M51 18.5 Q60 18 62.5 22 Q58 24.5 51 24.5 Z" fill="#EE8A2F"/>
+      <path d="M51 24.5 Q57 24.5 60.5 26 Q56 28.5 51 28 Z" fill="#D9701C"/>
+      <circle cx="45" cy="19" r="2.3" fill="#1B1A17"/>
+      <circle cx="45.8" cy="18.2" r="0.75" fill="#FFFFFF"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ===================== A ===================== -->
+<section class="dir">
+  <header><h2>A · Sunrise</h2><span class="muted">warm, joyful, highly expressive</span></header>
+  <p class="why">Butter-cream canvas, rounded type, chunky pill buttons with a pressable lip, coral as a second accent for selection and celebration. Maximum personality, closest to a game.</p>
+  <div class="phones">
+    <div class="phone"><div class="screen a">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="title">Friends</div>
+        <div class="card"><div class="muted">Next alarm on this phone</div><div class="time">Tomorrow 06:30</div><div class="muted">9am class</div></div>
+        <div class="card" style="padding:4px 14px">
+          <div class="row"><div class="av" style="background:#FFD9A8">M</div><div><div class="nm">Maya</div><div class="muted">You can send quacks and wake her now</div></div><span class="chev">›</span></div>
+          <div class="row"><div class="av" style="background:#C8F0D2">S</div><div><div class="nm">Sam</div><div class="muted">You can send quacks</div></div><span class="chev">›</span></div>
+          <div class="row"><div class="av" style="background:#D8E6FF">A</div><div><div class="nm">Alex</div><div class="muted">Alex hasn't allowed anything yet</div></div><span class="chev">›</span></div>
+        </div>
+        <div class="btn primary">Invite a friend</div>
+      </div>
+      <div class="tabs"><b><span><i class="dot"></i>Friends</span></b><span><i class="dot"></i>Routines</span><span><i class="dot"></i>Challenges</span><span><i class="dot"></i>You</span></div>
+    </div></div>
+    <div class="phone"><div class="screen a">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="back">‹ Friends</div>
+        <div class="detail-head"><div class="av" style="background:#FFD9A8">M</div><div><div class="title" style="font-size:24px;margin:0">Maya</div><span class="pill"><i style="background:var(--success)"></i>Quack available now</span></div></div>
+        <div class="card hero" style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px"><svg width="54" height="54"><use href="#duck"/></svg><div><h3 style="font-size:18px">Quack Maya</h3><div class="muted">Only sounds Maya allowed</div></div></div>
+          <div class="chips"><span class="chip on">Classic quack</span><span class="chip">Double quack</span></div>
+          <div class="btn secondary">▶ Preview on my phone</div>
+          <div class="btn primary">Send quack</div>
+        </div>
+        <div class="card">
+          <div class="sent"><svg width="26" height="26"><use href="#duck"/></svg>Sent to Maya</div>
+          <div class="trail"><i class="node on"></i><i class="bar on"></i><i class="node on"></i><i class="bar"></i><i class="node"></i></div>
+          <div class="trail-labels"><span>Sent</span><b>Her phone received it</b><span>She saw it</span></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="phone"><div class="screen a dark">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="back">‹ Friends</div>
+        <div class="detail-head"><div class="av" style="background:#5A3C1C">M</div><div><div class="title" style="font-size:24px;margin:0">Maya</div><span class="pill"><i style="background:var(--success)"></i>Quack available now</span></div></div>
+        <div class="card hero" style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px"><svg width="54" height="54" style="--duck-body:#F5C518;--duck-wing:#DFB127"><use href="#duck"/></svg><div><h3 style="font-size:18px">Quack Maya</h3><div class="muted">Only sounds Maya allowed</div></div></div>
+          <div class="chips"><span class="chip on">Classic quack</span><span class="chip">Double quack</span></div>
+          <div class="btn secondary">▶ Preview on my phone</div>
+          <div class="btn primary">Send quack</div>
+        </div>
+        <div class="card"><div class="sent">Sent to Maya</div><div class="trail"><i class="node on"></i><i class="bar"></i><i class="node"></i><i class="bar"></i><i class="node"></i></div><div class="trail-labels"><b>Sent · no confirmation yet</b><span></span><span>She saw it</span></div></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="swatches"><span class="sw"><i style="background:#FFF4D6"></i>canvas</span><span class="sw"><i style="background:#FFBE0B"></i>yolk</span><span class="sw"><i style="background:#FF7A59"></i>coral</span><span class="sw"><i style="background:#FFE8A3"></i>butter</span><span class="sw"><i style="background:#2A1D0A"></i>cocoa ink</span><span class="sw"><i style="background:#24170B"></i>night</span></div>
+</section>
+
+<!-- ===================== B ===================== -->
+<section class="dir">
+  <header><h2>B · Linen &amp; Ink</h2><span class="muted">refined, contemporary, premium</span></header>
+  <p class="why">Near-neutral linen, ink-black primary buttons, tight radii and hairlines. Yellow only appears in the duck and tiny indicators. Quiet and editorial.</p>
+  <div class="phones">
+    <div class="phone"><div class="screen b">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="title">Friends</div>
+        <div class="card"><div class="muted">Next alarm on this phone</div><div class="time">Tomorrow 06:30</div><div class="muted">9am class</div></div>
+        <div class="card" style="padding:4px 14px">
+          <div class="row"><div class="av" style="background:#ECEAE4">M</div><div><div class="nm">Maya</div><div class="muted">You can send quacks and wake her now</div></div><span class="chev">›</span></div>
+          <div class="row"><div class="av" style="background:#ECEAE4">S</div><div><div class="nm">Sam</div><div class="muted">You can send quacks</div></div><span class="chev">›</span></div>
+          <div class="row"><div class="av" style="background:#ECEAE4">A</div><div><div class="nm">Alex</div><div class="muted">Alex hasn't allowed anything yet</div></div><span class="chev">›</span></div>
+        </div>
+        <div class="btn primary">Invite a friend</div>
+      </div>
+      <div class="tabs"><b><span><i class="dot"></i>Friends</span></b><span><i class="dot"></i>Routines</span><span><i class="dot"></i>Challenges</span><span><i class="dot"></i>You</span></div>
+    </div></div>
+    <div class="phone"><div class="screen b">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="back">‹ Friends</div>
+        <div class="detail-head"><div class="av" style="background:#ECEAE4">M</div><div><div class="title" style="font-size:24px;margin:0">Maya</div><span class="pill"><i style="background:var(--success)"></i>Quack available now</span></div></div>
+        <div class="card hero" style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px"><svg width="36" height="36"><use href="#duck"/></svg><div><h3>Quack</h3><div class="muted">Only sounds Maya allowed</div></div></div>
+          <div class="chips"><span class="chip on">Classic quack</span><span class="chip">Double quack</span></div>
+          <div class="btn secondary">Preview on my phone</div>
+          <div class="btn primary">Send quack</div>
+        </div>
+        <div class="card"><div class="sent">Sent to Maya</div><div class="trail"><i class="node on"></i><i class="bar on"></i><i class="node on"></i><i class="bar"></i><i class="node"></i></div><div class="trail-labels"><span>Sent</span><b>Her phone received it</b><span>She saw it</span></div></div>
+      </div>
+    </div></div>
+    <div class="phone"><div class="screen b dark">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="back">‹ Friends</div>
+        <div class="detail-head"><div class="av" style="background:#2C2D30">M</div><div><div class="title" style="font-size:24px;margin:0">Maya</div><span class="pill"><i style="background:var(--success)"></i>Quack available now</span></div></div>
+        <div class="card hero" style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px"><svg width="36" height="36" style="--duck-body:#F5C518;--duck-wing:#DFB127"><use href="#duck"/></svg><div><h3>Quack</h3><div class="muted">Only sounds Maya allowed</div></div></div>
+          <div class="chips"><span class="chip on">Classic quack</span><span class="chip">Double quack</span></div>
+          <div class="btn secondary">Preview on my phone</div>
+          <div class="btn primary">Send quack</div>
+        </div>
+        <div class="card"><div class="sent">Sent to Maya</div><div class="trail"><i class="node on"></i><i class="bar"></i><i class="node"></i><i class="bar"></i><i class="node"></i></div><div class="trail-labels"><b>Sent · no confirmation yet</b><span></span><span>She saw it</span></div></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="swatches"><span class="sw"><i style="background:#F6F5F2"></i>linen</span><span class="sw"><i style="background:#111111"></i>ink</span><span class="sw"><i style="background:#F2B705"></i>duck (mark only)</span><span class="sw"><i style="background:#0F1011"></i>graphite night</span></div>
+</section>
+
+<!-- ===================== C ===================== -->
+<section class="dir">
+  <header><h2>C · Daybreak</h2><span class="tag">Selected</span><span class="muted">balanced hybrid</span></header>
+  <p class="why">B's structure (calm cream surfaces, ink text, hairlines, legible hierarchy) with A's warmth where it earns attention: the yellow pill for the one primary action, butter for selection and the duck at the quack. Night is warm ink, not cold slate.</p>
+  <div class="phones">
+    <div class="phone"><div class="screen c">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="title">Friends</div>
+        <div class="card"><div class="muted">Next alarm on this phone</div><div class="time">Tomorrow 06:30</div><div class="muted">9am class</div></div>
+        <div class="card" style="padding:4px 14px">
+          <div class="row"><div class="av" style="background:#FAD6BA">M</div><div><div class="nm">Maya</div><div class="muted">You can send quacks and wake her now</div></div><span class="chev">›</span></div>
+          <div class="row"><div class="av" style="background:#C5E9CB">S</div><div><div class="nm">Sam</div><div class="muted">You can send quacks</div></div><span class="chev">›</span></div>
+          <div class="row"><div class="av" style="background:#C9E0FF">A</div><div><div class="nm">Alex</div><div class="muted">Alex hasn't allowed anything yet</div></div><span class="chev">›</span></div>
+        </div>
+        <div class="btn primary">Invite a friend</div>
+      </div>
+      <div class="tabs"><b><span><i class="dot"></i>Friends</span></b><span><i class="dot"></i>Routines</span><span><i class="dot"></i>Challenges</span><span><i class="dot"></i>You</span></div>
+    </div></div>
+    <div class="phone"><div class="screen c">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="back">‹ Friends</div>
+        <div class="detail-head"><div class="av" style="background:#FAD6BA">M</div><div><div class="title" style="font-size:24px;margin:0">Maya</div><span class="pill"><i style="background:var(--success)"></i>Quack available now</span></div></div>
+        <div class="card hero" style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px"><svg width="48" height="48"><use href="#duck"/></svg><div><h3 style="font-size:17px">Quack Maya</h3><div class="muted">Only sounds Maya allowed</div></div></div>
+          <div class="chips"><span class="chip on">✓ Classic quack</span><span class="chip">Double quack</span></div>
+          <div class="btn secondary">▶ Preview on my phone</div>
+          <div class="btn primary">Send quack</div>
+        </div>
+        <div class="card">
+          <div class="sent"><svg width="26" height="26"><use href="#duck"/></svg>Sent to Maya</div>
+          <div class="trail"><i class="node on"></i><i class="bar on"></i><i class="node on"></i><i class="bar"></i><i class="node"></i></div>
+          <div class="trail-labels"><span>Sent</span><b>Her phone received it</b><span>She saw it</span></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="phone"><div class="screen c dark">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="content">
+        <div class="back">‹ Friends</div>
+        <div class="detail-head"><div class="av" style="background:#4D3119">M</div><div><div class="title" style="font-size:24px;margin:0">Maya</div><span class="pill"><i style="background:var(--success)"></i>Quack available now</span></div></div>
+        <div class="card hero" style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px"><svg width="48" height="48" style="--duck-body:#F5C518;--duck-wing:#DFB127"><use href="#duck"/></svg><div><h3 style="font-size:17px">Quack Maya</h3><div class="muted">Only sounds Maya allowed</div></div></div>
+          <div class="chips"><span class="chip on">✓ Classic quack</span><span class="chip">Double quack</span></div>
+          <div class="btn secondary">▶ Preview on my phone</div>
+          <div class="btn primary">Send quack</div>
+        </div>
+        <div class="card"><div class="sent">Sent to Maya</div><div class="trail"><i class="node on"></i><i class="bar"></i><i class="node"></i><i class="bar"></i><i class="node"></i></div><div class="trail-labels"><b>Sent · no confirmation yet</b><span></span><span>She saw it</span></div></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="swatches"><span class="sw"><i style="background:#FBF8F1"></i>surface</span><span class="sw"><i style="background:#F2B705"></i>accent</span><span class="sw"><i style="background:#FBE9B0"></i>accentContainer</span><span class="sw"><i style="background:#835C00"></i>accentText</span><span class="sw"><i style="background:#877F73"></i>outline</span><span class="sw"><i style="background:#2F5D9E"></i>info</span><span class="sw"><i style="background:#B3261E"></i>danger</span><span class="sw"><i style="background:#151311"></i>night</span></div>
+</section>
+
+<section class="dir">
+  <h2>Comparison</h2>
+  <div class="scroll">
+  <table class="score">
+    <thead><tr><th>Criterion</th><th>A · Sunrise</th><th>B · Linen &amp; Ink</th><th>C · Daybreak</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Emotional fit (playful, warm)</td><td class="n">5</td><td class="n">2</td><td class="n">4</td><td>B reads as a banking app; A reads as a game.</td></tr>
+      <tr><td>Legibility at 6 am / large text</td><td class="n">3</td><td class="n">5</td><td class="n">5</td><td>A's coral selection and butter canvas reduce contrast headroom; rounded heavy type wraps sooner.</td></tr>
+      <tr><td>Trust in safety, alarms and permissions</td><td class="n">2</td><td class="n">5</td><td class="n">4</td><td>A's coral collides with danger/SOS semantics and makes care feel frivolous (doc 03 §2).</td></tr>
+      <tr><td>Distinctiveness</td><td class="n">4</td><td class="n">2</td><td class="n">4</td><td>B could be any app. C owns yellow + duck + warm night.</td></tr>
+      <tr><td>Cross-platform consistency</td><td class="n">2</td><td class="n">5</td><td class="n">5</td><td>A needs a bundled rounded font on Android to match iOS's SF Rounded.</td></tr>
+      <tr><td>Accessibility (contrast, HC, colour-blind)</td><td class="n">3</td><td class="n">5</td><td class="n">5</td><td>C: 42 token pairs pass in light, dark and both increased-contrast modes.</td></tr>
+      <tr><td><b>Total</b></td><td class="n">19</td><td class="n">24</td><td class="n">27</td><td></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="decision"><b>Selected: C · Daybreak.</b> It keeps the trusted structure the product needs for alarms, permissions and SOS, and spends colour and motion only on the moments that carry emotion: the primary action, selection, the quack and success. It is also the closest to the existing identity, so it refines rather than replaces what already passes contrast and screenshot review.</p>
+</section>
+</main>
+</body>
+</html>

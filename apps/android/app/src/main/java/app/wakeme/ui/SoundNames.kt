@@ -8,5 +8,5 @@ fun soundName(id: String): String = when (id) {
     "bundled:bell.bright" -> "Bright bell"
     "bundled:rise.gentle" -> "Gentle rise"
     "bundled:pulse.wake" -> "Wake pulse"
-    else -> id.removePrefix("bundled:").replace('.', ' ')
+    else -> if (id.startsWith("media:")) "Voice recording ${id.removePrefix("media:").take(6)}" else id.removePrefix("bundled:").replace('.', ' ')
 }

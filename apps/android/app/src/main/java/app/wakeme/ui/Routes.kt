@@ -13,12 +13,14 @@ sealed interface Route : NavKey {
     @Serializable data class Conversation(val id: String) : Route
     @Serializable data object Routines : Route
     @Serializable data class Routine(val id: String) : Route
-    @Serializable data class RoutineNew(val ownerId: String? = null) : Route
+    @Serializable data class RoutineNew(val ownerId: String? = null, val reuseId: String? = null) : Route
     @Serializable data object Challenges : Route
     @Serializable data object ChallengeNew : Route
     @Serializable data class ChallengeEdit(val id: String) : Route
     @Serializable data class Safety(val focusSessionId: String? = null) : Route
     @Serializable data object Focus : Route
+    @Serializable data object VoiceSounds : Route
+    @Serializable data class WakeThanks(val kind: String, val id: String) : Route
     @Serializable data object You : Route
     @Serializable data object Ready : Route
     @Serializable data object Paywall : Route
@@ -46,6 +48,8 @@ fun routeKey(route: String): Route? {
         "friend" -> id?.let(Route::Friend)
         "conversation" -> id?.let(Route::Conversation)
         "routine" -> id?.let(Route::Routine)
+        "wake-thanks-command" -> id?.let { Route.WakeThanks("command", it) }
+        "wake-thanks-plan" -> id?.let { Route.WakeThanks("plan", it) }
         else -> null
     }
 }

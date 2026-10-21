@@ -42,8 +42,8 @@ private val ListMaxWidth = 1200.dp
  * split screen, foldables and desktop windows; no orientation lock).
  */
 @Composable
-fun Readable(maxWidth: Dp = ReadableWidth, content: @Composable () -> Unit) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+fun Readable(maxWidth: Dp = ReadableWidth, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Box(Modifier.widthIn(max = maxWidth)) { content() }
     }
 }

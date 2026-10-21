@@ -1,6 +1,12 @@
 package app.wakeme
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.UserManager
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -16,13 +22,17 @@ import app.wakeme.sync.DeviceRegistrar
 import app.wakeme.sync.SyncWorker
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
+import dagger.Lazy
+import app.wakeme.receipts.ReceiptQueue
 
 @HiltAndroidApp
 class WakeMeApp : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
-    @Inject lateinit var session: SessionManager
-    @Inject lateinit var registrar: DeviceRegistrar
-    @Inject lateinit var readiness: Readiness
+    @Inject lateinit var session: Lazy<SessionManager>
+    @Inject lateinit var registrar: Lazy<DeviceRegistrar>
+    @Inject lateinit var readiness: Lazy<Readiness>
+    @Inject lateinit var receipts: Lazy<ReceiptQueue>
+    private var unlockedStarted = false
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -30,17 +40,39 @@ class WakeMeApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         Channels.create(this)
-        registrar.initFirebase()
+        if (getSystemService(UserManager::class.java).isUserUnlocked) startUnlocked() else {
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    if (intent.action != Intent.ACTION_USER_UNLOCKED) return
+                    unregisterReceiver(this)
+                    startUnlocked()
+                }
+            }
+            ContextCompat.registerReceiver(this, receiver, IntentFilter(Intent.ACTION_USER_UNLOCKED), ContextCompat.RECEIVER_NOT_EXPORTED)
+            // Unlock can race receiver registration.
+            if (getSystemService(UserManager::class.java).isUserUnlocked) {
+                unregisterReceiver(receiver)
+                startUnlocked()
+            }
+        }
+    }
+
+    private fun startUnlocked() {
+        if (unlockedStarted) return
+        unlockedStarted = true
+        registrar.get().initFirebase()
         AlarmEntryPoints.scope.launchCatching {
-            session.restore()
-            if (session.state.value is AuthState.SignedIn) SyncWorker.schedulePeriodic(this@WakeMeApp)
+            AlarmEntryPoints.scheduler(this@WakeMeApp).reconcileBootCancellations()
+            receipts.get().flushAfterUnlock()
+            session.get().restore()
+            if (session.get().state.value is AuthState.SignedIn) SyncWorker.schedulePeriodic(this@WakeMeApp)
         }
         // Every foreground: refresh readiness and sync. Push is only a hint.
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
-                if (session.state.value is AuthState.SignedIn) {
+                if (session.get().state.value is AuthState.SignedIn) {
                     SyncWorker.runNow(this@WakeMeApp)
-                    AlarmEntryPoints.scope.launchCatching { readiness.reportCapabilities() }
+                    AlarmEntryPoints.scope.launchCatching { readiness.get().reportCapabilities() }
                 }
             }
         })

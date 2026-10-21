@@ -10,7 +10,7 @@ func readinessText(_ r: String, owner: String, mine: Bool) -> (String, Tone) {
     case "ready_edit_pending": return ("Ready on \(place) · a change is waiting for approval", .info)
     case "awaiting_acceptance": return (mine ? "Waiting for you to accept" : "Waiting for \(owner) to accept", .info)
     case "awaiting_installation": return ("Saved · not yet confirmed on \(place)", .warning)
-    case "install_failed": return ("Couldn't schedule on \(place). Check alarm permission.", .danger)
+    case "install_failed": return ("Couldn't schedule on \(place). Check alarm permission.", .warning)
     case "paused": return ("Paused", .neutral)
     case "permission_lost": return ("Permission removed", .warning)
     case "finished": return ("Finished", .neutral)
@@ -41,7 +41,7 @@ struct RoutinesView: View {
         List {
             if WakeAlarms.shared.authorization != .authorized {
                 Section {
-                    StatusPill(text: "Alarms aren't allowed on this phone yet", tone: .danger)
+                    StatusPill(text: "Alarms aren't allowed on this phone yet", tone: .warning)
                     NavigationLink("Make this phone ready") { ReadyView() }
                 }
             }
@@ -52,7 +52,7 @@ struct RoutinesView: View {
             }
             Section("On this phone") {
                 let active = mine.filter { $0.accepted != nil && !["cancelled", "declined"].contains($0.state) }
-                if active.isEmpty { Text("No alarms yet. Set one for yourself, or let a friend suggest one.").foregroundStyle(WMColor.textSecondary) }
+                if active.isEmpty { EmptyState(title: "No alarms yet", message: "Set one for yourself, or let a friend suggest one. Nothing rings until this phone confirms it.") }
                 ForEach(active) { p in
                     PlanRow(plan: p, mine: true, onAccept: nil, onDecline: nil)
                         .swipeActions {
@@ -115,13 +115,13 @@ private struct PlanRow: View {
         let v = plan.pending ?? plan.accepted
         VStack(alignment: .leading, spacing: WMSpacing.xs) {
             if let v {
-                Text("\(v.localTime) · \(daysText(v.recurrence))").font(.title3).foregroundStyle(WMColor.textPrimary)
+                Text("\(Text(v.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(v.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
                 if !v.label.isEmpty { Text(v.label).foregroundStyle(WMColor.textSecondary) }
             }
             if !mine { Text("For \(plan.owner.displayName)").foregroundStyle(WMColor.textSecondary) }
             else if plan.creator.id != plan.owner.id { Text("Suggested by \(plan.creator.displayName)").foregroundStyle(WMColor.textSecondary) }
             let readiness = readinessText(plan.readiness, owner: plan.owner.displayName, mine: mine)
-            StatusPill(text: readiness.0, tone: readiness.1)
+            StatusPill(text: readiness.0, tone: readiness.1).animation(WMMotion.standard, value: readiness.0)
             if let onAccept, let onDecline {
                 Text("Nothing changes until you accept.").font(.footnote).foregroundStyle(WMColor.textSecondary)
                 HStack {

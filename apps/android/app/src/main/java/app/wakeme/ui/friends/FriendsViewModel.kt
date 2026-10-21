@@ -80,7 +80,8 @@ class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: Syn
         viewModelScope.launch {
             db.alarms().observe().collect { all ->
                 val now = System.currentTimeMillis()
-                _state.value = _state.value.copy(nextAlarm = all.firstOrNull { it.fireAt > now && it.role == "MAIN" })
+                val boot = app.wakeme.alarm.BootAlarms(context)
+                _state.value = _state.value.copy(nextAlarm = all.firstOrNull { it.fireAt > now && it.role == "MAIN" && !boot.isEnded(it.planId) })
                 refreshReadiness()
             }
         }

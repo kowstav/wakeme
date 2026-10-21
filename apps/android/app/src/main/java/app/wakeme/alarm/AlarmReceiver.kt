@@ -32,11 +32,11 @@ class RescheduleReceiver : BroadcastReceiver() {
         // Exported for the system broadcasts in the manifest (all protected, so only the system
         // sends them); an explicit intent from another app with any other action is ignored.
         if (intent.action !in SYSTEM_ACTIONS) return
-        val scheduler = AlarmEntryPoints.scheduler(context)
-        if (intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED) {
-            scheduler.rescheduleFromBootMirror()
+        if (!context.getSystemService(android.os.UserManager::class.java).isUserUnlocked) {
+            BootAlarms(context).reschedule()
             return
         }
+        val scheduler = AlarmEntryPoints.scheduler(context)
         val pending = goAsync()
         val clockChanged = intent.action == Intent.ACTION_TIME_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED
         AlarmEntryPoints.scope.launchCatching {

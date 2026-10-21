@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
@@ -35,6 +36,7 @@ import app.wakeme.core.FOCUS_MAX_BREAKS
 import app.wakeme.core.Fallback
 import app.wakeme.core.FocusState
 import app.wakeme.core.focusState
+import app.wakeme.core.WakeMeJson
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.PrimaryButton
@@ -77,7 +79,7 @@ class FocusShieldActivity : ComponentActivity() {
 private fun Shield(store: FocusStore, onLeave: () -> Unit, onDone: () -> Unit) {
     val session by store.session.collectAsState()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    var earning by remember { mutableStateOf(false) }
+    var earning by rememberSaveable(session?.id) { mutableStateOf(false) }
     LaunchedEffect(Unit) { while (true) { delay(1_000); now = System.currentTimeMillis() } }
     val s = session
     val state = s?.let { focusState(it, now) }
@@ -86,11 +88,18 @@ private fun Shield(store: FocusStore, onLeave: () -> Unit, onDone: () -> Unit) {
     if (s == null || state !is FocusState.Active) return
 
     if (earning) {
+        // Save only this small definition, so rotation doesn't replace the sums mid-answer.
+        val raw = rememberSaveable(s.id, s.breaksTaken) {
+            WakeMeJson.encodeToString(ChallengeDefinition.serializer(), breakChallenge())
+        }
+        val definition = remember(raw) { WakeMeJson.decodeFromString(ChallengeDefinition.serializer(), raw) }
         ChallengeRunner(
-            definition = remember { breakChallenge() },
+            definition = definition,
             onComplete = { if (store.takeBreak()) onDone() else earning = false },
             onEscape = { earning = false },
             escapeLabel = "Back",
+            sessionKey = "${s.id}:${s.breaksTaken}",
+            controls = { DangerButton("End focus", onClick = { store.end(); onDone() }) },
         )
         return
     }

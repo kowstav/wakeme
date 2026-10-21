@@ -7,7 +7,7 @@ package app.wakeme.push
  * plain ids, are followed (android-intent-security skill: validate all incoming intent extras).
  */
 object NotificationRoutes {
-    private val ALLOWED = Regex("^(home|friends|focus|(command|safety|conversation|routine|friend)/[A-Za-z0-9-]{0,64})$")
+    private val ALLOWED = Regex("^(home|friends|focus|safety|routine-new|you|(command|safety|conversation|routine|friend|wake-thanks-command|wake-thanks-plan)/[A-Za-z0-9-]{0,64})$")
 
     fun isAllowed(route: String): Boolean = ALLOWED.matches(route)
 }

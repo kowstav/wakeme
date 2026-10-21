@@ -13,6 +13,10 @@ struct ChallengeRunnerView: View {
 
     @State private var run: ChallengeProgress
     @State private var checkIn = false
+    /// Bumped on each answer: haptics follow them (a light tap for a wrong answer, a tick for a right one).
+    @State private var wrongTick = 0
+    @State private var rightTick = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(definition: ChallengeDefinition, escapeLabel: String, onComplete: @escaping (_ usedFallback: Bool) -> Void, onEscape: @escaping () -> Void) {
         self.definition = definition
@@ -27,19 +31,41 @@ struct ChallengeRunnerView: View {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
                 Text(definition.title).font(.title2.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                 Text("Step \(run.stepNumber) of \(definition.steps.count)").foregroundStyle(WMColor.textSecondary)
+                StepProgress(done: run.finished ? definition.steps.count : run.index, total: definition.steps.count)
                 if checkIn {
                     CheckInStep(prompt: definition.fallback.prompt) {
                         run.completeWithFallback()
                         onComplete(true)
                     }
                 } else if let step = run.step {
+                    // Each step arrives from the reading direction and fades in; input works at once.
                     StepView(step: step) { response in
-                        if run.answer(response), run.finished { onComplete(false) }
+                        if run.answer(response) {
+                            rightTick += 1
+                            if run.finished { onComplete(false) }
+                        } else {
+                            wrongTick += 1
+                        }
                     }
                     .id(run.index) // fresh controls for each step
+                    .transition(reduceMotion ? .opacity : .asymmetric(insertion: .offset(x: 24).combined(with: .opacity), removal: .opacity))
                     if run.retry {
-                        Text("Not quite. Take your time and try again.").foregroundStyle(WMColor.info)
+                        // Calm, not punishing: no shake, no red. Spoken by VoiceOver.
+                        StatusPill(text: "Not quite. Take your time and try again.", tone: .info, announce: true)
+                            .transition(.opacity)
                     }
+                }
+            }
+            .padding(WMSpacing.lg).frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .animation(WMMotion.respecting(reduceMotion, WMMotion.smooth), value: run.index)
+            .animation(WMMotion.standard, value: run.retry)
+        }
+        .background(WMColor.surface)
+        // The escape and the simple check-in stay on screen however long the challenge is or how
+        // large the text gets (ADR 0015; same as Android). They are never animated.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: WMSpacing.xs) {
+                if !checkIn, run.step != nil {
                     Button("Use the simple check-in instead") { checkIn = true }
                         .frame(minHeight: WMSize.minTouchTarget)
                 }
@@ -47,9 +73,31 @@ struct ChallengeRunnerView: View {
                 Text("This always works. Stopping is never locked behind the challenge.")
                     .font(.footnote).foregroundStyle(WMColor.textSecondary)
             }
-            .padding(WMSpacing.lg).frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .padding(.horizontal, WMSpacing.lg).padding(.vertical, WMSpacing.sm)
+            .frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .background(WMColor.surface)
+            .overlay(alignment: .top) { Rectangle().fill(WMColor.border).frame(height: 1) }
         }
-        .background(WMColor.surface)
+        .sensoryFeedback(WMHaptic.wrongAnswer, trigger: wrongTick)
+        .sensoryFeedback(WMHaptic.selection, trigger: rightTick)
+    }
+}
+
+/// One segment per step; finished steps fill with success. Visual only: "Step 2 of 3" is read.
+private struct StepProgress: View {
+    let done: Int
+    let total: Int
+
+    var body: some View {
+        if total > 1 {
+            HStack(spacing: WMSpacing.xxs) {
+                ForEach(0..<total, id: \.self) { i in
+                    Capsule().fill(i < done ? WMColor.success : WMColor.border).frame(height: 6)
+                }
+            }
+            .animation(WMMotion.standard, value: done)
+            .accessibilityHidden(true)
+        }
     }
 }
 
@@ -111,7 +159,9 @@ private struct TextAnswer: View {
             TextField("Your answer", text: $text)
                 .keyboardType(keyboard).textInputAutocapitalization(.never).autocorrectionDisabled()
                 .font(.title2)
-                .padding(WMSpacing.sm).background(WMColor.surfaceSunken, in: RoundedRectangle(cornerRadius: WMRadius.sm))
+                .padding(WMSpacing.sm)
+                .background(WMColor.surfaceRaised, in: RoundedRectangle(cornerRadius: WMRadius.sm))
+                .overlay(RoundedRectangle(cornerRadius: WMRadius.sm).stroke(WMColor.outline))
                 .onChange(of: text) { _, v in if v.count > 80 { text = String(v.prefix(80)) } }
                 .onSubmit { if !text.trimmingCharacters(in: .whitespaces).isEmpty { onSubmit(text) } }
             PrimaryButton(title: "Check") { onSubmit(text) }
@@ -191,7 +241,7 @@ private struct ChessStep: View {
                                 Text(piece.map(glyph) ?? " ")
                                     .font(.system(size: 28))
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .background(from == square ? WMColor.accent : dark ? WMColor.surfaceSunken : WMColor.surfaceRaised)
+                                    .background(from == square ? WMColor.accent : dark ? WMColor.surfaceRaised.mix(with: WMColor.outline, by: 0.32) : WMColor.surfaceRaised)
                             }
                             .buttonStyle(.plain)
                             .aspectRatio(1, contentMode: .fit)
@@ -204,7 +254,9 @@ private struct ChessStep: View {
             Text("Or type the move, like a1a8 (from square, to square).").foregroundStyle(WMColor.textSecondary)
             TextField("Move", text: $typed)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
-                .padding(WMSpacing.sm).background(WMColor.surfaceSunken, in: RoundedRectangle(cornerRadius: WMRadius.sm))
+                .padding(WMSpacing.sm)
+                .background(WMColor.surfaceRaised, in: RoundedRectangle(cornerRadius: WMRadius.sm))
+                .overlay(RoundedRectangle(cornerRadius: WMRadius.sm).stroke(WMColor.outline))
                 .onChange(of: typed) { _, v in if v.count > 5 { typed = String(v.prefix(5)) } }
             PrimaryButton(title: "Play move") { onMove(typed) }.disabled(typed.count < 4)
         }
@@ -227,13 +279,14 @@ private struct TimerStep: View {
     let onDone: (Double) -> Void
     @State private var startedAt: ContinuousClock.Instant?
     @State private var elapsed = 0
+    @ScaledMetric(relativeTo: .largeTitle) private var timerSize: CGFloat = 56
 
     var body: some View {
         VStack(alignment: .leading, spacing: WMSpacing.md) {
             Prompt(prompt)
             if let startedAt {
                 let left = max(seconds - elapsed, 0)
-                Text(String(format: "%d:%02d", left / 60, left % 60)).font(.system(size: 56, weight: .bold, design: .rounded)).foregroundStyle(WMColor.textPrimary)
+                Text(String(format: "%d:%02d", left / 60, left % 60)).font(.system(size: timerSize, weight: .bold, design: .rounded)).monospacedDigit().foregroundStyle(WMColor.textPrimary)
                 Text("This is a timer and a self-check. It can't tell what you did.").foregroundStyle(WMColor.textSecondary)
                     .task(id: startedAt) {
                         while !Task.isCancelled {

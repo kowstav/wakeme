@@ -63,7 +63,7 @@ struct SignInView: View {
                 Button("Back") { app.backFromSignIn() }
                     .frame(minHeight: WMSize.minTouchTarget)
             }
-            .padding(WMSpacing.md).frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md).frame(maxWidth: WMLayout.readableWidth).frame(maxWidth: .infinity)
         }
         .background(WMColor.surface)
     }
@@ -90,7 +90,7 @@ struct ProfileView: View {
                 PrimaryButton(title: "Continue") { Task { await app.createProfile(name: name, adult: adult) } }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || !adult)
             }
-            .padding(WMSpacing.md).frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md).frame(maxWidth: WMLayout.readableWidth).frame(maxWidth: .infinity)
         }
         .background(WMColor.surface)
     }

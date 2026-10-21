@@ -157,7 +157,111 @@ class JourneyTest {
         DeviceEvidence.screenshot("32-circle")
         tap("Invite to this circle")
         waitFor("Invite to Flat 3B", timeout = 30_000)
+        val circleInviteText = compose.onAllNodes(hasText("type this code", substring = true)).fetchSemanticsNodes().first()
+            .config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()
+        val circleCode = checkNotNull(Regex("[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}").find(circleInviteText)?.value)
         tap("Close")
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        tap("Challenges")
+        tap("Create a challenge")
+        tap("Flat 3B")
+        type("Title", "Flat breakfast quiz")
+        type("Question 1", "Where do we meet for breakfast?")
+        type("Your answer", "Kitchen")
+        // A window change must keep the words and the explicitly selected audience.
+        compose.activityRule.scenario.recreate()
+        waitFor("Flat breakfast quiz")
+        waitFor("Kitchen")
+        tap("Save and try it")
+        waitFor("Step 1 of 1", timeout = 30_000)
+        type("Your answer", "Kitchen")
+        tap("Check")
+        waitFor("Shared with Flat 3B")
+        DeviceEvidence.screenshot("33-circle-quiz-preview")
+        tap("Publish")
+        waitInList("Flat breakfast quiz")
+        waitInList("Shared with Flat 3B")
+        DeviceEvidence.screenshot("34-circle-quiz-published")
+
+        fun alexChallenges() = get("/v1/challenges", alex).getJSONArray("challenges").let { array ->
+            (0 until array.length()).map { array.getJSONObject(it) }
+        }
+        check(alexChallenges().none { it.getString("title") == "Flat breakfast quiz" }) { "A friend outside the circle can read its quiz" }
+        post("/v1/invites/redeem", alex, JSONObject().put("code", circleCode))
+        val shared = alexChallenges().single { it.getString("title") == "Flat breakfast quiz" }
+        check(shared.getInt("publishedRevision") == 1)
+        check(alexChallenges().none { it.getString("title") == "HQ quiz" }) { "The personal quiz leaked through circle membership" }
+        val circleId = shared.getString("circleId")
+        post("/v1/circles/$circleId/leave", alex, JSONObject())
+        check(alexChallenges().none { it.getString("id") == shared.getString("id") }) { "Leaving the circle kept access to its quiz" }
+
+        tap("Routines")
+        tap("New wake-up")
+        tap("Study")
+        waitFor("18:00", substring = true)
+        tap("Save wake-up")
+        waitInList("18:00 · Weekdays")
+        tap("Study")
+        tap("Use this routine again")
+        waitFor("Study")
+        compose.activityRule.scenario.recreate()
+        waitFor("18:00", substring = true)
+        waitFor("Study")
+        DeviceEvidence.screenshot("54-reusable-study-routine")
+        tap("Cancel")
+
+        tap("Friends")
+        tap("Alex")
+        tap("Change permissions")
+        tap("Wake buddy")
+        tap("Save my rules")
+        waitFor("Change permissions")
+        val buddyPlan = post("/v1/alarm-plans", alex, JSONObject()
+            .put("ownerId", samId).put("label", "Buddy morning").put("localTime", "07:00")
+            .put("timeZone", "UTC").put("timeZonePolicy", "fixed")
+            .put("recurrence", JSONObject().put("kind", "weekly").put("days", org.json.JSONArray(listOf(1, 2, 3, 4, 5))))
+            .put("soundId", "bundled:rise.gentle").put("ringSeconds", 60))
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        tap("Routines")
+        waitInList("Buddy morning")
+        tap("Buddy morning")
+        tap("Accept this version")
+        waitFor("Active version")
+        val conversationId = (0 until alexFriends.length()).map { alexFriends.getJSONObject(it) }
+            .single { it.getJSONObject("user").getString("id") == samId }.getString("conversationId")
+        fun thanksCount() = get("/v1/conversations/$conversationId/messages", alex).getJSONArray("messages").let { array ->
+            (0 until array.length()).count { array.getJSONObject(it).optString("body") == "Thanks, Alex 🦆" }
+        }
+        check(thanksCount() == 0)
+        compose.activityRule.scenario.onActivity { activity ->
+            // ActivityScenario matches lifecycle events by the original Intent's filter fields.
+            // Keep those fields while exercising the real onNewIntent path; replace launch flags
+            // so the test launcher's CLEAR_TASK flag cannot clear the activity being recreated.
+            activity.startActivity(android.content.Intent(activity.intent).setFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(MainActivity.EXTRA_ROUTE, "wake-thanks-plan/${buddyPlan.getString("id")}"))
+        }
+        waitFor("Send thanks")
+        check(thanksCount() == 0) { "Opening the thanks screen posted automatically" }
+        DeviceEvidence.screenshot("55-optional-thanks")
+        tap("Send thanks")
+        waitFor("Thanks sent.")
+        check(thanksCount() == 1)
+        compose.activityRule.scenario.recreate()
+        waitFor("Thanks sent.")
+        check(thanksCount() == 1) { "Recreation sent a second thanks" }
+        tap("Done")
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        tap("Routines")
+        tap("Study")
+        tap("End this routine")
+        val ownApi = dagger.hilt.android.EntryPointAccessors.fromApplication(
+            InstrumentationRegistry.getInstrumentation().targetContext.applicationContext,
+            app.wakeme.safety.SafetyDeps::class.java,
+        ).api()
+        compose.waitUntil(60_000) {
+            kotlinx.coroutines.runBlocking { ownApi.plans().mine.none { it.accepted?.label == "Study" && it.state in setOf("active", "paused") } }
+        }
+        DeviceEvidence.screenshot("57-routine-end-synced")
     }
 
     /** Waits for text that may be further down a lazy list, scrolling each list towards it. */
@@ -181,7 +285,12 @@ class JourneyTest {
     private fun found(text: String) = compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
 
     private fun waitFor(text: String, timeout: Long = 20_000, substring: Boolean = false) {
-        compose.waitUntil(timeout) { compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
+        try {
+            compose.waitUntil(timeout) { compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
+        } catch (failure: Throwable) {
+            DeviceEvidence.screenshot("99-journey-failure")
+            throw failure
+        }
     }
 
     /** Waits for the text, scrolls it into view when it's in a scrolling container, then taps it. */

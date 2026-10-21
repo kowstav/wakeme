@@ -14,7 +14,9 @@ google-services.json
 GoogleService-Info.plist
 
 # Android
+.local-tools/
 apps/android/.gradle/
+apps/android/.kotlin/
 apps/android/build/
 apps/android/**/build/
 apps/android/local.properties

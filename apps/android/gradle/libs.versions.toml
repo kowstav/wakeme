@@ -17,6 +17,7 @@ activity = "1.13.0"
 # the Compose one would raise Material3 app-wide to 1.5.0-alpha21.
 locationbutton = "1.0.0-alpha01"
 work = "2.12.0"
+glance = "1.2.0"
 # Compose Preview Screenshot Testing (experimental; the standalone plugin, since test suites need AGP 9.5).
 screenshot = "0.0.1-alpha16"
 datastore = "1.2.1"
@@ -40,6 +41,10 @@ androidxTestRules = "1.7.0"
 espresso = "3.8.0-alpha01"
 
 [libraries]
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
+androidx-glance-appwidget-preview = { module = "androidx.glance:glance-appwidget-preview", version.ref = "glance" }
+androidx-glance-preview = { module = "androidx.glance:glance-preview", version.ref = "glance" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 androidx-locationbutton = { module = "androidx.core.locationbutton:locationbutton", version.ref = "locationbutton" }

@@ -128,7 +128,7 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     suspend fun templates() = api.get("/v1/challenges/templates", TemplatesDto.serializer()).templates
     suspend fun challenges() = api.get("/v1/challenges", ChallengesDto.serializer()).challenges
     suspend fun challenge(id: String) = api.get("/v1/challenges/$id", ChallengeDto.serializer())
-    suspend fun createChallenge(body: JsonElement) = api.post("/v1/challenges", buildJsonObject { put("body", body) }, ChallengeDto.serializer())
+    suspend fun createChallenge(body: JsonElement, circleId: String? = null) = api.post("/v1/challenges", buildJsonObject { put("body", body); circleId?.let { put("circleId", it) } }, ChallengeDto.serializer())
     /** An edit is a new draft revision; published revisions never change. */
     suspend fun reviseChallenge(id: String, body: JsonElement) = api.post("/v1/challenges/$id/revisions", buildJsonObject { put("body", body) }, ChallengeDto.serializer())
     suspend fun fromTemplate(templateId: String, difficulty: String) = api.post("/v1/challenges/from-template", buildJsonObject { put("templateId", templateId); put("difficulty", difficulty) }, ChallengeDto.serializer())
@@ -150,8 +150,8 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     // ------------------------------------------------------------ messages
     suspend fun conversations() = api.get("/v1/conversations", ConversationsDto.serializer()).conversations
     suspend fun messages(conversationId: String) = api.get("/v1/conversations/$conversationId/messages", MessagesDto.serializer()).messages
-    suspend fun sendMessage(conversationId: String, text: String) =
-        api.post("/v1/conversations/$conversationId/messages", buildJsonObject { put("body", text); put("clientId", "c_" + UUID.randomUUID().toString().replace("-", "")) }, MessageDto.serializer(), idempotent = true)
+    suspend fun sendMessage(conversationId: String, text: String, clientId: String = "c_" + UUID.randomUUID().toString().replace("-", "")) =
+        api.post("/v1/conversations/$conversationId/messages", buildJsonObject { put("body", text); put("clientId", clientId) }, MessageDto.serializer(), idempotent = true)
     /** One of the server's REACTIONS; replaces this user's previous reaction. */
     suspend fun react(messageId: String, emoji: String) = api.post("/v1/messages/$messageId/reactions", buildJsonObject { put("emoji", emoji) }, JsonObject.serializer())
     suspend fun unreact(messageId: String) = api.delete("/v1/messages/$messageId/reactions", JsonObject.serializer())

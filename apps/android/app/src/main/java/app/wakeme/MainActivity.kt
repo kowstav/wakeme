@@ -25,13 +25,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handle(intent)
     }
 
     /** Invite links hold only an opaque token: https://wakeme.app/i/<token>. Nothing is accepted automatically. */
     private fun handle(intent: Intent?) {
         val uri = intent?.data
-        if (uri != null && uri.host == "wakeme.app" && uri.pathSegments.firstOrNull() == "i") {
+        if (uri != null && uri.scheme == "https" && uri.host == "wakeme.app" && uri.pathSegments.size == 2 && uri.pathSegments.firstOrNull() == "i") {
             uri.pathSegments.getOrNull(1)?.takeIf { Regex("^[A-Za-z0-9_-]{20,64}$").matches(it) }?.let { app.onInviteLink(it) }
         }
         // This activity is exported (launcher, invite links), so any app can start it: only the

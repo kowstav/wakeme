@@ -4,7 +4,27 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import app.wakeme.designsystem.QuackBurst
+import app.wakeme.designsystem.rememberEntrance
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,25 +93,76 @@ private fun Page(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
 
+/**
+ * Doc 03 §5 step 1: the headline with an interactive quack. Tapping the duck (or "Play preview")
+ * plays the quack on this phone only and the duck quacks with it. The blocks arrive with a short
+ * stagger the first time; with Remove animations on, everything is simply there.
+ */
 @Composable
 fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
     val context = LocalContext.current
-    Page {
-        Gap(WakeMeTokens.spaceXl)
-        Text("🦆", style = MaterialTheme.typography.displayLarge)
-        Heading(stringResource(R.string.headline))
-        Body(stringResource(R.string.tagline))
-        WMCard {
-            Text("Hear what a quack sounds like", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-            Body("This preview plays only on your phone.")
-            SecondaryButton("Play preview", onClick = { playQuackPreview(context) })
+    var quacks by rememberSaveable { mutableIntStateOf(0) }
+    val quack: () -> Unit = { playQuackPreview(context); quacks++ }
+    // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
+    Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+        val surface = WM.colors.surface
+        Column(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                // Text scrolling under the pinned actions fades out instead of being cut mid-line.
+                .drawWithContent {
+                    drawContent()
+                    val fade = WakeMeTokens.spaceLg.toPx()
+                    drawRect(Brush.verticalGradient(listOf(surface.copy(alpha = 0f), surface), startY = size.height - fade, endY = size.height), topLeft = Offset(0f, size.height - fade), size = Size(size.width, fade))
+                }
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = WakeMeTokens.spaceLg),
+            verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
+        ) {
+            Gap(WakeMeTokens.spaceXl)
+            Entrance(0) {
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(WakeMeTokens.radiusLg))
+                        .clickable(onClickLabel = "Play a quack on this phone", role = Role.Button, onClick = quack)
+                        .padding(WakeMeTokens.spaceXs),
+                ) { QuackBurst(tick = quacks, height = 88.dp) }
+            }
+            Entrance(1) {
+                Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                    Text(stringResource(R.string.headline), style = MaterialTheme.typography.headlineLarge, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+                    Body(stringResource(R.string.tagline))
+                }
+            }
+            Entrance(2) {
+                WMCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
+                        Text("Hear what a quack sounds like", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                        Body("Tap the duck or the button. This preview plays only on your phone.")
+                    }
+                    SecondaryButton("Play preview", onClick = quack)
+                }
+            }
+            Entrance(3) { Body("You decide what each friend can do. Nobody can ring your phone unless you allow it.") }
+            Gap(WakeMeTokens.spaceSm)
         }
-        Body("You decide what each friend can do. Nobody can ring your phone unless you allow it.")
-        PrimaryButton("I have an invite", onClick = onInvite)
-        SecondaryButton("Set up my own wake-up", onClick = onSelf)
+        Entrance(4) {
+            Column(Modifier.padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
+                PrimaryButton("I have an invite", onClick = onInvite)
+                SecondaryButton("Set up my own wake-up", onClick = onSelf)
+            }
+        }
     }
+}
+
+@Composable
+private fun Entrance(index: Int, content: @Composable () -> Unit) {
+    val rise = with(LocalDensity.current) { 12.dp.toPx() }
+    val p = rememberEntrance(index)
+    Box(Modifier.graphicsLayer { val v = p.value; alpha = v; translationY = (1f - v) * rise }) { content() }
 }
 
 @Composable
@@ -152,8 +223,17 @@ fun ProfileScreen(onCreate: (name: String, adult: Boolean) -> Unit) {
     Page {
         Heading("What should friends call you?")
         OutlinedTextField(name, { name = it.take(40) }, label = { Text("Display name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = adult, onCheckedChange = { adult = it })
+        // The whole row is one 48 dp target and the box sits on the content edge (Material's
+        // checkbox alone added a 14 dp inset and a 20 dp target).
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = WakeMeTokens.minTouchTarget)
+                .toggleable(value = adult, role = Role.Checkbox, onValueChange = { adult = it }),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm),
+        ) {
+            Checkbox(checked = adult, onCheckedChange = null)
             Body("I'm 18 or older", color = WM.colors.textPrimary)
         }
         Body("Your time zone is used for quiet hours and wake windows. You can change it later.")

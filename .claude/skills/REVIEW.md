@@ -34,6 +34,22 @@ indiscriminate global collection").
 To update: re-check the repository, review the diff of the installed skills, copy the new revision,
 and update the revision line above.
 
+### Codex continuation, 2026-10-20
+
+The owner installed all 30 Android skills globally for Codex using the skill-installer helper
+after `codex plugin add android-skills@android-skills` rejected the plugin manifest. This
+continuation applied only `android-cli`, `adaptive`, `edge-to-edge` and
+`jetpack-compose-performance`. Their installed SKILL.md contents were compared with the
+snapshot at `ed0a2728ff531174383f910c649694de1eaebcd6` (line endings normalized), and match.
+No additional skill scripts or bundled profiler binaries were executed. The official Android
+CLI was installed and used for current documentation and SDK setup; its metrics flag was
+disabled for task commands. The test-android-apps emulator QA instructions were also consulted.
+
+Applied to the wake/challenge slice (ADR 0015): readable width, separate scrolling task and
+escape controls, keyboard insets/adjustResize, saved UI state and stable session identity,
+cached formatters, off-main JSON parsing and fresh callbacks in timer effects. New previews
+do not approve or update any committed screenshot baseline. Runtime performance is unmeasured.
+
 ## Applied so far (2026-10-20)
 
 - `android-intent-security`: `RescheduleReceiver` (exported for system broadcasts) now ignores any

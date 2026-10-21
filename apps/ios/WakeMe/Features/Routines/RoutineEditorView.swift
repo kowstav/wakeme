@@ -55,11 +55,12 @@ struct RoutineEditorView: View {
             Form {
                 Section {
                     DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
+                        .font(.title3.weight(.semibold)).monospacedDigit()
                     DayPicker(days: $days)
                     Text(days.isEmpty ? "Choose at least one day." : daysText(.weekly(days.sorted())))
-                        .foregroundStyle(days.isEmpty ? WMColor.danger : WMColor.textSecondary)
+                        .foregroundStyle(days.isEmpty ? WMColor.warning : WMColor.textSecondary)
                     if outsideWakeHours {
-                        Text("That's outside the wake hours \(name) chose.").foregroundStyle(WMColor.danger)
+                        Text("That's outside the wake hours \(name) chose.").foregroundStyle(WMColor.warning)
                     }
                 } header: {
                     Text("Time and days")
@@ -196,6 +197,7 @@ func soundName(_ id: String) -> String {
 /// also spelled out in words below the row.
 struct DayPicker: View {
     @Binding var days: Set<Int>
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let names = Calendar.current.weekdaySymbols // Sunday first
     private let short = Calendar.current.veryShortStandaloneWeekdaySymbols
 
@@ -205,14 +207,21 @@ struct DayPicker: View {
                 let on = days.contains(iso)
                 let i = iso % 7 // ISO 7 (Sunday) is index 0 in Calendar symbols
                 Button {
-                    if on { days.remove(iso) } else { days.insert(iso) }
+                    withAnimation(WMMotion.respecting(reduceMotion, WMMotion.snappy)) {
+                        if on { days.remove(iso) } else { days.insert(iso) }
+                    }
                 } label: {
+                    // A chosen day is butter with an accent edge and a bold letter, like every
+                    // selection; the others keep a visible outline (≥ 3:1). Solid yellow stays the
+                    // primary action's.
                     Text(short[i])
-                        .font(.headline)
+                        .font(.headline.weight(on ? .bold : .regular))
                         .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
-                        .foregroundStyle(on ? WMColor.textOnAccent : WMColor.textPrimary)
-                        .background(on ? WMColor.accent : WMColor.surfaceSunken, in: RoundedRectangle(cornerRadius: WMRadius.md))
+                        .foregroundStyle(on ? WMColor.onAccentContainer : WMColor.textPrimary)
+                        .background(on ? WMColor.accentContainer : WMColor.surfaceRaised, in: Circle().scale(0.92))
+                        .overlay(Circle().scale(0.92).stroke(on ? WMColor.accentText : WMColor.outline, lineWidth: on ? 1.5 : 1))
                 }
+                .sensoryFeedback(WMHaptic.selection, trigger: on)
                 .buttonStyle(.plain)
                 .accessibilityLabel(names[i])
                 .accessibilityAddTraits(on ? .isSelected : [])

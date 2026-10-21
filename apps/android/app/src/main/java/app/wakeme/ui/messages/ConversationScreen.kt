@@ -7,11 +7,20 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +52,8 @@ import app.wakeme.data.net.MessageDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailTopBar
+import androidx.compose.foundation.layout.offset
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.StatusPill
 import app.wakeme.designsystem.Tone
@@ -169,7 +180,7 @@ private val reportReasons = listOf("harassment" to "Harassment", "spam" to "Spam
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltViewModel()) {
+fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm: ConversationViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     HideFromRecents() // private messages
     var draft by remember { mutableStateOf("") }
@@ -183,23 +194,38 @@ fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltV
 
     // Bottom: the navigation bar or, when typing, the keyboard (the shell handles top and sides).
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = WakeMeTokens.spaceMd)) {
-        Text(s.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary, modifier = Modifier.padding(vertical = WakeMeTokens.spaceSm))
+        if (onBack != null) DetailTopBar(onBack = onBack, title = s.title, modifier = Modifier.offset(x = -WakeMeTokens.spaceSm))
+        else Text(s.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary, modifier = Modifier.padding(vertical = WakeMeTokens.spaceSm))
         if (s.offline) StatusPill("You're offline. Showing messages loaded earlier.", Tone.Warning)
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
             items(s.messages.asReversed(), key = { it.id }) { m ->
                 val mine = m.senderId != null && m.senderId == s.myId
-                Bubble(m, mine, onLongPress = { if (m.state == "visible") acting = m })
+                Bubble(m, mine, onLongPress = { if (m.state == "visible") acting = m }, modifier = Modifier.animateItem())
             }
             if (s.messages.isEmpty() && !s.loading) item { Body("No messages yet. Say hi, or send a quack from their profile.") }
         }
-        OutlinedTextField(
-            value = draft,
-            onValueChange = { if (it.length <= 2000) draft = it },
-            modifier = Modifier.fillMaxWidth().padding(vertical = WakeMeTokens.spaceSm),
-            placeholder = { Text("Message") },
-            maxLines = 4,
-        )
-        PrimaryButton(if (s.sending) "Sending…" else "Send", onClick = { vm.send(draft) { draft = "" } }, enabled = draft.isNotBlank() && !s.sending)
+        // The composer is one row: the field grows to four lines, the send button stays a 48 dp
+        // target beside it (a full-width yellow pill under the field was the heaviest thing on screen).
+        Row(Modifier.fillMaxWidth().padding(vertical = WakeMeTokens.spaceSm), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { if (it.length <= 2000) draft = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Message") },
+                maxLines = 4,
+                shape = RoundedCornerShape(WakeMeTokens.radiusLg),
+            )
+            val canSend = draft.isNotBlank() && !s.sending
+            FilledIconButton(
+                onClick = { vm.send(draft) { draft = "" } },
+                enabled = canSend,
+                modifier = Modifier.padding(bottom = 4.dp).size(WakeMeTokens.minTouchTarget),
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = WM.colors.accent, contentColor = WM.colors.textOnAccent),
+            ) {
+                if (s.sending) CircularProgressIndicator(Modifier.size(WakeMeTokens.iconSizeSmall), color = WM.colors.textOnAccent, strokeWidth = 2.dp)
+                else Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", modifier = Modifier.size(WakeMeTokens.iconSizeSmall))
+            }
+        }
     }
 
     acting?.let { m ->
@@ -244,27 +270,32 @@ fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltV
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Bubble(m: MessageDto, mine: Boolean, onLongPress: () -> Unit) {
+private fun Bubble(m: MessageDto, mine: Boolean, onLongPress: () -> Unit, modifier: Modifier = Modifier) {
     val text = when (m.state) {
         "removed" -> "Removed by moderation"
         "deleted" -> "Message deleted"
         else -> m.body.orEmpty()
     }
     val time = runCatching { timeFmt.format(Instant.parse(m.createdAt)) }.getOrDefault("")
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
+    // Your messages are butter with a small corner toward you; theirs sit on the raised surface.
+    val big = 18.dp
+    val small = 6.dp
+    val shape = RoundedCornerShape(topStart = big, topEnd = big, bottomStart = if (mine) big else small, bottomEnd = if (mine) small else big)
+    Row(modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
         Column(
             Modifier
                 .widthIn(max = 320.dp)
-                .background(if (mine) WM.colors.accent else WM.colors.surfaceRaised, RoundedCornerShape(WakeMeTokens.radiusMd))
+                .background(if (mine) WM.colors.accentContainer else WM.colors.surfaceRaised, shape)
+                .border(1.dp, if (mine) WM.colors.accentContainer else WM.colors.border, shape)
                 .combinedClickable(onClick = {}, onLongClick = onLongPress, onLongClickLabel = "React or report")
                 .padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceSm)
                 .semantics(mergeDescendants = true) { contentDescription = (if (mine) "You" else "Them") + ", $time: $text" },
         ) {
-            Text(text, style = MaterialTheme.typography.bodyLarge, color = if (mine) WM.colors.textOnAccent else WM.colors.textPrimary)
+            Text(text, style = MaterialTheme.typography.bodyLarge, color = if (mine) WM.colors.onAccentContainer else WM.colors.textPrimary)
             Text(
                 time + if (m.reactions.isNotEmpty()) "  " + m.reactions.joinToString("") { it.emoji } else "",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (mine) WM.colors.textOnAccent else WM.colors.textSecondary,
+                color = if (mine) WM.colors.onAccentContainer else WM.colors.textSecondary,
             )
         }
     }

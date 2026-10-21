@@ -1,0 +1,36 @@
+{
+  "suite": "delivery-trail",
+  "schemaVersion": 1,
+  "description": "How far the sender-facing delivery trail may advance for each literal display status (delivery-state.json). Three steps: sent, reached their phone, and then 'seen' for a quack or 'rang' for a wake alarm. A step is reached only when the server reports evidence for it; animation never advances it. 'problem' marks the first unreached step as failed; 'waiting' means confirmation is overdue but nothing failed.",
+  "steps": {
+    "nudge": ["sent", "phone", "seen"],
+    "alarm": ["sent", "phone", "rang"]
+  },
+  "cases": [
+    { "kind": "nudge", "display": "sending", "expected": { "reached": 0, "state": "active" } },
+    { "kind": "nudge", "display": "sent", "expected": { "reached": 1, "state": "active" } },
+    { "kind": "nudge", "display": "no_confirmation_yet", "expected": { "reached": 1, "state": "waiting" } },
+    { "kind": "nudge", "display": "not_delivered", "expected": { "reached": 1, "state": "problem" } },
+    { "kind": "nudge", "display": "expired", "expected": { "reached": 1, "state": "problem" } },
+    { "kind": "nudge", "display": "cancelled", "expected": { "reached": 1, "state": "problem" } },
+    { "kind": "nudge", "display": "phone_received", "expected": { "reached": 2, "state": "active" } },
+    { "kind": "nudge", "display": "not_played", "expected": { "reached": 2, "state": "problem" } },
+    { "kind": "nudge", "display": "opened", "expected": { "reached": 3, "state": "done" } },
+    { "kind": "nudge", "display": "acknowledged", "expected": { "reached": 3, "state": "done" } },
+    { "kind": "alarm", "display": "sending", "expected": { "reached": 0, "state": "active" } },
+    { "kind": "alarm", "display": "sent", "expected": { "reached": 1, "state": "active" } },
+    { "kind": "alarm", "display": "no_confirmation_yet", "expected": { "reached": 1, "state": "waiting" } },
+    { "kind": "alarm", "display": "not_delivered", "expected": { "reached": 1, "state": "problem" } },
+    { "kind": "alarm", "display": "expired", "expected": { "reached": 1, "state": "problem" } },
+    { "kind": "alarm", "display": "phone_received", "expected": { "reached": 2, "state": "active" } },
+    { "kind": "alarm", "display": "alarm_scheduled_on_phone", "expected": { "reached": 2, "state": "active" } },
+    { "kind": "alarm", "display": "not_played", "expected": { "reached": 2, "state": "problem" } },
+    { "kind": "alarm", "display": "opened", "expected": { "reached": 2, "state": "done" }, "note": "Opening the request doesn't prove the alarm rang." },
+    { "kind": "alarm", "display": "acknowledged", "expected": { "reached": 2, "state": "done" }, "note": "Acknowledging doesn't prove the alarm rang." },
+    { "kind": "alarm", "display": "alarm_started", "expected": { "reached": 3, "state": "done" } },
+    { "kind": "alarm", "display": "stopped", "expected": { "reached": 3, "state": "done" } },
+    { "kind": "alarm", "display": "ended_without_challenge", "expected": { "reached": 3, "state": "done" } },
+    { "kind": "alarm", "display": "challenge_completed", "expected": { "reached": 3, "state": "done" }, "note": "The trail ends at 'rang'; it never claims the person is awake." },
+    { "kind": "nudge", "display": "something_new", "expected": { "reached": 1, "state": "active" }, "note": "An unknown status from a newer server never claims more than 'sent'." }
+  ]
+}

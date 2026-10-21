@@ -20,3 +20,4 @@ says what evidence the decision rests on and what would make us revisit it.
 | [0012](0012-app-switcher-masking.md) | Safety and Messages are masked in the app switcher; no FLAG_SECURE | Accepted |
 | [0013](0013-app-attest-play-integrity.md) | App Attest / Play Integrity evaluated; not adopted until store accounts exist | Proposed |
 | [0014](0014-focus-supervision.md) | Focus: recipient-chosen apps, local shield (iOS Family Controls, Android scoped accessibility service), always finite | Proposed |
+| [0020](0020-daybreak-design-system-and-motion.md) | Daybreak design system: outline/container roles, increased contrast, motion tokens, original duck, shared delivery-trail rule | Accepted |

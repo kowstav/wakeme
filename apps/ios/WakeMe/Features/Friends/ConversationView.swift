@@ -7,6 +7,7 @@ import WakeMeCore
 /// ConversationScreen; refreshes every few seconds while open (push isn't set up on iOS yet).
 struct ConversationView: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let conversationId: String
     let friendName: String
     @State private var messages: [MessageDTO] = []
@@ -28,12 +29,17 @@ struct ConversationView: View {
                         if loaded && messages.isEmpty {
                             Text("No messages yet. Say hi, or send a quack from their profile.").foregroundStyle(WMColor.textSecondary)
                         }
-                        ForEach(messages) { m in bubble(m).id(m.id) }
+                        ForEach(messages) { m in
+                            bubble(m).id(m.id)
+                                .transition(reduceMotion ? .opacity : .asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
+                        }
                     }
                     .padding(WMSpacing.md)
+                    // New messages settle in from below; the list never jumps (Reduce Motion: fade).
+                    .animation(WMMotion.respecting(reduceMotion, WMMotion.smooth), value: messages.map(\.id))
                 }
                 .onChange(of: messages.last?.id) { _, last in
-                    if let last { withAnimation { proxy.scrollTo(last, anchor: .bottom) } }
+                    if let last { withAnimation(WMMotion.respecting(reduceMotion, WMMotion.smooth)) { proxy.scrollTo(last, anchor: .bottom) } }
                 }
             }
             if ended {
@@ -67,8 +73,11 @@ struct ConversationView: View {
                 .accessibilityIdentifier("messageField")
                 .onChange(of: draft) { _, v in if v.count > 2000 { draft = String(v.prefix(2000)) } }
             Button(sending ? "Sending…" : "Send") { Task { await send() } }
-                .buttonStyle(.borderedProminent).tint(WMColor.accent).foregroundStyle(WMColor.textOnAccent)
+                .font(.headline)
+                .foregroundStyle(WMColor.textOnAccent)
+                .padding(.horizontal, WMSpacing.md)
                 .frame(minHeight: WMSize.minTouchTarget)
+                .buttonStyle(WMPressStyle(fill: WMColor.accent, pressedFill: WMColor.accentPressed))
                 .disabled(sending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(WMSpacing.sm)
@@ -78,12 +87,15 @@ struct ConversationView: View {
     @ViewBuilder private func bubble(_ m: MessageDTO) -> some View {
         let mine = m.senderId == app.me?.id
         let myReaction = m.reactions.first { $0.userId == app.me?.id }?.emoji
+        // Your messages are butter with a small corner toward you; theirs sit on the raised surface.
+        let shape = UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: mine ? 18 : 6, bottomTrailingRadius: mine ? 6 : 18, topTrailingRadius: 18)
         VStack(alignment: mine ? .trailing : .leading, spacing: WMSpacing.xxs) {
             Text(m.body ?? "Message deleted")
                 .italic(m.body == nil)
-                .foregroundStyle(mine ? WMColor.textOnAccent : WMColor.textPrimary)
-                .padding(.horizontal, WMSpacing.sm).padding(.vertical, WMSpacing.xs)
-                .background(mine ? WMColor.accent : WMColor.surfaceSunken, in: RoundedRectangle(cornerRadius: WMRadius.md))
+                .foregroundStyle(mine ? WMColor.onAccentContainer : WMColor.textPrimary)
+                .padding(.horizontal, WMSpacing.md).padding(.vertical, WMSpacing.sm)
+                .background(mine ? WMColor.accentContainer : WMColor.surfaceRaised, in: shape)
+                .overlay(shape.stroke(mine ? WMColor.accentContainer : WMColor.border))
             if !m.reactions.isEmpty {
                 Text(m.reactions.map(\.emoji).joined()).font(.footnote)
                     .accessibilityLabel("Reactions: " + m.reactions.map(\.emoji).joined(separator: " "))

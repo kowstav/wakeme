@@ -25,8 +25,8 @@
     <uses-permission android:name="android.permission.USE_LOCATION_BUTTON" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <!-- No microphone permission: voice recording for alarms isn't built yet. Add
-         RECORD_AUDIO (requested just in time) only together with that feature. -->
+    <!-- Only the explicit, foreground, bounded Voice sounds recording flow. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Focus lists launcher apps to choose from (no QUERY_ALL_PACKAGES). -->
     <queries>
@@ -69,12 +69,20 @@
             </intent-filter>
         </activity>
 
+        <receiver android:name=".widget.QuickActionsReceiver" android:exported="true" android:label="@string/quick_actions_widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_actions_widget" />
+        </receiver>
+
         <!-- Focus (ADR 0014): the shield over an app the person chose to keep closed, and the narrowly
              scoped accessibility service that shows it. Enabled per build (release: off until Play
              approves the accessibility declaration). -->
         <activity
             android:name=".focus.FocusShieldActivity"
             android:exported="false"
+            android:windowSoftInputMode="adjustResize"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
             android:taskAffinity="app.wakeme.focus" />
@@ -95,7 +103,9 @@
         <!-- Full-screen alarm UI shown over the lock screen; large controls, no paywall, always an escape. -->
         <activity
             android:name=".alarm.AlarmActivity"
+            android:directBootAware="true"
             android:exported="false"
+            android:windowSoftInputMode="adjustResize"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
             android:showWhenLocked="true"
@@ -104,6 +114,7 @@
 
         <service
             android:name=".alarm.AlarmService"
+            android:directBootAware="true"
             android:exported="false"
             android:foregroundServiceType="systemExempted" />
 
@@ -120,10 +131,11 @@
             </intent-filter>
         </service>
 
-        <receiver android:name=".alarm.AlarmReceiver" android:exported="false" />
+        <receiver android:name=".alarm.AlarmReceiver" android:directBootAware="true" android:exported="false" />
         <receiver android:name=".push.NotificationActionReceiver" android:exported="false" />
         <receiver
             android:name=".alarm.RescheduleReceiver"
+            android:directBootAware="true"
             android:exported="true"
             tools:ignore="ExportedReceiver">
             <intent-filter>

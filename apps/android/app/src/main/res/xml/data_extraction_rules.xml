@@ -6,10 +6,14 @@
         <exclude domain="sharedpref" path="." />
         <exclude domain="database" path="." />
         <exclude domain="file" path="datastore" />
+        <exclude domain="file" path="sounds" />
+        <exclude domain="device_sharedpref" path="." />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="." />
         <exclude domain="database" path="." />
         <exclude domain="file" path="datastore" />
+        <exclude domain="file" path="sounds" />
+        <exclude domain="device_sharedpref" path="." />
     </device-transfer>
 </data-extraction-rules>

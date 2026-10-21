@@ -30,6 +30,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +49,10 @@ import app.wakeme.data.net.SafetySessionDto
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailTopBar
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -64,6 +70,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -103,6 +111,7 @@ data class SafetyState(
 
 @HiltViewModel
 class SafetyViewModel @Inject constructor(private val api: WakeMeApi) : ViewModel() {
+    private val snapshots = mutableMapOf<String, Job>()
     private val _s = MutableStateFlow(SafetyState())
     val state: StateFlow<SafetyState> = _s
 
@@ -145,12 +154,20 @@ class SafetyViewModel @Inject constructor(private val api: WakeMeApi) : ViewMode
     }
 
     fun sos(context: Context, viewers: List<FriendDto>, shareLocation: Boolean) = act {
-        val s = api.sos(viewers.map { it.user.id }, shareLocation)
-        if (s.shareLocation) LocationShareService.start(context, s.id, Instant.parse(s.endsAt), viewers.map { it.user.displayName })
+        val s = api.sos(viewers.map { it.user.id }, shareLocation && hasLocationPermission(context))
+        if (s.shareLocation) snapshots[s.id] = viewModelScope.launch {
+            try {
+                val location = app.wakeme.safety.locationSnapshot(context) ?: return@launch
+                api.postLocation(s.id, Instant.ofEpochMilli(location.time), location.latitude, location.longitude, location.accuracy.toInt().coerceIn(0, 100_000))
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* The SOS is already sent. Viewers see “No location available”. */ }
+            finally { snapshots.remove(s.id) }
+        }
     }
 
     /** Stop locally first so sharing ends at once even if the network is slow. */
     fun end(context: Context, s: SafetySessionDto) = act {
+        snapshots.remove(s.id)?.cancel()
         if (LocationShareService.active.value?.sessionId == s.id) LocationShareService.stopLocal(context)
         api.endSafety(s.id)
     }
@@ -186,17 +203,19 @@ private fun hasLocationPermission(context: Context) =
  * and can be stopped with one tap. Wake Me is not an emergency service.
  */
 @Composable
-fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewModel()) {
+fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, vm: SafetyViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     HideFromRecents() // locations and who is told
     val sharing by LocationShareService.active.collectAsState()
     var composing by remember { mutableStateOf<String?>(null) } // "share" | "checkin" | "sos"
     LaunchedEffect(focusSessionId) { if (focusSessionId != null) vm.load() }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+    androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+    if (onBack != null) DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXxs))
+    LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
-            Gap()
-            Text("Safety", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+            if (onBack == null) Gap()
+            Text("Safety", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             Body("Share with friends you choose, for a time you choose. Wake Me is not an emergency service: in an emergency, call your local emergency number.")
             if (s.offline) StatusPill("You're offline. Showing what was last loaded.", Tone.Warning)
         }
@@ -220,20 +239,24 @@ fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewM
         if (active.isEmpty() && sharing == null) item { StatusPill("You're not sharing anything", Tone.Neutral) }
 
         item {
-            Gap(WakeMeTokens.spaceSm)
-            SectionTitle("Start")
-            PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty())
-            Gap(WakeMeTokens.spaceSm)
-            SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty())
-            if (s.friends.isEmpty() && !s.loading) Body("Add a friend first. Only friends you pick can see a session.")
+            // A header sits closer to its own buttons than to what came before it.
+            androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
+                SectionTitle("Start")
+                PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty())
+                SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty())
+                if (s.friends.isEmpty() && !s.loading) Body("Add a friend first. Only friends you pick can see a session.")
+            }
         }
 
         item {
-            Gap(WakeMeTokens.spaceLg)
-            DangerButton("Send SOS to friends", onClick = { composing = "sos" })
-            Body("Alerts the friends you pick, and shares your location for 2 hours if you allow it.")
+            // SOS stays still and unmistakable; its explanation sits right under it.
+            androidx.compose.foundation.layout.Column(Modifier.padding(top = WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                DangerButton("Send SOS to friends", onClick = { composing = "sos" })
+                Body("Alerts the friends you pick, and shares your location for 2 hours if you allow it.")
+            }
             Gap(WakeMeTokens.spaceXl)
         }
+    }
     }
 
     composing?.let { kind ->
@@ -256,8 +279,9 @@ private fun MySession(m: SafetySessionDto, onCheckIn: () -> Unit, onEnd: (Contex
         val viewers = m.viewers.filter { !it.revoked }
         Body("Visible to ${viewers.joinToString(", ") { it.displayName }.ifBlank { "nobody (all viewers removed)" }} until ${timeText(m.endsAt)}.")
         if (m.viewers.any { it.revoked }) Body("No longer visible to ${m.viewers.filter { it.revoked }.joinToString(", ") { it.displayName }}.")
-        StatusPill(if (m.shareLocation) "Location: shared" else "Location: not shared", if (m.shareLocation) Tone.Info else Tone.Neutral)
+        StatusPill(if (m.shareLocation) "Location: enabled · position may be unavailable" else "Location: not shared", if (m.shareLocation) Tone.Info else Tone.Neutral)
         if (m.purpose == "sos") {
+            if (m.shareLocation) Body("On this phone, SOS sends one position if available, with its capture time and accuracy. Ongoing location sharing is a separate choice.")
             val acked = m.viewers.filter { it.acknowledgedAt != null }
             StatusPill(if (acked.isEmpty()) "Sent · nobody has confirmed seeing it yet" else "Seen by ${acked.joinToString(", ") { it.displayName }}", if (acked.isEmpty()) Tone.Warning else Tone.Success)
         }
@@ -315,16 +339,17 @@ private fun StartSheet(
     onStart: (purpose: String, viewers: List<FriendDto>, minutes: Int, shareLocation: Boolean, checkinInMinutes: Int?, message: String?, context: Context) -> Unit,
 ) {
     val context = LocalContext.current
-    var selected by remember { mutableStateOf(setOf<String>()) }
-    var minutes by remember { mutableStateOf(if (kind == "checkin") 120 else 60) }
-    var checkin by remember { mutableStateOf(60) }
-    var shareLocation by remember { mutableStateOf(kind != "checkin") }
-    var message by remember { mutableStateOf("") }
+    var selected by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var minutes by rememberSaveable { mutableStateOf(if (kind == "checkin") 120 else 60) }
+    var checkin by rememberSaveable { mutableStateOf(60) }
+    var shareLocation by rememberSaveable { mutableStateOf(kind != "checkin") }
+    var message by rememberSaveable { mutableStateOf("") }
     var permissionDenied by remember { mutableStateOf(false) }
+    var showRationale by remember { mutableStateOf(false) }
     /** An SOS gets location through the system location button (Android 17; older versions show the usual prompt). */
     var buttonGranted by remember { mutableStateOf(false) }
     val viewers = friends.filter { it.friendshipId in selected }
-    val go = { onStart(kind, viewers, minutes, shareLocation && (hasLocationPermission(context) || buttonGranted), if (kind == "checkin") checkin else null, message, context) }
+    val go = { onStart(kind, viewers, minutes, shareLocation && hasLocationPermission(context), if (kind == "checkin") checkin else null, message, context) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.any { it }) go() else permissionDenied = true
     }
@@ -372,7 +397,7 @@ private fun StartSheet(
                         }
                     }
                 }
-                item { SettingRow("Share my location", "Friends see where you were, when it was captured and how accurate it is. You'll see a notification with Stop while it's on.", shareLocation) { shareLocation = it } }
+                item { SettingRow(if (kind == "sos") "Include where I am now" else "Share my location", if (kind == "sos") "Send one position if available, with its capture time and accuracy. This doesn't start ongoing location tracking." else "Friends see where you were, when it was captured and how accurate it is. You'll see a notification with Stop while it's on.", shareLocation) { shareLocation = it } }
                 if (kind != "sos") item { OutlinedTextField(message, { if (it.length <= 200) message = it }, label = { Text("Note (optional)") }, singleLine = true) }
                 // Doc 06: "share my location now" for an SOS uses the session-scoped system button, separate
                 // from timed shares. Without it the SOS still goes, with no location.
@@ -380,7 +405,7 @@ private fun StartSheet(
                     item { Body("Tap to include where you are. Without it, friends get the SOS with no location.") }
                     item { SystemLocationButton(onResult = { granted -> buttonGranted = granted; permissionDenied = !granted }) }
                 }
-                if (buttonGranted) item { StatusPill("Your location will be included.", Tone.Info) }
+                if (buttonGranted) item { StatusPill("Location allowed. A position is included only if one is available.", Tone.Info) }
                 if (permissionDenied) {
                     item { StatusPill("Location is off for Wake Me, so only the alert is sent, with no location.", Tone.Warning) }
                     // Android doesn't show the prompt again after a permanent denial: offer the app's settings.
@@ -395,11 +420,20 @@ private fun StartSheet(
         confirmButton = {
             TextButton(enabled = viewers.isNotEmpty(), onClick = {
                 if (kind != "sos" && shareLocation && !hasLocationPermission(context) && !permissionDenied) {
-                    permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    val activity = generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }.firstOrNull { it is android.app.Activity } as? android.app.Activity
+                    if (activity?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) == true || activity?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION) == true) showRationale = true
+                    else permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 } else go()
             }) { Text(if (kind == "sos") "Send SOS" else "Start") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+    if (showRationale) AlertDialog(
+        onDismissRequest = { showRationale = false },
+        title = { Text("Allow location for this share?") },
+        text = { Text("The friends you picked can see positions with their capture time and accuracy until this session ends. A visible notification has Stop. You can use a check-in without location instead.") },
+        confirmButton = { TextButton(onClick = { showRationale = false; permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }) { Text("Continue") } },
+        dismissButton = { TextButton(onClick = { showRationale = false }) { Text("Not now") } },
     )
 }
 
@@ -410,20 +444,22 @@ private fun StartSheet(
  * libs.versions.toml). Not yet exercised on an emulator or phone.
  */
 @Composable
-private fun SystemLocationButton(onResult: (Boolean) -> Unit) {
+internal fun SystemLocationButton(onResult: (Boolean) -> Unit) {
+    val currentOnResult by rememberUpdatedState(onResult)
     val activity = LocalContext.current.let { c ->
         generateSequence(c) { (it as? android.content.ContextWrapper)?.baseContext }.firstOrNull { it is android.app.Activity } as? android.app.Activity
     } ?: return
     androidx.compose.ui.viewinterop.AndroidView(
         factory = { ctx ->
-            androidx.core.locationbutton.LocationButton(ctx).apply {
+            androidx.core.locationbutton.LocationButton(android.view.ContextThemeWrapper(ctx, app.wakeme.R.style.ThemeOverlay_WakeMe_LocationButton)).apply {
+                id = app.wakeme.R.id.session_location_button
                 parentActivity = activity
                 setTextType(androidx.core.locationbutton.LocationButton.TEXT_TYPE_SHARE_PRECISE_LOCATION)
                 setOnPermissionResultListener(object : androidx.core.locationbutton.OnPermissionResultListener {
-                    override fun onPermissionResult(granted: Boolean) = onResult(granted)
+                    override fun onPermissionResult(granted: Boolean) = currentOnResult(granted)
                 })
                 setOnErrorListener(object : androidx.core.locationbutton.OnErrorListener {
-                    override fun onError(error: Throwable) = onResult(false)
+                    override fun onError(error: Throwable) = currentOnResult(false)
                 })
             }
         },

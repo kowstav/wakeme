@@ -44,6 +44,7 @@ import app.wakeme.data.local.LocalDb
 import app.wakeme.data.local.Prefs
 import app.wakeme.data.net.WakeMeApiJson
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -120,7 +121,7 @@ class FocusViewModel @Inject constructor(
  * when a friend asks, and end it whenever you want. The chosen apps never leave this phone.
  */
 @Composable
-fun FocusScreen(vm: FocusViewModel = hiltViewModel()) {
+fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val session by vm.store.session.collectAsState()
     val request by vm.store.request.collectAsState()
@@ -136,12 +137,12 @@ fun FocusScreen(vm: FocusViewModel = hiltViewModel()) {
         onPauseOrDispose { }
     }
     val state = session?.let { focusState(it, now) }
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    DetailScreen(onBack = onBack) {
         Text("Focus", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
         Body("Choose apps to keep closed during a focus session. Your choice stays on this phone; friends never see which apps.")
         if (!vm.available) {
             StatusPill("Focus isn't available in this build yet.", Tone.Neutral)
-            return@Column
+            return@DetailScreen
         }
         request?.let { r ->
             WMCard {
