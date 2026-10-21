@@ -254,7 +254,7 @@ private fun entries(backStack: NavBackStack<NavKey>, app: AppViewModel) = entryP
         Readable { GrantEditorScreen(friendshipId = key.friendshipId, onDone = { backStack.close(key) }) }
     }
     entry<Route.Conversation>(metadata = ListDetailSceneStrategy.extraPane(friends)) { key ->
-        Readable { ConversationScreen(conversationId = key.id) }
+        Readable { ConversationScreen(conversationId = key.id, onBack = { backStack.close(key) }) }
     }
 
     // ---- Routines
@@ -290,9 +290,9 @@ private fun entries(backStack: NavBackStack<NavKey>, app: AppViewModel) = entryP
     }
 
     // ---- Full-screen destinations
-    entry<Route.Safety> { key -> Readable { SafetyScreen(focusSessionId = key.focusSessionId) } }
-    entry<Route.Focus> { Readable { FocusScreen() } }
-    entry<Route.VoiceSounds> { Readable { VoiceSoundsScreen() } }
+    entry<Route.Safety> { key -> Readable { SafetyScreen(focusSessionId = key.focusSessionId, onBack = { backStack.close(key) }) } }
+    entry<Route.Focus> { Readable { FocusScreen(onBack = { backStack.close(Route.Focus) }) } }
+    entry<Route.VoiceSounds> { Readable { VoiceSoundsScreen(onBack = { backStack.close(Route.VoiceSounds) }) } }
     entry<Route.WakeThanks> { key -> Readable { WakeThanksScreen(key.kind, key.id, onDone = { backStack.close(key) }) } }
     entry<Route.You> {
         Readable {

@@ -171,7 +171,7 @@ private fun Context.activity(): ComponentActivity? = when (this) {
 }
 
 @Composable
-fun VoiceSoundsScreen(vm: VoiceSoundsViewModel = hiltViewModel()) {
+fun VoiceSoundsScreen(onBack: (() -> Unit)? = null, vm: VoiceSoundsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val s = vm.state
@@ -190,7 +190,7 @@ fun VoiceSoundsScreen(vm: VoiceSoundsViewModel = hiltViewModel()) {
         onDispose { lifecycle.removeObserver(observer); vm.stopForBackground() }
     }
     LaunchedEffect(s.hasDraft) { rights = false }
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    DetailScreen(onBack = onBack) {
         Text("Voice sounds", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
         Body("Record up to 30 seconds while this screen is open. Preview before uploading. Recordings are private, checked before use, and friends decide whether to approve an offer.")
         if (s.recording) {

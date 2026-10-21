@@ -5,6 +5,8 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -221,8 +223,17 @@ fun ProfileScreen(onCreate: (name: String, adult: Boolean) -> Unit) {
     Page {
         Heading("What should friends call you?")
         OutlinedTextField(name, { name = it.take(40) }, label = { Text("Display name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = adult, onCheckedChange = { adult = it })
+        // The whole row is one 48 dp target and the box sits on the content edge (Material's
+        // checkbox alone added a 14 dp inset and a 20 dp target).
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = WakeMeTokens.minTouchTarget)
+                .toggleable(value = adult, role = Role.Checkbox, onValueChange = { adult = it }),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm),
+        ) {
+            Checkbox(checked = adult, onCheckedChange = null)
             Body("I'm 18 or older", color = WM.colors.textPrimary)
         }
         Body("Your time zone is used for quiet hours and wake windows. You can change it later.")

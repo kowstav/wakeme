@@ -44,6 +44,26 @@ Kept deliberately: iOS forms (`Form`, `DatePicker`, `Picker`) are native and wel
 Material chip height (32 dp visual, 48 dp target); the 72 dp alarm controls; 16 dp card padding and
 20 dp card radius; Safety's SOS card titles stay at their stronger size.
 
+## After: what the renders showed, and the follow-up fixes
+
+Rendered on the design branch: android-device runs 54–56 (Compose previews incl. the new
+`DesignSystemPreviews` in light, dark, increased contrast and 2× text; Android 16/17 emulator
+journeys) and ios runs 37–38 (iPhone 17 Pro simulator journey and screenshots).
+
+| Seen in the renders | Fix |
+|---|---|
+| Every labelled text field crashed: Material interpolates the label between bodyLarge and its own bodySmall, and em tracking against sp tracking throws | Generated roles carry tracking in sp (run 55 onward) |
+| Selected tab label in information blue | `secondary` maps to accent text |
+| Disabled buttons and neutral pills looked like holes in dark cards | Translucent ink tint (12 % / 8 %) |
+| Circle cards kept the old 22 sp titles | Friend-row proportions |
+| Trail step labels stacked three lines deep at 2× text | Hidden at very large text; the pill says the same in words |
+| Loose gap between duck and title in the quack card | 4 pt/dp spacing (the duck already reserves room for its sound marks) |
+| iOS welcome at large text cut the last paragraph mid-line under the pinned actions | Soft fade above the pinned actions (both apps) |
+| Seven solid-yellow day discs read as heavy and broke the selection rule | Butter fill, accent edge, bold letter (both apps) |
+| Back arrow scrolled with the routine editor and pushed its title ~100 dp down | Pinned back bar (`DetailScreen`) |
+| No back affordance on circle, grant editor, Safety, Focus, voice sounds, challenge editor, thanks, messages (Android) | `DetailScreen` / `DetailTopBar` on each; messages show the conversation title in the bar |
+| Profile's age checkbox inset 14 dp from the content edge with a 20 dp target | Whole row toggles (48 dp), box on the content edge |
+
 ## Final type scale
 
 | Role | Android (sp, size / line, weight) | iOS (Dynamic Type) | Used for |

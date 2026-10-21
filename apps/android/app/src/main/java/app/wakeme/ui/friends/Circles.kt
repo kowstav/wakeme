@@ -38,6 +38,7 @@ import app.wakeme.data.net.CircleDto
 import app.wakeme.data.net.InviteCreatedDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -128,7 +129,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
     LaunchedEffect(circleId) { vm.load(circleId) }
     LaunchedEffect(s.left) { if (s.left) onBack() }
     val d = s.detail
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    DetailScreen(onBack = onBack) {
         if (d == null) {
             Body("Loading…")
             return@Column

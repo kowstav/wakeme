@@ -64,6 +64,7 @@ import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.PresetDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -187,7 +188,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
     val f = s.friend ?: return
     val name = f.user.displayName
     val d = s.draft
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    DetailScreen(onBack = onDone) {
         Text("What can $name do?", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         Body("You're giving $name permission to help you, within limits you set. You can change or remove this anytime. It only works one way: it doesn't give you anything on $name's phone.")
         Body("Being in a circle together doesn't change these settings. Only you can change them.")
@@ -286,7 +287,8 @@ private fun SoundPicker(selected: List<String>, custom: List<String>, onChange: 
 /**
  * Seven day toggles in one row, Monday first; at least one stays selected. Each is a 48 dp-tall
  * target sharing the row's width (about 43 dp wide on a 360 dp phone), read as "Monday, checked".
- * A chosen day fills with the accent and turns bold, so the state isn't colour alone.
+ * A chosen day is butter with an accent edge and a bold letter, like every selection in the app,
+ * so the state isn't colour alone; solid yellow stays the primary action's.
  */
 @Composable
 fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
@@ -297,7 +299,7 @@ fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
         ALL_DAYS.forEach { day ->
             val on = day in days
-            val fill by animateColorAsState(if (on) c.accent else c.surfaceRaised, WMMotion.snappy(), label = "dayFill")
+            val fill by animateColorAsState(if (on) c.accentContainer else c.surfaceRaised, WMMotion.snappy(), label = "dayFill")
             Box(
                 Modifier
                     .weight(1f)
@@ -312,10 +314,10 @@ fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
                 Box(
                     Modifier.sizeIn(maxWidth = 44.dp, maxHeight = 44.dp).aspectRatio(1f).fillMaxSize()
                         .background(fill, CircleShape)
-                        .border(1.dp, if (on) c.accent else c.outline, CircleShape),
+                        .border(if (on) 1.5.dp else 1.dp, if (on) c.accentText else c.outline, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(names[day - 1], style = MaterialTheme.typography.titleMedium, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, color = if (on) c.textOnAccent else c.textPrimary)
+                    Text(names[day - 1], style = MaterialTheme.typography.titleMedium, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, color = if (on) c.onAccentContainer else c.textPrimary)
                 }
             }
         }

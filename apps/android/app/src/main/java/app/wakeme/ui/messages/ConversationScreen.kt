@@ -52,6 +52,8 @@ import app.wakeme.data.net.MessageDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailTopBar
+import androidx.compose.foundation.layout.offset
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.StatusPill
 import app.wakeme.designsystem.Tone
@@ -178,7 +180,7 @@ private val reportReasons = listOf("harassment" to "Harassment", "spam" to "Spam
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltViewModel()) {
+fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm: ConversationViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     HideFromRecents() // private messages
     var draft by remember { mutableStateOf("") }
@@ -192,7 +194,8 @@ fun ConversationScreen(conversationId: String, vm: ConversationViewModel = hiltV
 
     // Bottom: the navigation bar or, when typing, the keyboard (the shell handles top and sides).
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = WakeMeTokens.spaceMd)) {
-        Text(s.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary, modifier = Modifier.padding(vertical = WakeMeTokens.spaceSm))
+        if (onBack != null) DetailTopBar(onBack = onBack, title = s.title, modifier = Modifier.offset(x = -WakeMeTokens.spaceSm))
+        else Text(s.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary, modifier = Modifier.padding(vertical = WakeMeTokens.spaceSm))
         if (s.offline) StatusPill("You're offline. Showing messages loaded earlier.", Tone.Warning)
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
             items(s.messages.asReversed(), key = { it.id }) { m ->

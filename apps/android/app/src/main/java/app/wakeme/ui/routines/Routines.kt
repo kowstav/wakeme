@@ -66,6 +66,7 @@ import app.wakeme.designsystem.FieldGroup
 import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.WakeMeType
 import androidx.compose.foundation.layout.fillMaxWidth
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DetailTopBar
 import app.wakeme.designsystem.EmptyState
 import app.wakeme.designsystem.TimeDisplayStyle
@@ -429,8 +430,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
         }
         appliedLimits = true
     }
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-        DetailTopBar(onBack = onDone)
+    DetailScreen(onBack = onDone) {
         Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
         if (ownerId != null) Body("${s.friendName ?: "Your friend"} sees exactly this and decides. Nothing changes on their phone until they accept.")
         Body("Use routines for waking, study, gym or practice. These are reminders you choose; Wake Me doesn't verify attendance or penalize missed days.")

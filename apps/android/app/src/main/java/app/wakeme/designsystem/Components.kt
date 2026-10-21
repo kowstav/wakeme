@@ -18,7 +18,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -452,6 +456,27 @@ fun DetailTopBar(onBack: () -> Unit, modifier: Modifier = Modifier, title: Strin
         if (title != null) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         }
+    }
+}
+
+/**
+ * A pushed screen: a pinned back bar (system Back and predictive back still work) above scrolling
+ * content with the standard margins and rhythm. Without [onBack] (a top-level use) it is just the
+ * scrolling column.
+ */
+@Composable
+fun DetailScreen(onBack: (() -> Unit)?, modifier: Modifier = Modifier, title: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxSize().safeDrawingPadding()) {
+        if (onBack != null) DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXxs), title = title)
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = WakeMeTokens.screenMargin)
+                .padding(top = if (onBack == null) WakeMeTokens.spaceMd else 0.dp, bottom = WakeMeTokens.spaceMd),
+            verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
+            content = content,
+        )
     }
 }
 

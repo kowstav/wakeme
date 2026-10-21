@@ -49,6 +49,10 @@ import app.wakeme.data.net.SafetySessionDto
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailTopBar
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -199,17 +203,19 @@ private fun hasLocationPermission(context: Context) =
  * and can be stopped with one tap. Wake Me is not an emergency service.
  */
 @Composable
-fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewModel()) {
+fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, vm: SafetyViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     HideFromRecents() // locations and who is told
     val sharing by LocationShareService.active.collectAsState()
     var composing by remember { mutableStateOf<String?>(null) } // "share" | "checkin" | "sos"
     LaunchedEffect(focusSessionId) { if (focusSessionId != null) vm.load() }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+    androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+    if (onBack != null) DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXxs))
+    LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
-            Gap()
-            Text("Safety", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+            if (onBack == null) Gap()
+            Text("Safety", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             Body("Share with friends you choose, for a time you choose. Wake Me is not an emergency service: in an emergency, call your local emergency number.")
             if (s.offline) StatusPill("You're offline. Showing what was last loaded.", Tone.Warning)
         }
@@ -250,6 +256,7 @@ fun SafetyScreen(focusSessionId: String? = null, vm: SafetyViewModel = hiltViewM
             }
             Gap(WakeMeTokens.spaceXl)
         }
+    }
     }
 
     composing?.let { kind ->

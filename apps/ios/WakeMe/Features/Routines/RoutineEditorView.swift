@@ -211,14 +211,15 @@ struct DayPicker: View {
                         if on { days.remove(iso) } else { days.insert(iso) }
                     }
                 } label: {
-                    // A chosen day fills with the accent and turns bold; the others keep a visible
-                    // outline (≥ 3:1), so the state isn't colour alone.
+                    // A chosen day is butter with an accent edge and a bold letter, like every
+                    // selection; the others keep a visible outline (≥ 3:1). Solid yellow stays the
+                    // primary action's.
                     Text(short[i])
                         .font(.headline.weight(on ? .bold : .regular))
                         .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
-                        .foregroundStyle(on ? WMColor.textOnAccent : WMColor.textPrimary)
-                        .background(on ? WMColor.accent : WMColor.surfaceRaised, in: Circle().scale(0.92))
-                        .overlay(Circle().scale(0.92).stroke(on ? WMColor.accent : WMColor.outline))
+                        .foregroundStyle(on ? WMColor.onAccentContainer : WMColor.textPrimary)
+                        .background(on ? WMColor.accentContainer : WMColor.surfaceRaised, in: Circle().scale(0.92))
+                        .overlay(Circle().scale(0.92).stroke(on ? WMColor.accentText : WMColor.outline, lineWidth: on ? 1.5 : 1))
                 }
                 .sensoryFeedback(WMHaptic.selection, trigger: on)
                 .buttonStyle(.plain)

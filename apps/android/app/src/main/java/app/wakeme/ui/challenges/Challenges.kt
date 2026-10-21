@@ -56,6 +56,7 @@ import app.wakeme.data.net.CircleDto
 import app.wakeme.data.net.TemplateDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
@@ -313,7 +314,7 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
         Messages(s, vm, onUpgrade)
         return
     }
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    DetailScreen(onBack = onDone) {
         Text(if (editId != null) "Edit challenge" else "Create a challenge", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         if (editId != null) {
             Body("Your changes become version ${(editing?.latestRevision ?: 0) + 1}. You try it before publishing, and friends keep the version they accepted until they accept the new one.")

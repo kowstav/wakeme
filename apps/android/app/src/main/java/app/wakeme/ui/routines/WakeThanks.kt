@@ -60,7 +60,7 @@ class WakeThanksViewModel @Inject constructor(private val api: WakeMeApi, privat
 @Composable
 fun WakeThanksScreen(kind: String, id: String, onDone: () -> Unit, vm: WakeThanksViewModel = hiltViewModel()) {
     LaunchedEffect(kind, id) { vm.load(kind, id) }
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    DetailScreen(onBack = onDone) {
         Text("A little thanks", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
         Body(vm.message)
         vm.friend?.takeUnless { vm.sent }?.let { friend ->
