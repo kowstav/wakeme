@@ -33,8 +33,9 @@ class SessionLocationButtonTest {
         val result = AtomicReference<Boolean?>(null)
         compose.setContent { WakeMeTheme { Box(Modifier.safeDrawingPadding().padding(24.dp)) { SystemLocationButton { result.set(it) } } } }
         onView(withId(R.id.session_location_button)).check(matches(isDisplayed()))
-        DeviceEvidence.screenshot("56-session-location-button")
         Thread.sleep(2000) // remote secure rendering is asynchronous to Compose's idleness
+        // After the wait: earlier screenshots caught the button blank or half-drawn (runs 65, 76).
+        DeviceEvidence.screenshot("56-session-location-button")
         onView(withId(R.id.session_location_button)).perform(click())
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)

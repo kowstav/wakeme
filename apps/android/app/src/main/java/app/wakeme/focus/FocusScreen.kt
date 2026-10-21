@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +43,7 @@ import app.wakeme.data.local.LocalDb
 import app.wakeme.data.local.Prefs
 import app.wakeme.data.net.WakeMeApiJson
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
@@ -168,7 +168,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
             WMCard {
                 Text("Start a focus session", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                    listOf(15, 25, 45, 60).forEach { m -> FilterChip(selected = minutes == m, onClick = { minutes = m }, label = { Text("$m min") }) }
+                    listOf(15, 25, 45, 60).forEach { m -> ChoiceChip("$m min", selected = minutes == m, onClick = { minutes = m }) }
                 }
                 PrimaryButton("Start focus", onClick = { vm.startSelf(minutes) }, enabled = serviceOn && chosen.isNotEmpty())
                 if (chosen.isEmpty()) Body("Choose at least one app below.")
@@ -183,7 +183,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
         SectionTitle("Apps to keep closed")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             vm.apps.forEach { app ->
-                FilterChip(selected = app.packageName in chosen, onClick = { vm.toggle(app.packageName); chosen = vm.store.chosenApps }, label = { Text(app.label) })
+                ChoiceChip(app.label, selected = app.packageName in chosen, onClick = { vm.toggle(app.packageName); chosen = vm.store.chosenApps })
             }
         }
         Gap(WakeMeTokens.spaceXl)

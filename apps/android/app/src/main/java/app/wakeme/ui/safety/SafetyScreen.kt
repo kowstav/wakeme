@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -49,6 +48,7 @@ import app.wakeme.data.net.SafetySessionDto
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailTopBar
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.semantics.heading
@@ -363,7 +363,7 @@ private fun StartSheet(
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                         friends.take(10).forEach { f ->
-                            FilterChip(selected = f.friendshipId in selected, onClick = { selected = if (f.friendshipId in selected) selected - f.friendshipId else selected + f.friendshipId }, label = { Text(f.user.displayName) })
+                            ChoiceChip(f.user.displayName, selected = f.friendshipId in selected, onClick = { selected = if (f.friendshipId in selected) selected - f.friendshipId else selected + f.friendshipId })
                         }
                     }
                 }
@@ -382,7 +382,7 @@ private fun StartSheet(
                     item {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                             listOf(30 to "30 min", 60 to "1 hour", 120 to "2 hours", 240 to "4 hours", 480 to "8 hours").forEach { (m, label) ->
-                                FilterChip(selected = minutes == m, onClick = { minutes = m; if (checkin > m) checkin = m }, label = { Text(label) })
+                                ChoiceChip(label, selected = minutes == m, onClick = { minutes = m; if (checkin > m) checkin = m })
                             }
                         }
                     }
@@ -392,7 +392,7 @@ private fun StartSheet(
                     item {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                             listOf(15, 30, 60, 120, 240).filter { it <= minutes }.forEach { m ->
-                                FilterChip(selected = checkin == m, onClick = { checkin = m }, label = { Text(if (m < 60) "$m min" else "${m / 60} h") })
+                                ChoiceChip(if (m < 60) "$m min" else "${m / 60} h", selected = checkin == m, onClick = { checkin = m })
                             }
                         }
                     }

@@ -305,6 +305,6 @@ private fun entries(backStack: NavBackStack<NavKey>, app: AppViewModel) = entryP
             )
         }
     }
-    entry<Route.Ready> { Readable { ReadyScreen(onContinue = { backStack.close(Route.Ready) }, continueLabel = "Done", onSkip = { backStack.close(Route.Ready) }) } }
+    entry<Route.Ready> { Readable { ReadyScreen(onContinue = { backStack.close(Route.Ready) }, continueLabel = "Done", onSkip = { backStack.close(Route.Ready) }, onBack = { backStack.close(Route.Ready) }) } }
     entry<Route.Paywall> { Readable { PaywallScreen(onClose = { backStack.close(Route.Paywall) }) } }
 }

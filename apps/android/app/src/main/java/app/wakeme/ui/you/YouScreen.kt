@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,6 +36,7 @@ import app.wakeme.data.net.MeDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.data.net.WakeMeApiJson
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -235,7 +235,7 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
                         Body("Stops quacks and wake requests from everyone. Your own alarms still ring.")
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                             listOf(1L to "1 hour", 8L to "8 hours", 24L to "1 day", 24L * 7 to "1 week").forEach { (h, label) ->
-                                FilterChip(selected = false, onClick = { vm.update(buildJsonObject { put("pausedUntil", Instant.now().plusSeconds(h * 3600).toString()) }) { app.refreshMe() } }, label = { Text(label) })
+                                ChoiceChip(label, selected = false, onClick = { vm.update(buildJsonObject { put("pausedUntil", Instant.now().plusSeconds(h * 3600).toString()) }) { app.refreshMe() } })
                             }
                         }
                     }
@@ -247,7 +247,7 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
                     Body("After ${m.settings.soundBudgetPerHour} audible quacks in an hour, the rest arrive silently.")
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                         listOf(1, 3, 5, 10).forEach { n ->
-                            FilterChip(selected = m.settings.soundBudgetPerHour == n, onClick = { vm.update(buildJsonObject { put("soundBudgetPerHour", n) }) { app.refreshMe() } }, label = { Text("$n") })
+                            ChoiceChip("$n", selected = m.settings.soundBudgetPerHour == n, onClick = { vm.update(buildJsonObject { put("soundBudgetPerHour", n) }) { app.refreshMe() } })
                         }
                     }
                 }
