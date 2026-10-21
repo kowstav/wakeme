@@ -59,16 +59,30 @@ class FocusShieldTest {
         val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
         assumeTrue("focus service not enabled on this device: $enabled", enabled.contains("FocusShieldService"))
         // `am instrument` force-stops the app, which unbinds its accessibility service while the
-        // setting still lists it (run 30). Writing the setting again makes the system bind it, as
-        // turning it off and on in Settings would. UiAutomation keeps other services bound.
+        // setting still lists it (run 30). Turning it off and on, as a person would in Settings,
+        // makes the system bind it again. UiAutomation keeps other services bound.
         val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
-        fun shell(command: String) = automation.executeShellCommand(command).use { pfd -> FileInputStream(pfd.fileDescriptor).use { it.readBytes() } }
-        if (!serviceBound()) {
+        fun shell(command: String) = automation.executeShellCommand(command).use { pfd -> FileInputStream(pfd.fileDescriptor).use { String(it.readBytes()) } }
+        // One "<name> services:{...}" line of the system's accessibility user state.
+        fun systemState(name: String) = shell("dumpsys accessibility").lineSequence().map { it.trim() }.firstOrNull { it.startsWith("$name services:{") }
+        // The killed connection stays in the system's crashed or binding set (run 62's dumps show
+        // both), which it skips while the service is enabled and clears only when it reads the
+        // setting without the service. Its observer
+        // reads the current value, so writing it back before the observer ran looked unchanged and
+        // nothing was bound (Android 16, runs 55, 58 and 60). Wait until the system shows it off.
+        var cycles = 0
+        while (!serviceBound() && cycles < 3) {
+            cycles++
             shell("settings delete secure enabled_accessibility_services")
+            waitFor(5_000) { systemState("Enabled")?.contains("FocusShieldService") == false }
             shell("settings put secure enabled_accessibility_services $enabled")
             shell("settings put secure accessibility_enabled 1")
+            waitFor(10_000) { serviceBound() }
         }
-        assertTrue("the system binds the focus service", waitFor(15_000) { serviceBound() })
+        val bound = serviceBound()
+        val state = if (bound) "" else listOf("Enabled", "Binding", "Crashed").joinToString("; ") { systemState(it) ?: "$it services: not in dump" }
+        DeviceEvidence.note("focus-binding", if (bound) "bound after $cycles off/on cycles" else "not bound after $cycles off/on cycles; $state")
+        assertTrue("the system binds the focus service (after $cycles off/on cycles) $state", bound)
         val settingsPkg = context.packageManager.resolveActivity(Intent(Settings.ACTION_SETTINGS), 0)?.activityInfo?.packageName ?: "com.android.settings"
         val store = FocusStore(context)
         try {
@@ -83,6 +97,9 @@ class FocusShieldTest {
             instrumentation.runOnMainSync {
                 ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<FocusShieldActivity>().forEach { it.finish() }
             }
+            // finish() is asynchronous: on Android 17 the closing shield was still RESUMED when the
+            // next check ran (runs 61, 64 and 65; no shield was started after End focus).
+            assertTrue("the finished shield closes", waitFor(4_000) { !shieldShowing() })
             openSettings()
             assertFalse("no shield after End focus", waitFor(4_000) { shieldShowing() })
         } finally {

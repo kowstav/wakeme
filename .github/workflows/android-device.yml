@@ -192,12 +192,25 @@ jobs:
           adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null || true
           adb shell am instrument -w -r -e notClass app.wakeme.JourneyTest,app.wakeme.FocusShieldTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
+      - name: Widget stability (three independent host and pointer-tap runs)
+        if: always() && steps.boot.outcome == 'success'
+        run: |
+          for attempt in 1 2 3; do
+            # Each instrumentation process binds a fresh real AppWidgetHost and taps exactly once.
+            adb shell am instrument -w -r -e class app.wakeme.QuickActionsWidgetTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/widget-repeat-$attempt.txt"
+            grep -q "^OK (1 test)" "$RUNNER_TEMP/evidence/widget-repeat-$attempt.txt"
+            if grep -q "AssumptionViolatedException" "$RUNNER_TEMP/evidence/widget-repeat-$attempt.txt"; then exit 1; fi
+          done
       - name: Focus accessibility journey in its own instrumentation process
         if: always() && steps.boot.outcome == 'success'
         run: |
           # Compose/Espresso input changes UiAutomation flags and suppresses accessibility services.
           # Run the actual service/shield assertions without that shared automation connection.
+          # The system's accessibility state before and after, for a binding failure (Android 16 runs 55-60).
+          adb shell dumpsys accessibility > "$RUNNER_TEMP/evidence/accessibility-before-focus.txt" || true
           adb shell am instrument -w -r -e class app.wakeme.FocusShieldTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/focus.txt"
+          adb shell dumpsys accessibility > "$RUNNER_TEMP/evidence/accessibility-after-focus.txt" || true
+          grep -H -E "(Bound|Enabled|Binding|Crashed) services:" "$RUNNER_TEMP"/evidence/accessibility-*-focus.txt || true
           grep -q "^OK (" "$RUNNER_TEMP/evidence/focus.txt"
           if grep -q "AssumptionViolatedException" "$RUNNER_TEMP/evidence/focus.txt"; then exit 1; fi
       - name: Cold launch and screenshot
