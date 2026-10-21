@@ -5,6 +5,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
+import app.wakeme.designsystem.FriendAvatar
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.QuickAction
+import app.wakeme.designsystem.WMIcon
+import app.wakeme.designsystem.WMIconView
+import app.wakeme.designsystem.WakeMeFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,9 +49,7 @@ import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
-import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
-import app.wakeme.designsystem.SecondaryButton
 import app.wakeme.designsystem.SectionTitle
 import app.wakeme.designsystem.StatusPill
 import app.wakeme.designsystem.Tone
@@ -135,14 +141,24 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
             return@DetailScreen
         }
         val admin = d.circle.role == "owner" || d.circle.role == "admin"
-        Text(d.circle.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+            IconChip(WMIcon.Circles, circleFamily(d.circle.id), size = WakeMeTokens.avatarHeader)
+            Text(d.circle.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
+        }
         Body("Being in a circle together doesn't let anyone do anything on your phone. Each person still chooses that, friend by friend.")
-        PrimaryButton("Messages", onClick = { onMessages(d.circle.conversationId) })
-        SecondaryButton("Invite to this circle", onClick = { vm.invite(circleId) })
+        // Quick actions: the words stay visible ("Invite" is read as "Invite to this circle").
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
+            QuickAction(WMIcon.Message, "Messages", onClick = { onMessages(d.circle.conversationId) }, primary = true, modifier = Modifier.weight(1f))
+            QuickAction(WMIcon.PersonPlus, "Invite", onClick = { vm.invite(circleId) }, family = WM.palette.sky, onClickLabel = "Invite to this circle", modifier = Modifier.weight(1f))
+            if (admin) QuickAction(WMIcon.Edit, "Rename", onClick = { renaming = d.circle.name }, family = WM.palette.gold, onClickLabel = "Rename circle", modifier = Modifier.weight(1f))
+        }
         SectionTitle("Members")
         d.members.forEach { m ->
             WMCard {
-                Text(m.user.displayName + if (m.user.id == s.myId) " (you)" else "", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                    FriendAvatar(m.user.displayName, m.user.id)
+                    Text(m.user.displayName + if (m.user.id == s.myId) " (you)" else "", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+                }
                 StatusPill(
                     when {
                         m.role == "owner" -> "Owner"
@@ -156,8 +172,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
                 if (admin && m.role != "owner" && m.user.id != s.myId) QuietButton("Remove ${m.user.displayName}", onClick = { vm.remove(circleId, m.user.id) })
             }
         }
-        if (admin) QuietButton("Rename circle", onClick = { renaming = d.circle.name })
-        DangerButton("Leave circle", onClick = { confirmLeave = true })
+        DangerButton("Leave circle", onClick = { confirmLeave = true }, icon = WMIcon.Logout)
         Gap(WakeMeTokens.spaceXl)
     }
     if (confirmLeave) {
@@ -196,6 +211,13 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
     s.message?.let { AlertDialog(onDismissRequest = vm::dismiss, confirmButton = { TextButton(onClick = vm::dismiss) { Text("OK") } }, text = { Text(it) }) }
 }
 
+/** A circle's petal colour, stable for its id (the same family on every screen). */
+@Composable
+internal fun circleFamily(id: String): WakeMeFamily {
+    val all = WM.palette.avatars
+    return all[Math.floorMod(id.hashCode() + 3, all.size)]
+}
+
 /** Your circles without the ViewModel (the screenshot tests render it with sample data). */
 @Composable
 fun CirclesList(circles: List<CircleDto>, onOpen: (String) -> Unit, onNew: () -> Unit) {
@@ -205,12 +227,16 @@ fun CirclesList(circles: List<CircleDto>, onOpen: (String) -> Unit, onNew: () ->
         circles.forEach { c ->
             // Same proportions as a friend row: a 17 sp title with its supporting line close below.
             WMCard(onClick = { onOpen(c.id) }, onClickLabel = "Open ${c.name}") {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(c.name, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                    Supporting("${c.memberCount} member${if (c.memberCount == 1) "" else "s"}")
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                    IconChip(WMIcon.Circles, circleFamily(c.id), size = 48.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(c.name, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                        Supporting("${c.memberCount} member${if (c.memberCount == 1) "" else "s"}")
+                    }
+                    WMIconView(WMIcon.ChevronRight, tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
                 }
             }
         }
-        QuietButton("New circle", onClick = onNew)
+        QuietButton("New circle", onClick = onNew, icon = WMIcon.Plus)
     }
 }

@@ -72,13 +72,17 @@ struct ConversationView: View {
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("messageField")
                 .onChange(of: draft) { _, v in if v.count > 2000 { draft = String(v.prefix(2000)) } }
-            Button(sending ? "Sending…" : "Send") { Task { await send() } }
-                .font(.headline)
-                .foregroundStyle(WMColor.textOnAccent)
-                .padding(.horizontal, WMSpacing.md)
-                .frame(minHeight: WMSize.minTouchTarget)
-                .buttonStyle(WMPressStyle(fill: WMColor.accent, pressedFill: WMColor.accentPressed))
-                .disabled(sending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            // Icon-only, as in every messaging app: a lime circle with the send arrow, read as "Send".
+            let empty = draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            Button { Task { await send() } } label: {
+                WMIconImage(.send, size: 22)
+                    .foregroundStyle(WMColor.textOnAccent)
+                    .frame(width: WMSize.minTouchTarget, height: WMSize.minTouchTarget)
+            }
+            .buttonStyle(WMPressStyle(fill: WMColor.accent, pressedFill: WMColor.accentPressed, shape: AnyShape(Circle())))
+            .opacity(sending || empty ? 0.45 : 1)
+            .accessibilityLabel(sending ? "Sending…" : "Send")
+            .disabled(sending || empty)
         }
         .padding(WMSpacing.sm)
         .background(WMColor.surfaceRaised)
@@ -87,15 +91,15 @@ struct ConversationView: View {
     @ViewBuilder private func bubble(_ m: MessageDTO) -> some View {
         let mine = m.senderId == app.me?.id
         let myReaction = m.reactions.first { $0.userId == app.me?.id }?.emoji
-        // Your messages are butter with a small corner toward you; theirs sit on the raised surface.
+        // Your messages are light lime with a small corner toward you; theirs sit on the card grey.
         let shape = UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: mine ? 18 : 6, bottomTrailingRadius: mine ? 6 : 18, topTrailingRadius: 18)
         VStack(alignment: mine ? .trailing : .leading, spacing: WMSpacing.xxs) {
             Text(m.body ?? "Message deleted")
                 .italic(m.body == nil)
                 .foregroundStyle(mine ? WMColor.onAccentContainer : WMColor.textPrimary)
                 .padding(.horizontal, WMSpacing.md).padding(.vertical, WMSpacing.sm)
-                .background(mine ? WMColor.accentContainer : WMColor.surfaceRaised, in: shape)
-                .overlay(shape.stroke(mine ? WMColor.accentContainer : WMColor.border))
+                .background(mine ? WMColor.accentContainer : WMColor.surfaceNeutral, in: shape)
+                .overlay(shape.stroke(mine ? WMColor.accentContainer : WMColor.surfaceNeutral))
             if !m.reactions.isEmpty {
                 Text(m.reactions.map(\.emoji).joined()).font(.footnote)
                     .accessibilityLabel("Reactions: " + m.reactions.map(\.emoji).joined(separator: " "))

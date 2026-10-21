@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -51,6 +49,8 @@ import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.MessageDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.HideFromRecents
+import app.wakeme.designsystem.WMIcon
+import androidx.compose.ui.res.painterResource
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.DetailTopBar
 import androidx.compose.foundation.layout.offset
@@ -223,7 +223,7 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
                 colors = IconButtonDefaults.filledIconButtonColors(containerColor = WM.colors.accent, contentColor = WM.colors.textOnAccent),
             ) {
                 if (s.sending) CircularProgressIndicator(Modifier.size(WakeMeTokens.iconSizeSmall), color = WM.colors.textOnAccent, strokeWidth = 2.dp)
-                else Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", modifier = Modifier.size(WakeMeTokens.iconSizeSmall))
+                else Icon(painterResource(WMIcon.Send.res), contentDescription = "Send", modifier = Modifier.size(WakeMeTokens.iconSizeSmall))
             }
         }
     }
@@ -277,7 +277,7 @@ private fun Bubble(m: MessageDto, mine: Boolean, onLongPress: () -> Unit, modifi
         else -> m.body.orEmpty()
     }
     val time = runCatching { timeFmt.format(Instant.parse(m.createdAt)) }.getOrDefault("")
-    // Your messages are butter with a small corner toward you; theirs sit on the raised surface.
+    // Your messages are light lime with a small corner toward you; theirs sit on the card grey.
     val big = 18.dp
     val small = 6.dp
     val shape = RoundedCornerShape(topStart = big, topEnd = big, bottomStart = if (mine) big else small, bottomEnd = if (mine) small else big)
@@ -285,8 +285,8 @@ private fun Bubble(m: MessageDto, mine: Boolean, onLongPress: () -> Unit, modifi
         Column(
             Modifier
                 .widthIn(max = 320.dp)
-                .background(if (mine) WM.colors.accentContainer else WM.colors.surfaceRaised, shape)
-                .border(1.dp, if (mine) WM.colors.accentContainer else WM.colors.border, shape)
+                .background(if (mine) WM.colors.accentContainer else WM.colors.surfaceNeutral, shape)
+                .border(1.dp, if (mine) WM.colors.accentContainer else WM.colors.surfaceNeutral, shape)
                 .combinedClickable(onClick = {}, onLongClick = onLongPress, onLongClickLabel = "React or report")
                 .padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceSm)
                 .semantics(mergeDescendants = true) { contentDescription = (if (mine) "You" else "Them") + ", $time: $text" },

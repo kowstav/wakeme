@@ -124,14 +124,15 @@ struct ChallengeDemoView: View {
 }
 #endif
 
-/// Four tabs (doc 03 §3): Friends, Routines, Challenges, You.
+/// Four tabs (doc 03 §3): Friends, Routines, Challenges, You, with the Bloom icons (the same
+/// drawings as Android) and their words.
 struct MainTabs: View {
     var body: some View {
         TabView {
-            Tab("Friends", systemImage: "person.2") { NavigationStack { FriendsView() } }
-            Tab("Routines", systemImage: "alarm") { NavigationStack { RoutinesView() } }
-            Tab("Challenges", systemImage: "trophy") { NavigationStack { ChallengesView() } }
-            Tab("You", systemImage: "person.crop.circle") { NavigationStack { YouView() } }
+            Tab("Friends", image: WMIcon.friends.rawValue) { NavigationStack { FriendsView() } }
+            Tab("Routines", image: WMIcon.alarm.rawValue) { NavigationStack { RoutinesView() } }
+            Tab("Challenges", image: WMIcon.trophy.rawValue) { NavigationStack { ChallengesView() } }
+            Tab("You", image: WMIcon.you.rawValue) { NavigationStack { YouView() } }
         }
     }
 }

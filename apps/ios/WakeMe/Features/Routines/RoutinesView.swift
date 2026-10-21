@@ -39,36 +39,44 @@ struct RoutinesView: View {
 
     var body: some View {
         List {
-            if WakeAlarms.shared.authorization != .authorized {
-                Section {
-                    StatusPill(text: "Alarms aren't allowed on this phone yet", tone: .warning)
-                    NavigationLink("Make this phone ready") { ReadyView() }
+            Group {
+                if WakeAlarms.shared.authorization != .authorized {
+                    Section {
+                        StatusPill(text: "Alarms aren't allowed on this phone yet", tone: .warning, icon: .warning)
+                        NavigationLink("Make this phone ready") { ReadyView() }
+                    }
+                }
+                let mine = plans?.mine ?? []
+                let proposals = mine.filter { $0.pending != nil }
+                if !proposals.isEmpty {
+                    Section("Waiting for you") { ForEach(proposals) { p in PlanRow(plan: p, mine: true, onAccept: { await act { try await app.api.acceptPlan(p.id, version: p.pending!.version) } }, onDecline: { await act { try await app.api.declinePlan(p.id, version: p.pending!.version) } }) } }
+                }
+                Section("On this phone") {
+                    let active = mine.filter { $0.accepted != nil && !["cancelled", "declined"].contains($0.state) }
+                    if active.isEmpty { EmptyState(title: "No alarms yet", message: "Set one for yourself, or let a friend suggest one. Nothing rings until this phone confirms it.") }
+                    ForEach(active) { p in
+                        PlanRow(plan: p, mine: true, onAccept: nil, onDecline: nil)
+                            .swipeActions {
+                                Button("End", role: .destructive) { ending = p }
+                                Button(p.state == "paused" ? "Resume" : "Pause") { Task { await act { try await app.api.pausePlan(p.id, paused: p.state != "paused") } } }
+                            }
+                            .contextMenu {
+                                Button(p.state == "paused" ? "Resume" : "Pause") { Task { await act { try await app.api.pausePlan(p.id, paused: p.state != "paused") } } }
+                                Button("End this routine", role: .destructive) { ending = p }
+                            }
+                    }
+                    Button { editing = true } label: {
+                        Label { Text("Set a wake-up") } icon: { WMIconImage(.plus, size: WMLayout.iconSizeSmall) }
+                            .font(WMFont.cardTitle)
+                            .foregroundStyle(WMColor.accentText)
+                    }
+                    .accessibilityLabel("Set a wake-up")
+                }
+                if let helping = plans?.helping, !helping.isEmpty {
+                    Section("Helping friends") { ForEach(helping) { p in PlanRow(plan: p, mine: false, onAccept: nil, onDecline: nil) } }
                 }
             }
-            let mine = plans?.mine ?? []
-            let proposals = mine.filter { $0.pending != nil }
-            if !proposals.isEmpty {
-                Section("Waiting for you") { ForEach(proposals) { p in PlanRow(plan: p, mine: true, onAccept: { await act { try await app.api.acceptPlan(p.id, version: p.pending!.version) } }, onDecline: { await act { try await app.api.declinePlan(p.id, version: p.pending!.version) } }) } }
-            }
-            Section("On this phone") {
-                let active = mine.filter { $0.accepted != nil && !["cancelled", "declined"].contains($0.state) }
-                if active.isEmpty { EmptyState(title: "No alarms yet", message: "Set one for yourself, or let a friend suggest one. Nothing rings until this phone confirms it.") }
-                ForEach(active) { p in
-                    PlanRow(plan: p, mine: true, onAccept: nil, onDecline: nil)
-                        .swipeActions {
-                            Button("End", role: .destructive) { ending = p }
-                            Button(p.state == "paused" ? "Resume" : "Pause") { Task { await act { try await app.api.pausePlan(p.id, paused: p.state != "paused") } } }
-                        }
-                        .contextMenu {
-                            Button(p.state == "paused" ? "Resume" : "Pause") { Task { await act { try await app.api.pausePlan(p.id, paused: p.state != "paused") } } }
-                            Button("End this routine", role: .destructive) { ending = p }
-                        }
-                }
-                Button("Set a wake-up") { editing = true }
-            }
-            if let helping = plans?.helping, !helping.isEmpty {
-                Section("Helping friends") { ForEach(helping) { p in PlanRow(plan: p, mine: false, onAccept: nil, onDecline: nil) } }
-            }
+            .cardRows()
         }
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
@@ -115,13 +123,20 @@ private struct PlanRow: View {
         let v = plan.pending ?? plan.accepted
         VStack(alignment: .leading, spacing: WMSpacing.xs) {
             if let v {
-                Text("\(Text(v.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(v.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
-                if !v.label.isEmpty { Text(v.label).foregroundStyle(WMColor.textSecondary) }
+                HStack(alignment: .top, spacing: WMSpacing.sm) {
+                    VStack(alignment: .leading, spacing: WMSpacing.xxs) {
+                        Text("\(Text(v.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(v.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
+                        if !v.label.isEmpty { Text(v.label).foregroundStyle(WMColor.textSecondary) }
+                    }
+                    Spacer(minLength: 0)
+                    let tod = timeOfDay(v.localTime)
+                    IconChip(icon: tod.icon, family: tod.family, size: 48)
+                }
             }
             if !mine { Text("For \(plan.owner.displayName)").foregroundStyle(WMColor.textSecondary) }
             else if plan.creator.id != plan.owner.id { Text("Suggested by \(plan.creator.displayName)").foregroundStyle(WMColor.textSecondary) }
             let readiness = readinessText(plan.readiness, owner: plan.owner.displayName, mine: mine)
-            StatusPill(text: readiness.0, tone: readiness.1).animation(WMMotion.standard, value: readiness.0)
+            StatusPill(text: readiness.0, tone: readiness.1, icon: toneIcon(readiness.1)).animation(WMMotion.standard, value: readiness.0)
             if let onAccept, let onDecline {
                 Text("Nothing changes until you accept.").font(.footnote).foregroundStyle(WMColor.textSecondary)
                 HStack {

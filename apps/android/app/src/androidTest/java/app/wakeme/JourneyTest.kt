@@ -155,7 +155,7 @@ class JourneyTest {
         waitFor("Owner", timeout = 30_000)
         waitFor("Flat 3B")
         DeviceEvidence.screenshot("32-circle")
-        tap("Invite to this circle")
+        tap("Invite") // the circle page's quick action, read as "Invite to this circle"
         waitFor("Invite to Flat 3B", timeout = 30_000)
         val circleInviteText = compose.onAllNodes(hasText("type this code", substring = true)).fetchSemanticsNodes().first()
             .config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()

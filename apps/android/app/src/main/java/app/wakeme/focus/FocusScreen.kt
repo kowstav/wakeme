@@ -1,5 +1,6 @@
 package app.wakeme.focus
 
+import app.wakeme.designsystem.WMIcon
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -148,7 +149,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
             WMCard {
                 Text("${r.friendName} asks you to focus for ${r.minutes} min", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 Body("You choose. Nothing changes unless you start it, and you can end it anytime.")
-                PrimaryButton("Start focus", onClick = { vm.acceptRequest() }, enabled = serviceOn && chosen.isNotEmpty())
+                PrimaryButton("Start focus", onClick = { vm.acceptRequest() }, enabled = serviceOn && chosen.isNotEmpty(), icon = WMIcon.Focus)
                 QuietButton("Not now", onClick = { vm.declineRequest() })
             }
         }
@@ -162,7 +163,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
                 }
                 Text("Focusing" + (s.friendName?.let { " with $it" } ?: "") + " · ${(left + 59_999) / 60_000} min left", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 if (state is FocusState.OnBreak) StatusPill("On a break for ${(state.breakRemainingMs + 59_999) / 60_000} min", Tone.Info)
-                DangerButton("End focus", onClick = { vm.store.end() })
+                DangerButton("End focus", onClick = { vm.store.end() }, icon = WMIcon.Stop)
             }
         } else {
             WMCard {
@@ -170,7 +171,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                     listOf(15, 25, 45, 60).forEach { m -> FilterChip(selected = minutes == m, onClick = { minutes = m }, label = { Text("$m min") }) }
                 }
-                PrimaryButton("Start focus", onClick = { vm.startSelf(minutes) }, enabled = serviceOn && chosen.isNotEmpty())
+                PrimaryButton("Start focus", onClick = { vm.startSelf(minutes) }, enabled = serviceOn && chosen.isNotEmpty(), icon = WMIcon.Focus)
                 if (chosen.isEmpty()) Body("Choose at least one app below.")
             }
         }

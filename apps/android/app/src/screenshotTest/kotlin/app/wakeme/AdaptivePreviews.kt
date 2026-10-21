@@ -1,15 +1,11 @@
 package app.wakeme
 
 import android.content.res.Configuration
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import app.wakeme.core.Capability
@@ -24,7 +20,9 @@ import app.wakeme.data.net.PlanDto
 import app.wakeme.data.net.PlanVersionDto
 import app.wakeme.data.net.PublicUser
 import app.wakeme.data.net.TemplateDto
+import app.wakeme.data.local.ScheduledAlarmEntity
 import app.wakeme.designsystem.Readable
+import app.wakeme.designsystem.WMIcon
 import app.wakeme.designsystem.WakeMeTheme
 import app.wakeme.ui.challenges.ChallengesList
 import app.wakeme.ui.challenges.ChallengesState
@@ -84,7 +82,14 @@ private fun plan(id: String, time: String, label: String, owner: PublicUser = me
     ),
 )
 
-private val tabs = listOf("Friends" to Icons.Outlined.People, "Routines" to Icons.Outlined.Alarm, "Challenges" to Icons.Outlined.EmojiEvents, "You" to Icons.Outlined.AccountCircle)
+private val tabs = listOf("Friends" to WMIcon.Friends, "Routines" to WMIcon.Alarm, "Challenges" to WMIcon.Trophy, "You" to WMIcon.You)
+
+/** Tomorrow 07:00 in the preview's clock, so the Friends hero renders. */
+private val nextAlarm = ScheduledAlarmEntity(
+    requestCode = 1, planId = "p1", commandId = null, version = 1, occurrenceKey = "p1:2026-10-21", role = "main",
+    fireAt = java.time.ZonedDateTime.now().plusDays(1).withHour(7).withMinute(0).toInstant().toEpochMilli(),
+    soundId = "bundled:rise.gentle", ringSeconds = 60, label = "Work days", helperName = null, challengeRevisionId = null,
+)
 
 /** The app's adaptive shell: bottom bar on phones, rail on wider windows (same as MainTabs). */
 @Composable
@@ -93,7 +98,7 @@ private fun Shell(selected: Int, content: @Composable () -> Unit) {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
                 tabs.forEachIndexed { i, (label, icon) ->
-                    item(selected = i == selected, onClick = {}, icon = { Icon(icon, contentDescription = null) }, label = { Text(label) })
+                    item(selected = i == selected, onClick = {}, icon = { Icon(painterResource(icon.res), contentDescription = null) }, label = { Text(label) })
                 }
             },
         ) { content() }
@@ -106,7 +111,7 @@ private fun Shell(selected: Int, content: @Composable () -> Unit) {
 @Composable
 fun FriendsTab() = Shell(0) {
     FriendsList(
-        s = FriendsState(loading = false, friends = friends),
+        s = FriendsState(loading = false, friends = friends, nextAlarm = nextAlarm),
         notificationsOn = true,
         onOpen = {}, onFixReadiness = {}, onTurnOnNotifications = {}, onInvite = {}, onRedeem = {},
         circles = { CirclesList(circles, onOpen = {}, onNew = {}) },

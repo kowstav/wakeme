@@ -20,6 +20,11 @@ import androidx.compose.ui.unit.dp
 import app.wakeme.designsystem.CardTitle
 import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.FieldGroup
+import app.wakeme.designsystem.HeroCard
+import app.wakeme.designsystem.WMIcon
+import app.wakeme.designsystem.WMIconView
+import app.wakeme.designsystem.quietFill
+import androidx.compose.ui.graphics.Color
 import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.TimeDisplayStyle
 import app.wakeme.designsystem.WMMotion
@@ -211,7 +216,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
         }
 
         WMCard {
-            SettingRow("Send short sounds", "A quack or chime, a few times an hour at most.", Capability.NUDGE in d.caps) { vm.toggle(Capability.NUDGE, it) }
+            SettingRow("Send short sounds", "A quack or chime, a few times an hour at most.", Capability.NUDGE in d.caps, icon = WMIcon.Quack, family = WM.palette.gold) { vm.toggle(Capability.NUDGE, it) }
             if (Capability.NUDGE in d.caps) {
                 Stepper("Up to ${d.nudge.maxPerHour} per hour", d.nudge.maxPerHour, 1, 12) { v -> vm.edit { it.copy(nudge = it.nudge.copy(maxPerHour = v)) } }
                 WindowEditor(d.nudge.windows.first()) { w -> vm.edit { it.copy(nudge = it.nudge.copy(windows = listOf(w))) } }
@@ -222,8 +227,8 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
 
         WMCard {
             CardTitle("Help wake me")
-            SettingRow("Set wake-up routines for me", "You'll see and accept every routine before it's active.", Capability.ALARM_SCHEDULE in d.caps) { vm.toggle(Capability.ALARM_SCHEDULE, it) }
-            SettingRow("Wake me now", "Ring this phone during your wake hours, if you're not up.", Capability.ALARM_REQUEST in d.caps) { vm.toggle(Capability.ALARM_REQUEST, it) }
+            SettingRow("Set wake-up routines for me", "You'll see and accept every routine before it's active.", Capability.ALARM_SCHEDULE in d.caps, icon = WMIcon.CalendarPlus, family = WM.palette.sky) { vm.toggle(Capability.ALARM_SCHEDULE, it) }
+            SettingRow("Wake me now", "Ring this phone during your wake hours, if you're not up.", Capability.ALARM_REQUEST in d.caps, icon = WMIcon.Wake, family = WM.palette.apricot) { vm.toggle(Capability.ALARM_REQUEST, it) }
             if (Capability.ALARM_REQUEST in d.caps || Capability.ALARM_SCHEDULE in d.caps) {
                 Body("Wake hours are your explicit OK to be woken, even during quiet hours.")
                 WindowEditor(d.alarm.windows.first()) { w -> vm.edit { it.copy(alarm = it.alarm.copy(windows = listOf(w))) } }
@@ -236,7 +241,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
         }
 
         WMCard {
-            SettingRow("Assign challenges", "Quizzes and puzzles to finish your wake-up. New versions always need your OK.", Capability.CHALLENGE_ASSIGN in d.caps) { vm.toggle(Capability.CHALLENGE_ASSIGN, it) }
+            SettingRow("Assign challenges", "Quizzes and puzzles to finish your wake-up. New versions always need your OK.", Capability.CHALLENGE_ASSIGN in d.caps, icon = WMIcon.Trophy, family = WM.palette.orchid) { vm.toggle(Capability.CHALLENGE_ASSIGN, it) }
             if (Capability.CHALLENGE_ASSIGN in d.caps) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                     CHALLENGE_TYPES.forEach { t ->
@@ -251,13 +256,13 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
 
         WMCard {
             CardTitle("Check in on me")
-            SettingRow("Ask me to check in", "A request you can answer with “I'm OK”.", Capability.CHECKIN in d.caps) { vm.toggle(Capability.CHECKIN, it) }
-            SettingRow("Ask where I am", "They can ask. Nothing is shared unless you choose to share, each time.", Capability.LOCATION in d.caps) { vm.toggle(Capability.LOCATION, it) }
+            SettingRow("Ask me to check in", "A request you can answer with “I'm OK”.", Capability.CHECKIN in d.caps, icon = WMIcon.CheckCircle, family = WM.palette.aqua) { vm.toggle(Capability.CHECKIN, it) }
+            SettingRow("Ask where I am", "They can ask. Nothing is shared unless you choose to share, each time.", Capability.LOCATION in d.caps, icon = WMIcon.Pin, family = WM.palette.periwinkle) { vm.toggle(Capability.LOCATION, it) }
         }
 
         Choice("Keep these permissions for", listOf(30L, 90L, 180L), d.validDays, { "$it days" }) { v -> vm.edit { it.copy(validDays = v) } }
-        PrimaryButton(if (s.saving) "Saving…" else "Save my rules", onClick = vm::save, enabled = !s.saving)
-        if (f.iAllowThem != null) DangerButton("Remove all of $name's permissions", onClick = vm::revokeAll)
+        PrimaryButton(if (s.saving) "Saving…" else "Save my rules", onClick = vm::save, enabled = !s.saving, icon = WMIcon.Check)
+        if (f.iAllowThem != null) DangerButton("Remove all of $name's permissions", onClick = vm::revokeAll, icon = WMIcon.Trash)
         Gap(WakeMeTokens.spaceXl)
     }
     s.error?.let { AlertDialog(onDismissRequest = vm::clearError, confirmButton = { TextButton(onClick = vm::clearError) { Text("OK") } }, text = { Text(it) }) }
@@ -287,8 +292,8 @@ private fun SoundPicker(selected: List<String>, custom: List<String>, onChange: 
 /**
  * Seven day toggles in one row, Monday first; at least one stays selected. Each is a 48 dp-tall
  * target sharing the row's width (about 43 dp wide on a 360 dp phone), read as "Monday, checked".
- * A chosen day is butter with an accent edge and a bold letter, like every selection in the app,
- * so the state isn't colour alone; solid yellow stays the primary action's.
+ * A chosen day is lime with a bold forest letter, like every selection in Bloom; an open day keeps
+ * an outline, so the state isn't colour alone.
  */
 @Composable
 fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
@@ -296,10 +301,11 @@ fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
     val full = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     val haptics = rememberHaptics()
     val c = WM.colors
+    val off = quietFill()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
         ALL_DAYS.forEach { day ->
             val on = day in days
-            val fill by animateColorAsState(if (on) c.accentContainer else c.surfaceRaised, WMMotion.snappy(), label = "dayFill")
+            val fill by animateColorAsState(if (on) c.accent else off, WMMotion.snappy(), label = "dayFill")
             Box(
                 Modifier
                     .weight(1f)
@@ -314,10 +320,10 @@ fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
                 Box(
                     Modifier.sizeIn(maxWidth = 44.dp, maxHeight = 44.dp).aspectRatio(1f).fillMaxSize()
                         .background(fill, CircleShape)
-                        .border(if (on) 1.5.dp else 1.dp, if (on) c.accentText else c.outline, CircleShape),
+                        .border(1.dp, if (on) Color.Transparent else c.outline, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(names[day - 1], style = MaterialTheme.typography.titleMedium, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, color = if (on) c.onAccentContainer else c.textPrimary)
+                    Text(names[day - 1], style = MaterialTheme.typography.titleMedium, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, color = if (on) c.textOnAccent else c.textPrimary)
                 }
             }
         }
@@ -325,26 +331,26 @@ fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
 }
 
 /**
- * The routine's time as the biggest thing on screen (tabular, so it doesn't shift while it
- * changes). Tapping it opens the system time picker; TalkBack reads "Rings at 07:00, change time".
+ * The routine's time as the biggest thing on screen, lime on the forest hero card (tabular, so it
+ * doesn't shift while it changes), with an edit icon saying it can change. Tapping it opens the
+ * system time picker; TalkBack reads "Rings at 07:00, change time".
  */
 @Composable
 fun TimeDisplay(label: String, time: String, onPick: (String) -> Unit) {
     val context = LocalContext.current
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(WakeMeTokens.radiusLg))
-            .clickable(onClickLabel = "Change time", role = Role.Button) {
-                val (h, m) = time.split(":").map { it.toInt() }
-                TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
+    val c = WM.colors
+    HeroCard(onClickLabel = "Change time", onClick = {
+        val (h, m) = time.split(":").map { it.toInt() }
+        TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
+    }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelLarge, color = c.onHeroSecondary)
+                AnimatedContent(targetState = time, transitionSpec = { WMMotion.fadeThrough() }, label = "time") { t ->
+                    Text(t, style = TimeDisplayStyle, color = c.onHero)
+                }
             }
-            .padding(vertical = WakeMeTokens.spaceXs)
-            .semantics(mergeDescendants = true) { },
-    ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = WM.colors.textSecondary)
-        AnimatedContent(targetState = time, transitionSpec = { WMMotion.fadeThrough() }, label = "time") { t ->
-            Text(t, style = TimeDisplayStyle, color = WM.colors.textPrimary)
+            WMIconView(WMIcon.Edit, tint = c.onHero)
         }
     }
 }

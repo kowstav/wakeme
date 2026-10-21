@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -192,8 +193,8 @@ private fun OfferRow(o: Offer, selected: Boolean, onSelect: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().selectable(selected = selected, onClick = onSelect, role = Role.RadioButton),
         shape = RoundedCornerShape(WakeMeTokens.radiusLg),
-        colors = CardDefaults.cardColors(containerColor = WM.colors.surfaceRaised),
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) WM.colors.accent else WM.colors.border),
+        colors = CardDefaults.cardColors(containerColor = if (selected) WM.colors.accentContainer else WM.colors.surfaceNeutral),
+        border = BorderStroke(2.dp, if (selected) WM.colors.accentText else Color.Transparent),
     ) {
         androidx.compose.foundation.layout.Row(Modifier.padding(WakeMeTokens.spaceMd), verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = selected, onClick = null)

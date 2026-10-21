@@ -1,6 +1,13 @@
 # Wake Me — progress
 
-Last updated: 2026-10-20. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+Last updated: 2026-10-21. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+
+## Design pass: Bloom, vibrant colour, icons and bento layouts (2026-10-21, Claude)
+
+- **What changed** (details in [docs/design/system.md](docs/design/system.md), research in [docs/design/research-2026-10-21-top-apps.md](docs/design/research-2026-10-21-top-apps.md), decision in ADR 0021): reviewed the US Top Free chart of 2026-10-21 and App Store screenshots of 16 apps (Capital One, Vinted, ChatGPT, Threads, McDonald's, Kalshi, Maps, Depop, Muse, Duolingo, Alarmy, Revolut, Cash App, Airbnb, Robinhood, Locket); sampled the owner's two reference images pixel by pixel. Tokens v3: white page, flat grey cards, Wise lime `#9FE870` actions with forest `#163300` ink, a forest hero, eight petal families from the images, condensed capital display type, 56-high buttons, radius 24 cards. 57 owned SVG icons generated into Android vector drawables and an iOS asset catalog (directional ones mirror in RTL); Android no longer depends on material-icons-extended. New components on both platforms (hero card, bento tiles, quick actions, icon chips, round icon buttons, pills, display text). Rebuilt Friends home (next-alarm hero, Invite / Join-with-a-code tiles), friend page (quick actions, icon cards, More menu for remove/block), circles, routines (time-of-day chips, time hero, icon facts), You (bento grid), welcome (Wise-style), chat (icon Send), grant editor (icon chips), plus icons on primary actions elsewhere; iOS grouped lists take the card grey. Launcher icon lime with a forest duck. A visual study of the main screens, built from the same tokens and SVGs: [docs/design/bloom.html](docs/design/bloom.html).
+- **Tests actually run** (Windows 11, Node 24.19.0): `npm run generate:tokens` and `node packages/design-tokens/generate.ts --check` (43 contrast pairs × 4 modes and 8 palette families pass); icons and the study rendered in a browser and reviewed. A duplicate-import scan of the 24 changed Kotlin files.
+- **Not run**: any Android or iOS compile, lint, unit, instrumented, journey or preview job (no Android SDK or macOS here). The Android journey test now taps "Invite" on a circle (was "Invite to this circle"); every other test-visible word is kept, and iOS labels keep the old phrases where a quick action shows one word. Nothing in this pass is verified until CI runs on it. No physical device.
+- **Next**: run CI on this branch, fix what fails, review the Bloom preview sheet and simulator screenshots; physical-device check of tile heights and the condensed headline at large text sizes.
 
 ## Design pass: Daybreak system, motion and signature journey (2026-10-21, Claude)
 

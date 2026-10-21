@@ -1,5 +1,6 @@
 package app.wakeme.ui.routines
 
+import app.wakeme.designsystem.WMIcon
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.safeDrawing
@@ -86,13 +87,13 @@ fun GuestHome(onSignIn: () -> Unit, vm: GuestViewModel = hiltViewModel()) {
                 QuietButton("Delete this wake-up", onClick = { vm.delete(r.planId) })
             }
         }
-        fullWidth { PrimaryButton("New wake-up", onClick = { editing = true }) }
+        fullWidth { PrimaryButton("New wake-up", onClick = { editing = true }, icon = WMIcon.Plus) }
         fullWidth { WMCard { ReadinessSection() } }
         fullWidth {
             WMCard {
                 Text("Wake each other up", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 Body("Sign in to invite friends. Your wake-ups here move to your account and keep ringing on this phone.")
-                SecondaryButton("Sign in to add friends", onClick = onSignIn)
+                SecondaryButton("Sign in to add friends", onClick = onSignIn, icon = WMIcon.PersonPlus)
             }
         }
         fullWidth { Gap(WakeMeTokens.spaceXl) }

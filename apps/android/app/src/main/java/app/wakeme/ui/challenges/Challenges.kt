@@ -1,5 +1,6 @@
 package app.wakeme.ui.challenges
 
+import app.wakeme.designsystem.WMIcon
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -219,14 +220,14 @@ fun ChallengesList(
             Gap()
             Text("Challenges", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             Body("Build challenges from your group's own jokes and goals. They run on the phone, even offline, and always have a way out.")
-            PrimaryButton("Create a challenge", onClick = onNew)
+            PrimaryButton("Create a challenge", onClick = onNew, icon = WMIcon.Plus)
         }
         fullWidth { SectionTitle("Start from a template") }
         items(s.templates, key = { it.id }) { t ->
             WMCard {
                 Text(t.title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 Body(t.description)
-                SecondaryButton("Try it", onClick = { onTry(t) })
+                SecondaryButton("Try it", onClick = { onTry(t) }, icon = WMIcon.Play)
             }
         }
         if (s.challenges.isNotEmpty()) fullWidth { SectionTitle("Yours and your circles'") }
@@ -259,7 +260,7 @@ private fun TryOut(c: ChallengeDto, def: ChallengeDefinition, vm: ChallengesView
             Body(challengeAudience(c.circleId, state.circles))
             if (draft) {
                 Body("Publishing freezes this version. Friends who accept it get exactly this; later edits become a new version they must accept.")
-                PrimaryButton("Publish", onClick = { vm.finishedTrying(publish = true) })
+                PrimaryButton("Publish", onClick = { vm.finishedTrying(publish = true) }, icon = WMIcon.Share)
                 SecondaryButton("Keep as draft", onClick = { vm.finishedTrying(publish = false) })
             } else PrimaryButton("Done", onClick = { vm.finishedTrying(publish = false) })
         }

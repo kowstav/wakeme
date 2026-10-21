@@ -72,7 +72,6 @@ compose-material3-navsuite = { module = "androidx.compose.material3:material3-ad
 compose-material3-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "material3Adaptive" }
 compose-material3-adaptive-layout = { module = "androidx.compose.material3.adaptive:adaptive-layout", version.ref = "material3Adaptive" }
 compose-material3-adaptive-navigation3 = { module = "androidx.compose.material3.adaptive:adaptive-navigation3", version.ref = "material3Adaptive" }
-compose-material-icons = { module = "androidx.compose.material:material-icons-extended" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }

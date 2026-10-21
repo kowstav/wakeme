@@ -14,19 +14,23 @@
 - **Always a way out.** Stop, End focus, the accessible check-in and revocation never wait for the
   network, a friend, AI or a subscription.
 
-## 2. Visual direction: warm daylight + quiet night
+## 2. Visual direction: Bloom
 
-Source of truth: `packages/design-tokens/tokens.json` v2, the **Daybreak** system ([system.md](system.md),
-chosen from three directions in [directions.html](directions.html); ADR 0020). Generated into both
-apps; 42 pairs pass WCAG in light, dark and both increased-contrast modes, see `contrast-report.md`.
+Source of truth: `packages/design-tokens/tokens.json` v3 and `packages/design-tokens/icons`, the
+**Bloom** system ([system.md](system.md), [research](research-2026-10-21-top-apps.md), ADR 0021;
+visual study [bloom.html](bloom.html)). It replaced Daybreak's cream and yellow (ADR 0020,
+[directions.html](directions.html)). Generated into both apps; 43 pairs and 8 palette families pass
+WCAG in light, dark and both increased-contrast modes, see `contrast-report.md`.
 
 | Rule | Why |
 |---|---|
-| Off-white surfaces, dark ink; warm, low-glare ink night surfaces (same hue family as day) | Calm legibility (doc 03 §2); one identity day and night |
-| Duck yellow (`accent`) is a fill; text on light backgrounds uses `accentText` | Yellow text on cream failed AA (run 13) |
+| White page, flat neutral-grey cards, no borders or shadows; deep green-black night | The reviewed top apps; colour separates surfaces |
+| Lime (`accent`) is the action colour with forest ink; text on white uses `accentText` (forest by day) | The owner's reference; lime text on white is 1.47:1 |
+| Petal families mark things of the same kind (friends, tiles, chips, quick actions), never status | Vibrancy without diluting meaning |
 | Blue only for information and focus; red only for destructive actions and SOS (readiness and validation use warning) | Urgency keeps its meaning |
-| Control boundaries use `outline` (≥ 3:1); `border` is decorative only | WCAG 1.4.11 (audit A2) |
-| Selection is butter (`accentContainer`) plus a check mark or bold weight | State never by colour alone |
+| Fields, switches and open toggles use `outline` (≥ 3:1); filled pills are identified by their words | WCAG 1.4.11 |
+| Selection is lime plus a check mark or bold weight | State never by colour alone |
+| Icon only for universal compact actions (with a spoken label); icon + one word for tabs and quick actions; words only for consent, dialogs, alarm Stop and escapes | Research §4 |
 | Status is words plus a dot, never colour alone (`StatusPill`) | Colour-vision differences |
 | One primary action per screen; 44 pt / 48 dp minimum targets | Sleepy and one-handed use |
 | Native navigation: tab bar on iPhone; bottom bar on Android phones, rail on tablets | Platform-native, adaptive (doc 06) |
@@ -36,9 +40,10 @@ apps; 42 pairs pass WCAG in light, dark and both increased-contrast modes, see `
 
 ## 3. Components (same names on both platforms)
 
-`PrimaryButton` (yellow capsule), `SecondaryButton` (outlined capsule; visibly disabled at 38–45 % when
-unavailable), `QuietButton`, `DangerButton` (destructive/SOS only, never animated), `WMCard`,
-`StatusPill` (tinted, words + dot, optional announcement), `ChoiceChip`, `DayChips`/`DayPicker`,
+`PrimaryButton` (lime pill, optional icon), `SecondaryButton` (neutral pill; visibly disabled at 38–45 % when
+unavailable), `QuietButton`, `DangerButton` (destructive/SOS only, never animated), `WMCard` (flat),
+`HeroCard`, `BentoTile`/`BentoRow`, `QuickAction`, `IconChip`, `RoundIconButton`, `PillButton`,
+`DisplayText`, the `WMIcon` set, `StatusPill` (tinted, words + dot or icon, optional announcement), `ChoiceChip`, `DayChips`/`DayPicker`,
 `TimeDisplay`, `FriendAvatar`, `DeliveryTrailView`, `DetailTopBar` (Android), `EmptyState`,
 `DuckMark`, `QuackBurst`, `SettingRow` (whole row toggles), `Stepper` (Android: 48 dp −/+ spoken as
 Fewer/More), app-switcher cover / `HideFromRecents` on Safety and Messages (ADR 0012).
@@ -76,4 +81,5 @@ Screenshots come from CI (printed into job logs; see ADR 0009 — not device evi
 | Android 31 | Android 16 emulator + layoutlib | 2026-10-20 (Codex) | Reviewed `40-large-screen`, `41-large-screen-detail`, `13-focus-shield`, desktop Challenges, foldable Routines and dark-phone Friends: readable controls, rail and two panes confirmed; next installed alarm visible on Friends. No new screenshot references approved or committed. |
 | Android 45 | Android 17 emulator | 2026-10-20 (Codex) | Reviewed voice rights/local-preview screen (52), real-host widget toolbar (53), system location button (56) and large-text challenge controls (51). Voice upload is visibly disabled without rights confirmation; Stop/check-in/End remain visible at large text. Widget uses canonical Glance styling; actual launcher/OEM rendering remains a device gate. |
 | Daybreak pass | Android runs 54–56 (previews + 16/17 emulators), iOS runs 37–38 (iPhone 17 Pro simulator) | 2026-10-21 (Claude) | Before: run 53 / iOS run 35. After: alarm clock on tabular figures, 52 dp paired buttons, 17 sp card titles, pinned welcome actions, pinned iOS challenge escape above the keyboard. Fixed from the renders: an Em/Sp crash in labelled text fields (run 54), blue tab label, dark-mode disabled/neutral fills, circle card titles, trail labels at 2× text, duck-title gap, welcome cut-off at large text, heavy day discs, missing back bars. List in [sizing-audit](sizing-audit-2026-10-21.md). No screenshot baselines accepted. |
+| Bloom pass | HTML study from the same tokens and SVGs ([bloom.html](bloom.html)); native renders pending CI | 2026-10-21 (Claude) | Before: Daybreak renders (Android run 60, iOS run 39). The study was reviewed in a browser (light and dark); icons checked at 24 and 40 units, two redrawn. No native screenshots exist for Bloom yet. |
 | Android 49 | Compose previews (layoutlib) | 2026-10-20 (Codex) | All 34 renders pass. Reviewed small-landscape alarm, large-text quiz and tablet chess: readable content with reachable fixed escape controls; chess content scrolls separately. No new baseline images accepted. |

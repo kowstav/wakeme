@@ -20,14 +20,23 @@ struct CirclesSection: View {
                 NavigationLink {
                     CircleView(circleId: c.id)
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(c.name).font(.headline).foregroundStyle(WMColor.textPrimary)
-                        Text("\(c.memberCount) member\(c.memberCount == 1 ? "" : "s")").font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                    HStack(spacing: WMSpacing.sm) {
+                        IconChip(icon: .circles, family: familyFor(c.id, offset: 3), size: 48)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(c.name).font(.headline).foregroundStyle(WMColor.textPrimary)
+                            Text("\(c.memberCount) member\(c.memberCount == 1 ? "" : "s")").font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                        }
                     }
                     .frame(minHeight: WMSize.minTouchTarget)
                 }
             }
-            Button("New circle") { naming = true }.frame(minHeight: WMSize.minTouchTarget)
+            Button { naming = true } label: {
+                Label { Text("New circle") } icon: { WMIconImage(.plus, size: WMLayout.iconSizeSmall) }
+                    .font(WMFont.cardTitle)
+                    .foregroundStyle(WMColor.accentText)
+            }
+            .frame(minHeight: WMSize.minTouchTarget)
+            .accessibilityLabel("New circle")
         } header: {
             Text("Circles")
         }
@@ -72,37 +81,49 @@ struct CircleView: View {
         List {
             if let d = detail {
                 let admin = d.circle.role == "owner" || d.circle.role == "admin"
-                Section {
-                    Text("Being in a circle together doesn't let anyone do anything on your phone. Each person still chooses that, friend by friend.")
-                        .foregroundStyle(WMColor.textSecondary)
+                // Quick actions: the words stay visible ("Invite" is read as "Invite to this circle").
+                HStack(alignment: .top, spacing: WMSpacing.xxs) {
                     NavigationLink {
                         ConversationView(conversationId: d.circle.conversationId, friendName: d.circle.name)
                     } label: {
-                        Label("Messages", systemImage: "bubble.left.and.bubble.right").frame(minHeight: WMSize.minTouchTarget, alignment: .leading)
+                        QuickActionLabel(icon: .message, title: "Messages", primary: true)
                     }
-                    Button("Invite to this circle") { Task { await createInvite() } }.frame(minHeight: WMSize.minTouchTarget)
+                    .buttonStyle(WMPressStyle())
+                    .accessibilityLabel("Messages")
+                    QuickAction(icon: .personPlus, title: "Invite", family: WMPalette.sky, spokenLabel: "Invite to this circle") { Task { await createInvite() } }
+                    if admin {
+                        QuickAction(icon: .edit, title: "Rename", family: WMPalette.gold, spokenLabel: "Rename circle") { newName = d.circle.name; renaming = true }
+                    }
                 }
-                Section("Members") {
-                    ForEach(d.members, id: \.user.id) { m in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(m.user.displayName + (m.user.id == app.me?.id ? " (you)" : "")).foregroundStyle(WMColor.textPrimary)
-                                Text(roleText(m)).font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                .bentoRow()
+                Group {
+                    Section {
+                        Text("Being in a circle together doesn't let anyone do anything on your phone. Each person still chooses that, friend by friend.")
+                            .foregroundStyle(WMColor.textSecondary)
+                    }
+                    Section("Members") {
+                        ForEach(d.members, id: \.user.id) { m in
+                            HStack(spacing: WMSpacing.sm) {
+                                FriendAvatar(name: m.user.displayName, key: m.user.id)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(m.user.displayName + (m.user.id == app.me?.id ? " (you)" : "")).foregroundStyle(WMColor.textPrimary)
+                                    Text(roleText(m)).font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                                }
+                                Spacer()
+                                if admin && m.role != "owner" && m.user.id != app.me?.id {
+                                    Button("Remove") { Task { await remove(m.user.id) } }
+                                        .buttonStyle(.borderless)
+                                        .accessibilityLabel("Remove \(m.user.displayName)")
+                                }
                             }
-                            Spacer()
-                            if admin && m.role != "owner" && m.user.id != app.me?.id {
-                                Button("Remove") { Task { await remove(m.user.id) } }
-                                    .buttonStyle(.borderless)
-                                    .accessibilityLabel("Remove \(m.user.displayName)")
-                            }
+                            .frame(minHeight: WMSize.minTouchTarget)
                         }
-                        .frame(minHeight: WMSize.minTouchTarget)
+                    }
+                    Section {
+                        Button("Leave circle", role: .destructive) { confirmLeave = true }
                     }
                 }
-                Section {
-                    if admin { Button("Rename circle") { newName = d.circle.name; renaming = true } }
-                    Button("Leave circle", role: .destructive) { confirmLeave = true }
-                }
+                .cardRows()
             } else {
                 ProgressView()
             }

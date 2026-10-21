@@ -1,5 +1,6 @@
 package app.wakeme.ui.readiness
 
+import app.wakeme.designsystem.WMIcon
 import android.content.Context
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
@@ -122,7 +123,7 @@ fun ReadinessSection(vm: ReadyViewModel = hiltViewModel()) {
         s.readiness.missing.forEach { r ->
             WMCard {
                 Body(stringResource(readinessCopy(r)), color = WM.colors.textPrimary)
-                SecondaryButton("Open settings", onClick = { runCatching { context.startActivity(vm.settingsIntent(r)) } })
+                SecondaryButton("Open settings", onClick = { runCatching { context.startActivity(vm.settingsIntent(r)) } }, icon = WMIcon.ArrowUpRight)
             }
         }
         SecondaryButton(if (s.testing) "Playing…" else stringResource(R.string.ready_test_sound), onClick = { vm.testSound() }, enabled = !s.testing)

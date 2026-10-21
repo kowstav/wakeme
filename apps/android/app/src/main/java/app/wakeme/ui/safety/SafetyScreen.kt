@@ -1,5 +1,6 @@
 package app.wakeme.ui.safety
 
+import app.wakeme.designsystem.WMIcon
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -242,8 +243,8 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
             // A header sits closer to its own buttons than to what came before it.
             androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
                 SectionTitle("Start")
-                PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty())
-                SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty())
+                PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty(), icon = WMIcon.CheckCircle)
+                SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty(), icon = WMIcon.Pin)
                 if (s.friends.isEmpty() && !s.loading) Body("Add a friend first. Only friends you pick can see a session.")
             }
         }
@@ -251,7 +252,7 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
         item {
             // SOS stays still and unmistakable; its explanation sits right under it.
             androidx.compose.foundation.layout.Column(Modifier.padding(top = WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                DangerButton("Send SOS to friends", onClick = { composing = "sos" })
+                DangerButton("Send SOS to friends", onClick = { composing = "sos" }, icon = WMIcon.Shield)
                 Body("Alerts the friends you pick, and shares your location for 2 hours if you allow it.")
             }
             Gap(WakeMeTokens.spaceXl)
@@ -289,10 +290,10 @@ private fun MySession(m: SafetySessionDto, onCheckIn: () -> Unit, onEnd: (Contex
             if (m.checkedInAt != null) StatusPill("Checked in at ${timeText(m.checkedInAt)}", Tone.Success)
             else {
                 Body("If you don't check in by ${timeText(m.checkinDueAt)}, they'll get a notice that you haven't checked in yet. That's all: nobody else is contacted.")
-                PrimaryButton("I'm OK — check in now", onClick = onCheckIn)
+                PrimaryButton("I'm OK — check in now", onClick = onCheckIn, icon = WMIcon.CheckCircle)
             }
         }
-        DangerButton("Stop now", onClick = { onEnd(context) })
+        DangerButton("Stop now", onClick = { onEnd(context) }, icon = WMIcon.Stop)
     }
 }
 
@@ -326,7 +327,7 @@ private fun ViewerSession(v: SafetySessionDto, loc: LatestLocationDto?, highligh
             // A viewer's list holds only themselves; their acknowledgement is shown back to them.
             val seen = v.viewers.firstOrNull()?.acknowledgedAt
             if (seen != null) StatusPill("${v.owner.displayName} knows you've seen this (${timeText(seen)})", Tone.Success)
-            else PrimaryButton("I've seen this", onClick = onAck)
+            else PrimaryButton("I've seen this", onClick = onAck, icon = WMIcon.Eye)
         }
     }
 }

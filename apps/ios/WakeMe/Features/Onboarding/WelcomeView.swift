@@ -15,9 +15,11 @@ final class QuackPreview {
     }
 }
 
-/// Doc 03 §5 step 1: the headline with an interactive quack. Tapping the duck (or "Play preview")
-/// plays the quack on this phone only and the duck quacks with it. The blocks arrive with a short
-/// stagger the first time; with Reduce Motion everything is simply there.
+/// Doc 03 §5 step 1: the headline with an interactive quack, laid out like the reference apps'
+/// welcome: a large illustration, a condensed capital headline, one line under it, and the two ways
+/// in pinned where a thumb reaches them (lime first, grey second). Tapping the duck (or "Play
+/// preview") plays the quack on this phone only and the duck quacks with it. The blocks arrive with
+/// a short stagger the first time; with Reduce Motion everything is simply there.
 struct WelcomeView: View {
     let onInvite: () -> Void
     let onSelfSetup: () -> Void
@@ -25,30 +27,29 @@ struct WelcomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: WMSpacing.md) {
-                Button { quack() } label: { QuackBurst(tick: quacks, height: 88) }
+            VStack(spacing: WMSpacing.md) {
+                Button { quack() } label: { QuackBurst(tick: quacks, height: 140) }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Play a quack on this phone")
                     .wmEntrance(0)
-                VStack(alignment: .leading, spacing: WMSpacing.xs) {
-                    Text("Alert your friends. Wake each other up.")
-                        .font(.largeTitle.bold())
-                        .foregroundStyle(WMColor.textPrimary)
-                        .accessibilityAddTraits(.isHeader)
-                    Text("From “where are you?” to “we’ve got this.”").foregroundStyle(WMColor.textSecondary)
+                VStack(spacing: WMSpacing.sm) {
+                    DisplayText("Alert your friends. Wake each other up.", alignment: .center)
+                    Text("From “where are you?” to “we’ve got this.”")
+                        .foregroundStyle(WMColor.textSecondary)
+                        .multilineTextAlignment(.center)
                 }
                 .wmEntrance(1)
-                WMCard {
-                    VStack(alignment: .leading, spacing: WMLayout.titleGap) {
-                        Text("Hear what a quack sounds like").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
-                        Text("Tap the duck or the button. This preview plays only on your phone.").foregroundStyle(WMColor.textSecondary)
-                    }
-                    SecondaryButton(title: "Play preview") { quack() }
+                // The preview plays only on this phone; the duck above does the same.
+                PillButton(title: "Play preview", icon: .speaker) { quack() }
+                    .wmEntrance(2)
+                HStack(alignment: .top, spacing: WMSpacing.xs) {
+                    WMIconImage(.lock, size: WMLayout.iconSizeSmall).foregroundStyle(WMColor.textSecondary)
+                    Text("You decide what each friend can do. Nobody can ring your phone unless you allow it.")
+                        .font(WMFont.supporting)
+                        .foregroundStyle(WMColor.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .wmEntrance(2)
-                Text("You decide what each friend can do. Nobody can ring your phone unless you allow it.")
-                    .foregroundStyle(WMColor.textSecondary)
-                    .wmEntrance(3)
+                .wmEntrance(3)
             }
             .padding(.horizontal, WMLayout.screenMargin)
             .padding(.top, WMSpacing.xl)
@@ -60,8 +61,8 @@ struct WelcomeView: View {
         // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: WMLayout.controlGap) {
-                PrimaryButton(title: "I have an invite", action: onInvite)
-                SecondaryButton(title: "Set up my own wake-up", action: onSelfSetup)
+                PrimaryButton(title: "I have an invite", icon: .ticket, action: onInvite)
+                SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
             }
             .padding(.horizontal, WMLayout.screenMargin)
             .padding(.vertical, WMSpacing.md)

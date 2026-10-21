@@ -53,60 +53,63 @@ struct RoutineEditorView: View {
         let name = friend?.user.displayName ?? ""
         NavigationStack {
             Form {
-                Section {
-                    DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
-                        .font(.title3.weight(.semibold)).monospacedDigit()
-                    DayPicker(days: $days)
-                    Text(days.isEmpty ? "Choose at least one day." : daysText(.weekly(days.sorted())))
-                        .foregroundStyle(days.isEmpty ? WMColor.warning : WMColor.textSecondary)
-                    if outsideWakeHours {
-                        Text("That's outside the wake hours \(name) chose.").foregroundStyle(WMColor.warning)
-                    }
-                } header: {
-                    Text("Time and days")
-                } footer: {
-                    if friend != nil {
-                        Text("\(name) allows wake-ups: " + (limits?.windows ?? []).map { "\(daysText(.weekly($0.days.sorted()))) \($0.start)–\($0.end)" }.joined(separator: "; ") + ". It rings at this time in \(name)'s time zone.")
-                    }
-                }
-                Section {
-                    TextField("Label (optional), e.g. 9am class", text: $label)
-                        .onChange(of: label) { _, v in if v.count > 40 { label = String(v.prefix(40)) } }
-                }
-                Section {
-                    Picker("Sound", selection: $sound) {
-                        ForEach(sounds, id: \.self) { Text(soundName($0)).tag($0) }
-                    }
-                    Picker("Ring for", selection: $ring) {
-                        ForEach(ringChoices, id: \.self) { Text("\($0) seconds").tag($0) }
-                    }
-                } header: {
-                    Text("Sound")
-                } footer: {
-                    if friend != nil { Text("Only the sounds and ring length \(name) approved.") }
-                }
-                if canAssignChallenges, challenges.contains(where: { $0.publishedRevisionId != nil }) {
+                Group {
                     Section {
-                        Picker("Challenge", selection: $challengeRevision) {
-                            Text("None").tag(String?.none)
-                            ForEach(challenges.filter { $0.publishedRevisionId != nil }) { c in Text(c.title).tag(c.publishedRevisionId) }
-                        }
-                        if challengeRevision != nil, canFollowUp {
-                            Toggle("One follow-up alarm", isOn: $followUp)
+                        DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
+                            .font(.title3.weight(.semibold)).monospacedDigit()
+                        DayPicker(days: $days)
+                        Text(days.isEmpty ? "Choose at least one day." : daysText(.weekly(days.sorted())))
+                            .foregroundStyle(days.isEmpty ? WMColor.warning : WMColor.textSecondary)
+                        if outsideWakeHours {
+                            Text("That's outside the wake hours \(name) chose.").foregroundStyle(WMColor.warning)
                         }
                     } header: {
-                        Text("Challenge (optional)")
+                        Text("Time and days")
                     } footer: {
-                        Text("A follow-up rings \(followUpDelay / 60) minutes later unless the challenge is finished. The wake session can always be ended.")
+                        if friend != nil {
+                            Text("\(name) allows wake-ups: " + (limits?.windows ?? []).map { "\(daysText(.weekly($0.days.sorted()))) \($0.start)–\($0.end)" }.joined(separator: "; ") + ". It rings at this time in \(name)'s time zone.")
+                        }
                     }
-                }
-                if friend == nil {
                     Section {
-                        Toggle("Follow my phone when I travel", isOn: $followTravel)
+                        TextField("Label (optional), e.g. 9am class", text: $label)
+                            .onChange(of: label) { _, v in if v.count > 40 { label = String(v.prefix(40)) } }
+                    }
+                    Section {
+                        Picker("Sound", selection: $sound) {
+                            ForEach(sounds, id: \.self) { Text(soundName($0)).tag($0) }
+                        }
+                        Picker("Ring for", selection: $ring) {
+                            ForEach(ringChoices, id: \.self) { Text("\($0) seconds").tag($0) }
+                        }
+                    } header: {
+                        Text("Sound")
                     } footer: {
-                        Text(followTravel ? "Rings at this time wherever the phone is." : "Keeps this time in \(TimeZone.current.identifier) when you travel.")
+                        if friend != nil { Text("Only the sounds and ring length \(name) approved.") }
+                    }
+                    if canAssignChallenges, challenges.contains(where: { $0.publishedRevisionId != nil }) {
+                        Section {
+                            Picker("Challenge", selection: $challengeRevision) {
+                                Text("None").tag(String?.none)
+                                ForEach(challenges.filter { $0.publishedRevisionId != nil }) { c in Text(c.title).tag(c.publishedRevisionId) }
+                            }
+                            if challengeRevision != nil, canFollowUp {
+                                Toggle("One follow-up alarm", isOn: $followUp)
+                            }
+                        } header: {
+                            Text("Challenge (optional)")
+                        } footer: {
+                            Text("A follow-up rings \(followUpDelay / 60) minutes later unless the challenge is finished. The wake session can always be ended.")
+                        }
+                    }
+                    if friend == nil {
+                        Section {
+                            Toggle("Follow my phone when I travel", isOn: $followTravel)
+                        } footer: {
+                            Text(followTravel ? "Rings at this time wherever the phone is." : "Keeps this time in \(TimeZone.current.identifier) when you travel.")
+                        }
                     }
                 }
+                .cardRows()
             }
             .scrollContentBackground(.hidden)
             .background(WMColor.surface)
@@ -211,15 +214,14 @@ struct DayPicker: View {
                         if on { days.remove(iso) } else { days.insert(iso) }
                     }
                 } label: {
-                    // A chosen day is butter with an accent edge and a bold letter, like every
-                    // selection; the others keep a visible outline (≥ 3:1). Solid yellow stays the
-                    // primary action's.
+                    // A chosen day is lime with a bold forest letter, like every selection in
+                    // Bloom; the others keep a visible outline (≥ 3:1).
                     Text(short[i])
                         .font(.headline.weight(on ? .bold : .regular))
                         .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
-                        .foregroundStyle(on ? WMColor.onAccentContainer : WMColor.textPrimary)
-                        .background(on ? WMColor.accentContainer : WMColor.surfaceRaised, in: Circle().scale(0.92))
-                        .overlay(Circle().scale(0.92).stroke(on ? WMColor.accentText : WMColor.outline, lineWidth: on ? 1.5 : 1))
+                        .foregroundStyle(on ? WMColor.textOnAccent : WMColor.textPrimary)
+                        .background(on ? WMColor.accent : WMColor.surfaceRaised, in: Circle().scale(0.92))
+                        .overlay(Circle().scale(0.92).stroke(on ? Color.clear : WMColor.outline, lineWidth: 1))
                 }
                 .sensoryFeedback(WMHaptic.selection, trigger: on)
                 .buttonStyle(.plain)

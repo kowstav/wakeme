@@ -37,76 +37,79 @@ struct GrantEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Text("You're giving \(name) permission to help you, within limits you set. You can change or remove this anytime. It only works one way: it doesn't give you anything on \(name)'s phone.")
-                        .foregroundStyle(WMColor.textPrimary)
-                    Text("Being in a circle together doesn't change these settings. Only you can change them.")
-                        .foregroundStyle(WMColor.textSecondary)
-                    if let g = friend.iAllowThem { Text(usageText(g)).foregroundStyle(WMColor.textSecondary) }
-                }
-                if !presets.isEmpty {
-                    Section("Start from") {
-                        ForEach(presets.filter { $0.id != "focus_buddy" }, id: \.id) { p in
-                            Button(p.id == "gentle_nudges" ? "Gentle nudges" : "Wake buddy") { apply(p) }
-                        }
-                    }
-                }
-                Section {
-                    Toggle("Send short sounds", isOn: capability(Capability.nudge))
-                    if caps.contains(Capability.nudge) {
-                        Stepper("Up to \(nudge.maxPerHour) per hour", value: $nudge.maxPerHour, in: 1...12)
-                        WindowRows(window: first($nudge.windows))
-                        SoundToggles(sounds: $nudge.sounds)
-                        Toggle("Allow during my quiet hours", isOn: $nudge.overridesQuietHours)
-                    }
-                } header: {
-                    Text("Quacks")
-                } footer: {
-                    Text("A quack or chime, a few times an hour at most. With quiet hours not allowed, quacks wait for daytime.")
-                }
-                Section {
-                    Toggle("Set wake-up routines for me", isOn: capability(Capability.alarmSchedule))
-                    Toggle("Wake me now", isOn: capability(Capability.alarmRequest))
-                    if wakeOn {
-                        WindowRows(window: first($alarm.windows))
-                        Picker("Ring for at most", selection: $alarm.maxAlarmSeconds) {
-                            ForEach([30, 60, 120, 300], id: \.self) { Text("\($0) seconds").tag($0) }
-                        }
-                        Stepper("Up to \(alarm.maxPerDay) wake-up\(alarm.maxPerDay > 1 ? "s" : "") a day", value: $alarm.maxPerDay, in: 1...3)
-                        SoundToggles(sounds: $alarm.sounds)
-                        Toggle("Allow one follow-up alarm", isOn: $alarm.followUp.allowed)
-                    }
-                } header: {
-                    Text("Help wake me")
-                } footer: {
-                    Text("You see and accept every routine before it's active. Wake hours are your explicit OK to be woken, even during quiet hours.")
-                }
-                Section {
-                    Toggle("Assign challenges", isOn: capability(Capability.challengeAssign))
-                    if caps.contains(Capability.challengeAssign) {
-                        Picker("At most", selection: $challenge.maxDurationSeconds) {
-                            ForEach([30, 60, 90, 180], id: \.self) { Text("\($0) seconds").tag($0) }
-                        }
-                        Picker("Hardest", selection: $challenge.maxDifficulty) {
-                            ForEach(["easy", "medium", "hard"], id: \.self) { Text($0.capitalized).tag($0) }
-                        }
-                    }
-                } footer: {
-                    Text("Quizzes and puzzles to finish your wake-up. New versions always need your OK, and the escape always works.")
-                }
-                Section {
-                    Picker("Keep these permissions for", selection: $validDays) {
-                        ForEach([30, 90, 180], id: \.self) { Text("\($0) days").tag($0) }
-                    }
-                }
-                if let problem {
-                    Section { Text(problem).foregroundStyle(WMColor.warning) }
-                }
-                if friend.iAllowThem != nil {
+                Group {
                     Section {
-                        Button("Remove all of \(name)'s permissions", role: .destructive) { confirmRemove = true }
+                        Text("You're giving \(name) permission to help you, within limits you set. You can change or remove this anytime. It only works one way: it doesn't give you anything on \(name)'s phone.")
+                            .foregroundStyle(WMColor.textPrimary)
+                        Text("Being in a circle together doesn't change these settings. Only you can change them.")
+                            .foregroundStyle(WMColor.textSecondary)
+                        if let g = friend.iAllowThem { Text(usageText(g)).foregroundStyle(WMColor.textSecondary) }
+                    }
+                    if !presets.isEmpty {
+                        Section("Start from") {
+                            ForEach(presets.filter { $0.id != "focus_buddy" }, id: \.id) { p in
+                                Button(p.id == "gentle_nudges" ? "Gentle nudges" : "Wake buddy") { apply(p) }
+                            }
+                        }
+                    }
+                    Section {
+                        Toggle("Send short sounds", isOn: capability(Capability.nudge))
+                        if caps.contains(Capability.nudge) {
+                            Stepper("Up to \(nudge.maxPerHour) per hour", value: $nudge.maxPerHour, in: 1...12)
+                            WindowRows(window: first($nudge.windows))
+                            SoundToggles(sounds: $nudge.sounds)
+                            Toggle("Allow during my quiet hours", isOn: $nudge.overridesQuietHours)
+                        }
+                    } header: {
+                        Text("Quacks")
+                    } footer: {
+                        Text("A quack or chime, a few times an hour at most. With quiet hours not allowed, quacks wait for daytime.")
+                    }
+                    Section {
+                        Toggle("Set wake-up routines for me", isOn: capability(Capability.alarmSchedule))
+                        Toggle("Wake me now", isOn: capability(Capability.alarmRequest))
+                        if wakeOn {
+                            WindowRows(window: first($alarm.windows))
+                            Picker("Ring for at most", selection: $alarm.maxAlarmSeconds) {
+                                ForEach([30, 60, 120, 300], id: \.self) { Text("\($0) seconds").tag($0) }
+                            }
+                            Stepper("Up to \(alarm.maxPerDay) wake-up\(alarm.maxPerDay > 1 ? "s" : "") a day", value: $alarm.maxPerDay, in: 1...3)
+                            SoundToggles(sounds: $alarm.sounds)
+                            Toggle("Allow one follow-up alarm", isOn: $alarm.followUp.allowed)
+                        }
+                    } header: {
+                        Text("Help wake me")
+                    } footer: {
+                        Text("You see and accept every routine before it's active. Wake hours are your explicit OK to be woken, even during quiet hours.")
+                    }
+                    Section {
+                        Toggle("Assign challenges", isOn: capability(Capability.challengeAssign))
+                        if caps.contains(Capability.challengeAssign) {
+                            Picker("At most", selection: $challenge.maxDurationSeconds) {
+                                ForEach([30, 60, 90, 180], id: \.self) { Text("\($0) seconds").tag($0) }
+                            }
+                            Picker("Hardest", selection: $challenge.maxDifficulty) {
+                                ForEach(["easy", "medium", "hard"], id: \.self) { Text($0.capitalized).tag($0) }
+                            }
+                        }
+                    } footer: {
+                        Text("Quizzes and puzzles to finish your wake-up. New versions always need your OK, and the escape always works.")
+                    }
+                    Section {
+                        Picker("Keep these permissions for", selection: $validDays) {
+                            ForEach([30, 90, 180], id: \.self) { Text("\($0) days").tag($0) }
+                        }
+                    }
+                    if let problem {
+                        Section { Text(problem).foregroundStyle(WMColor.warning) }
+                    }
+                    if friend.iAllowThem != nil {
+                        Section {
+                            Button("Remove all of \(name)'s permissions", role: .destructive) { confirmRemove = true }
+                        }
                     }
                 }
+                .cardRows()
             }
             .scrollContentBackground(.hidden)
             .background(WMColor.surface)

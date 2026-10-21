@@ -27,46 +27,49 @@ import androidx.compose.ui.unit.sp
 
 val LocalWakeMeColors = staticCompositionLocalOf { WakeMeTokens.Light }
 
+/** The petal families for the current theme (tiles, icon chips, avatars). */
+val LocalWakeMePalette = staticCompositionLocalOf { WakeMeTokens.PaletteLight }
+
 /** Whether the palette in use is the dark one (the alarm always is). Avatars and shadows follow it. */
 val LocalWakeMeDark = staticCompositionLocalOf { false }
 
-// `secondary` is accentText too: Material colours the selected navigation label with it, and
-// blue is reserved for information. Material uses `primary` as the text colour of text buttons, focused field labels and the
-// checked switch track, so it maps to accentText (contrast-checked on every surface), not to
-// the accent fill; PrimaryButton sets the accent fill itself. Selected chips and the navigation
-// indicator use secondaryContainer: the butter accentContainer with its own text colour, instead
+// Material uses `primary` as the text colour of text buttons, focused field labels and the checked
+// switch track, so it maps to accentText (forest by day, lime by night; contrast-checked on every
+// surface), not to the lime fill; PrimaryButton sets the fill itself. `secondary` is accentText
+// too: Material colours the selected navigation label with it. The navigation indicator uses
+// secondaryContainer, which is the lime accent with forest ink (Bloom's one action colour) instead
 // of Material's default lavender. `outline` (≥ 3:1, WCAG 1.4.11) draws text-field and control
 // boundaries; `outlineVariant` is the decorative hairline for dividers. Dialogs and sheets use the
-// overlay surface; the unchecked switch track uses the sunken surface. Dark `onError` is ink, since
-// the dark error colour is a light salmon.
+// overlay surface; the unchecked switch track uses the neutral card grey. Dark `onError` is ink,
+// since the dark error colour is a light salmon.
 private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
     if (dark) {
         darkColorScheme(
             primary = c.accentText, onPrimary = c.textOnAccent, primaryContainer = c.accentContainer, onPrimaryContainer = c.onAccentContainer,
-            secondary = c.accentText, onSecondary = c.textOnAccent, secondaryContainer = c.accentContainer, onSecondaryContainer = c.onAccentContainer,
+            secondary = c.accentText, onSecondary = c.textOnAccent, secondaryContainer = c.accent, onSecondaryContainer = c.textOnAccent,
             tertiary = c.success, tertiaryContainer = c.successContainer,
             background = c.surface, onBackground = c.textPrimary, surface = c.surface, onSurface = c.textPrimary,
-            surfaceVariant = c.surfaceSunken, onSurfaceVariant = c.textSecondary, surfaceTint = c.surface,
+            surfaceVariant = c.surfaceNeutral, onSurfaceVariant = c.textSecondary, surfaceTint = c.surface,
             surfaceContainerLowest = c.surfaceRaised, surfaceContainerLow = c.surfaceRaised, surfaceContainer = c.surfaceRaised,
-            surfaceContainerHigh = c.surfaceOverlay, surfaceContainerHighest = c.surfaceSunken,
+            surfaceContainerHigh = c.surfaceOverlay, surfaceContainerHighest = c.surfaceNeutral,
             error = c.danger, onError = c.textOnAccent, errorContainer = c.dangerContainer, onErrorContainer = c.textPrimary,
             outline = c.outline, outlineVariant = c.border, scrim = c.surfaceSunken,
         )
     } else {
         lightColorScheme(
             primary = c.accentText, onPrimary = c.surfaceRaised, primaryContainer = c.accentContainer, onPrimaryContainer = c.onAccentContainer,
-            secondary = c.accentText, onSecondary = c.surfaceRaised, secondaryContainer = c.accentContainer, onSecondaryContainer = c.onAccentContainer,
+            secondary = c.accentText, onSecondary = c.surfaceRaised, secondaryContainer = c.accent, onSecondaryContainer = c.textOnAccent,
             tertiary = c.success, tertiaryContainer = c.successContainer,
             background = c.surface, onBackground = c.textPrimary, surface = c.surface, onSurface = c.textPrimary,
-            surfaceVariant = c.surfaceSunken, onSurfaceVariant = c.textSecondary, surfaceTint = c.surface,
+            surfaceVariant = c.surfaceNeutral, onSurfaceVariant = c.textSecondary, surfaceTint = c.surface,
             surfaceContainerLowest = c.surfaceRaised, surfaceContainerLow = c.surfaceRaised, surfaceContainer = c.surfaceRaised,
-            surfaceContainerHigh = c.surfaceOverlay, surfaceContainerHighest = c.surfaceSunken,
+            surfaceContainerHigh = c.surfaceOverlay, surfaceContainerHighest = c.surfaceNeutral,
             error = c.dangerFill, onError = c.textOnDanger, errorContainer = c.dangerContainer, onErrorContainer = c.textPrimary,
             outline = c.outline, outlineVariant = c.border, scrim = c.textPrimary,
         )
     }
 
-/** Text fields use extraSmall, chips small, cards large, dialogs and sheets extraLarge. */
+/** Text fields use extraSmall (12), chips small, cards and tiles large (24), dialogs and sheets extraLarge (32). */
 private val shapes = Shapes(
     extraSmall = RoundedCornerShape(WakeMeTokens.radiusSm),
     small = RoundedCornerShape(WakeMeTokens.radiusMd),
@@ -83,13 +86,13 @@ private val shapes = Shapes(
  *
  * | Material slot | Role | Size / line | Weight |
  * |---|---|---|---|
- * | displayLarge | alarmTime | 76 / 80 | Bold |
- * | displayMedium | timeDisplay | 56 / 60 | SemiBold |
- * | displaySmall | timeInline | 32 / 36 | SemiBold |
- * | headlineLarge | hero | 32 / 40 | Bold |
- * | headlineMedium | screenTitle | 28 / 36 | Bold |
- * | headlineSmall | prominent (dialog titles too) | 24 / 32 | SemiBold |
- * | titleLarge | section | 22 / 28 | SemiBold |
+ * | displayLarge | alarmTime | 80 / 84 | Bold |
+ * | displayMedium | timeDisplay | 60 / 64 | Bold |
+ * | displaySmall | timeInline | 34 / 40 | Bold |
+ * | headlineLarge | hero | 32 / 38 | Bold |
+ * | headlineMedium | screenTitle | 30 / 36 | Bold |
+ * | headlineSmall | prominent (dialog titles too) | 24 / 30 | Bold |
+ * | titleLarge | section | 22 / 28 | Bold |
  * | titleMedium | cardTitle, button labels | 17 / 24 | SemiBold |
  * | titleSmall | fieldLabel | 14 / 20 | SemiBold |
  * | bodyLarge | body (text fields too) | 16 / 24 | Regular |
@@ -133,6 +136,10 @@ fun TextStyle.withCappedScale(maxScale: Float): TextStyle {
 val TimeDisplayStyle: TextStyle
     @Composable get() = MaterialTheme.typography.displayMedium.withCappedScale(WakeMeType.timeDisplayMaxScale)
 
+/** Hero headlines (tokens: type.roles.display): condensed, set in capitals by [DisplayText]. */
+val DisplayStyle: TextStyle
+    @Composable get() = WakeMeType.display.withCappedScale(WakeMeType.displayMaxScale)
+
 /** The alarm clock face (tokens: type.roles.alarmTime). */
 val AlarmTimeStyle: TextStyle
     @Composable get() = MaterialTheme.typography.displayLarge.withCappedScale(WakeMeType.alarmTimeMaxScale)
@@ -156,7 +163,7 @@ fun rememberHighContrast(): Boolean {
     return contrast >= 0.5f
 }
 
-/** Daybreak: warm daylight / quiet night (docs/design/system.md). System fonts so font scaling is honoured. */
+/** Bloom (docs/design/system.md): white canvas, flat neutral cards, lime actions, petal families. System fonts so font scaling is honoured. */
 @Composable
 fun WakeMeTheme(dark: Boolean = isSystemInDarkTheme(), highContrast: Boolean = rememberHighContrast(), content: @Composable () -> Unit) {
     val colors = when {
@@ -165,7 +172,8 @@ fun WakeMeTheme(dark: Boolean = isSystemInDarkTheme(), highContrast: Boolean = r
         highContrast -> WakeMeTokens.LightHighContrast
         else -> WakeMeTokens.Light
     }
-    CompositionLocalProvider(LocalWakeMeColors provides colors, LocalWakeMeDark provides dark) {
+    val palette = if (dark) WakeMeTokens.PaletteDark else WakeMeTokens.PaletteLight
+    CompositionLocalProvider(LocalWakeMeColors provides colors, LocalWakeMePalette provides palette, LocalWakeMeDark provides dark) {
         MaterialTheme(colorScheme = scheme(colors, dark), shapes = shapes, typography = typography, content = content)
     }
 }
@@ -173,4 +181,5 @@ fun WakeMeTheme(dark: Boolean = isSystemInDarkTheme(), highContrast: Boolean = r
 object WM {
     val colors: WakeMeColors @Composable get() = LocalWakeMeColors.current
     val dark: Boolean @Composable get() = LocalWakeMeDark.current
+    val palette: WakeMePalette @Composable get() = LocalWakeMePalette.current
 }

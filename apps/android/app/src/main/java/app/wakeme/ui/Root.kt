@@ -19,11 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -45,7 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -60,6 +55,7 @@ import app.wakeme.R
 import app.wakeme.designsystem.DetailPlaceholder
 import app.wakeme.designsystem.DuckMark
 import app.wakeme.designsystem.WM
+import app.wakeme.designsystem.WMIcon
 import app.wakeme.designsystem.WMMotion
 import app.wakeme.designsystem.WakeMeTokens
 import app.wakeme.designsystem.Readable
@@ -117,13 +113,14 @@ fun WakeMeRoot(app: AppViewModel) {
     }
 }
 
-private data class Tab(val route: Route, val label: Int, val icon: ImageVector)
+/** Bloom icons with their words: tab bars keep visible labels (Material and Apple guidance), and the selected tab sits in the lime indicator. */
+private data class Tab(val route: Route, val label: Int, val icon: WMIcon)
 
 private val tabs = listOf(
-    Tab(Route.Friends, R.string.tab_friends, Icons.Outlined.People),
-    Tab(Route.Routines, R.string.tab_routines, Icons.Outlined.Alarm),
-    Tab(Route.Challenges, R.string.tab_challenges, Icons.Outlined.EmojiEvents),
-    Tab(Route.You, R.string.tab_you, Icons.Outlined.AccountCircle),
+    Tab(Route.Friends, R.string.tab_friends, WMIcon.Friends),
+    Tab(Route.Routines, R.string.tab_routines, WMIcon.Alarm),
+    Tab(Route.Challenges, R.string.tab_challenges, WMIcon.Trophy),
+    Tab(Route.You, R.string.tab_you, WMIcon.You),
 )
 
 /** Tabs keep Friends at the bottom of the stack, so Back from another tab returns there. */
@@ -182,7 +179,7 @@ private fun MainTabs(app: AppViewModel) {
                 item(
                     selected = currentTab == t.route,
                     onClick = { backStack.selectTab(t.route) },
-                    icon = { Icon(t.icon, contentDescription = null) },
+                    icon = { Icon(painterResource(t.icon.res), contentDescription = null) },
                     label = { Text(stringResource(t.label)) },
                 )
             }

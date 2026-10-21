@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,6 +36,19 @@ import app.wakeme.data.net.MeDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.data.net.WakeMeApiJson
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.BentoRow
+import app.wakeme.designsystem.BentoTile
+import app.wakeme.designsystem.ChoiceChip
+import app.wakeme.designsystem.FriendAvatar
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.Supporting
+import app.wakeme.designsystem.WMIcon
+import app.wakeme.designsystem.WMIconView
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -187,17 +199,44 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
         LaunchedEffect(it) { saveExport.launch("wakeme-export-${LocalDate.now()}.json") }
     }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+    val palette = WM.palette
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.screenMargin), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
             Gap()
-            Text(me?.displayName ?: "You", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-            me?.let { Body(it.timeZone) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+                me?.let { FriendAvatar(it.displayName, it.id, size = 64.dp) }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(me?.displayName ?: "You", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+                    me?.let {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
+                            WMIconView(WMIcon.Globe, tint = WM.colors.textSecondary, size = 16.dp)
+                            Supporting(it.timeZone)
+                        }
+                    }
+                }
+            }
+        }
+
+        // The places you go from here, as a bento grid: each its own petal colour and icon.
+        item {
+            Gap(WakeMeTokens.spaceXs)
+            BentoRow {
+                BentoTile("Safety check-ins and location", WMIcon.Shield, palette.orchid, onClick = onSafety, modifier = Modifier.weight(1f).fillMaxHeight())
+                BentoTile("Focus", WMIcon.Focus, palette.aqua, onClick = onFocus, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "Time with chosen apps paused")
+            }
+        }
+        item {
+            BentoRow {
+                BentoTile("Voice sounds", WMIcon.Mic, palette.apricot, onClick = onVoiceSounds, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "Record your own wake-up")
+                val plus = s.billing?.plan == "plus" || me?.billing?.plan == "plus"
+                BentoTile("Wake Me Plus", WMIcon.Sparkle, palette.gold, onClick = onPaywall, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = if (plus) "Manage subscription" else "See what's included")
+            }
         }
 
         me?.takeIf { it.accountState == "deletion_pending" }?.let { m ->
             item {
                 WMCard {
-                    StatusPill("Account scheduled for deletion" + (whenText(m.deletionScheduledFor)?.let { " on $it" } ?: ""), Tone.Danger)
+                    StatusPill("Account scheduled for deletion" + (whenText(m.deletionScheduledFor)?.let { " on $it" } ?: ""), Tone.Danger, icon = WMIcon.Warning)
                     Body("Friends can't reach you, and the permissions you gave have been revoked. Cancelling keeps your account but doesn't restore those permissions.")
                     PrimaryButton("Keep my account", onClick = { vm.cancelDeletion { app.refreshMe() } })
                 }
@@ -209,7 +248,6 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
             ReadinessSection()
         }
         item { PhonesSection(s.devices, s.thisDeviceId, busy = s.busy, onMakePrimary = vm::makeThisPhonePrimary) }
-        item { SecondaryButton("Voice sounds", onClick = onVoiceSounds) }
 
         // ------------------------------------------------------ consent settings
         me?.let { m ->
@@ -220,22 +258,27 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
                     "Quiet hours",
                     if (q.enabled) "${q.start}–${q.end}. Quacks arrive silently; only wake-ups you allowed for these hours can ring." else "Off",
                     q.enabled,
+                    icon = WMIcon.Moon,
+                    family = palette.periwinkle,
                 ) { on -> vm.update(buildJsonObject { put("quietHours", buildJsonObject { put("enabled", on); put("start", q.start); put("end", q.end) }) }) { app.refreshMe() } }
-                if (q.enabled) QuietButton("Change quiet hours", onClick = { editingQuiet = true })
+                if (q.enabled) QuietButton("Change quiet hours", onClick = { editingQuiet = true }, icon = WMIcon.Edit)
             }
             item {
                 val paused = m.settings.pausedUntil?.let { runCatching { Instant.parse(it) }.getOrNull() }?.takeIf { it.isAfter(Instant.now()) }
                 WMCard {
-                    Text("Pause all requests", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                        IconChip(WMIcon.Hourglass, palette.sky)
+                        Text("Pause all requests", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+                    }
                     if (paused != null) {
-                        StatusPill("Paused until ${dateFmt.format(paused)}", Tone.Info)
+                        StatusPill("Paused until ${dateFmt.format(paused)}", Tone.Info, icon = WMIcon.Pause)
                         Body("Your own alarms still ring. Friends see that you're not taking requests, not why.")
-                        PrimaryButton("Resume now", onClick = { vm.update(buildJsonObject { put("pausedUntil", JsonNull) }) { app.refreshMe() } })
+                        PrimaryButton("Resume now", onClick = { vm.update(buildJsonObject { put("pausedUntil", JsonNull) }) { app.refreshMe() } }, icon = WMIcon.Play)
                     } else {
                         Body("Stops quacks and wake requests from everyone. Your own alarms still ring.")
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                             listOf(1L to "1 hour", 8L to "8 hours", 24L to "1 day", 24L * 7 to "1 week").forEach { (h, label) ->
-                                FilterChip(selected = false, onClick = { vm.update(buildJsonObject { put("pausedUntil", Instant.now().plusSeconds(h * 3600).toString()) }) { app.refreshMe() } }, label = { Text(label) })
+                                ChoiceChip(label, selected = false, onClick = { vm.update(buildJsonObject { put("pausedUntil", Instant.now().plusSeconds(h * 3600).toString()) }) { app.refreshMe() } })
                             }
                         }
                     }
@@ -243,11 +286,14 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
             }
             item {
                 WMCard {
-                    Text("Sounds per hour from friends", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                        IconChip(WMIcon.Speaker, palette.gold)
+                        Text("Sounds per hour from friends", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+                    }
                     Body("After ${m.settings.soundBudgetPerHour} audible quacks in an hour, the rest arrive silently.")
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                         listOf(1, 3, 5, 10).forEach { n ->
-                            FilterChip(selected = m.settings.soundBudgetPerHour == n, onClick = { vm.update(buildJsonObject { put("soundBudgetPerHour", n) }) { app.refreshMe() } }, label = { Text("$n") })
+                            ChoiceChip("$n", selected = m.settings.soundBudgetPerHour == n, onClick = { vm.update(buildJsonObject { put("soundBudgetPerHour", n) }) { app.refreshMe() } })
                         }
                     }
                 }
@@ -257,15 +303,10 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
                     "Tell helpers when I skip a challenge",
                     "Off: helpers only see that the alarm stopped. On: they see that you ended it without the challenge.",
                     m.settings.shareBypass,
+                    icon = WMIcon.Eye,
+                    family = palette.sky,
                 ) { on -> vm.update(buildJsonObject { put("shareBypass", on) }) { app.refreshMe() } }
             }
-        }
-
-        // ------------------------------------------------------------ safety
-        item {
-            Gap(WakeMeTokens.spaceSm)
-            SecondaryButton("Safety check-ins and location", onClick = onSafety)
-            SecondaryButton("Focus", onClick = onFocus)
         }
 
         // ------------------------------------------------------- subscription
@@ -274,24 +315,24 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
             val b = s.billing
             if (b != null) {
                 val (text, tone) = billingStatusText(b)
-                StatusPill(text, tone)
+                StatusPill(text, tone, icon = WMIcon.Sparkle)
                 Body("AI credits: ${b.credits.available} available" + (whenText(b.credits.monthlyResetsAt)?.let { " · monthly credits refresh $it" } ?: ""))
             } else me?.let {
                 Body("AI credits: ${it.billing.credits.available} available")
             }
             me?.let { Body("Routines ${it.limits.activeRoutines.used}/${it.limits.activeRoutines.max} · Custom sounds ${it.limits.customSounds.used}/${it.limits.customSounds.max}") }
-            if (s.billing?.plan != "plus" && me?.billing?.plan != "plus") PrimaryButton("See Plus", onClick = onPaywall)
-            else QuietButton("Manage subscription", onClick = onPaywall)
+            if (s.billing?.plan != "plus" && me?.billing?.plan != "plus") PrimaryButton("See Plus", onClick = onPaywall, icon = WMIcon.Sparkle)
+            else QuietButton("Manage subscription", onClick = onPaywall, icon = WMIcon.ArrowUpRight)
         }
 
         // ------------------------------------------------------------ account
         item {
             SectionTitle("Account")
-            SecondaryButton("Download my data", onClick = { vm.export() }, enabled = !s.busy)
+            SecondaryButton("Download my data", onClick = { vm.export() }, enabled = !s.busy, icon = WMIcon.Download)
             Gap(WakeMeTokens.spaceSm)
-            SecondaryButton("Sign out", onClick = { app.signOut() })
+            SecondaryButton("Sign out", onClick = { app.signOut() }, icon = WMIcon.Logout)
             Gap(WakeMeTokens.spaceSm)
-            if (me?.accountState != "deletion_pending") DangerButton("Delete my account", onClick = { confirmDelete = true })
+            if (me?.accountState != "deletion_pending") DangerButton("Delete my account", onClick = { confirmDelete = true }, icon = WMIcon.Trash)
             Gap(WakeMeTokens.spaceXl)
         }
     }
@@ -317,16 +358,19 @@ private fun PhonesSection(devices: List<DeviceDto>, thisDeviceId: String?, busy:
     if (devices.isEmpty()) return
     val thisIsPrimary = devices.any { it.id == thisDeviceId && it.isPrimary }
     WMCard {
-        Text("Phone for wake alarms", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+            IconChip(WMIcon.Phone, WM.palette.lime)
+            Text("Phone for wake alarms", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+        }
         devices.forEach { d ->
             val label = (if (d.id == thisDeviceId) "This phone" else d.platform.replaceFirstChar { it.uppercase() } + (d.osVersion?.let { " $it" } ?: "")) +
                 (if (d.isPrimary) " · rings for wake alarms" else " · gets updates only")
-            StatusPill(label, if (d.isPrimary) Tone.Success else Tone.Neutral)
+            StatusPill(label, if (d.isPrimary) Tone.Success else Tone.Neutral, icon = if (d.isPrimary) WMIcon.Wake else WMIcon.Bell)
             if (d.readinessIssues.isNotEmpty() && d.id != thisDeviceId) Body("Needs setup on that device before alarms are reliable there.")
         }
         if (!thisIsPrimary) {
             Body("Only one phone rings, so you don't get woken twice. Your routines move to the phone you choose; the other phone removes them the next time it syncs.")
-            SecondaryButton("Ring wake alarms on this phone", onClick = onMakePrimary, enabled = !busy)
+            SecondaryButton("Ring wake alarms on this phone", onClick = onMakePrimary, enabled = !busy, icon = WMIcon.Phone)
         }
     }
 }
