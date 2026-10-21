@@ -192,6 +192,15 @@ jobs:
           adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null || true
           adb shell am instrument -w -r -e notClass app.wakeme.JourneyTest,app.wakeme.FocusShieldTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
+      - name: Widget stability (three independent host and pointer-tap runs)
+        if: always() && steps.boot.outcome == 'success'
+        run: |
+          for attempt in 1 2 3; do
+            # Each instrumentation process binds a fresh real AppWidgetHost and taps exactly once.
+            adb shell am instrument -w -r -e class app.wakeme.QuickActionsWidgetTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/widget-repeat-$attempt.txt"
+            grep -q "^OK (1 test)" "$RUNNER_TEMP/evidence/widget-repeat-$attempt.txt"
+            if grep -q "AssumptionViolatedException" "$RUNNER_TEMP/evidence/widget-repeat-$attempt.txt"; then exit 1; fi
+          done
       - name: Focus accessibility journey in its own instrumentation process
         if: always() && steps.boot.outcome == 'success'
         run: |
