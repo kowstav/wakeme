@@ -25,6 +25,7 @@ import androidx.lifecycle.viewModelScope
 import app.wakeme.R
 import app.wakeme.alarm.AlarmAudio
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SecondaryButton
@@ -138,12 +139,10 @@ fun ReadinessSection(vm: ReadyViewModel = hiltViewModel()) {
  * at wake setup, never at sign-up. Ends with Ready or the exact next step.
  */
 @Composable
-fun ReadyScreen(onContinue: () -> Unit, continueLabel: String = "Set my first wake-up", onSkip: (() -> Unit)? = null, vm: ReadyViewModel = hiltViewModel()) {
+fun ReadyScreen(onContinue: () -> Unit, continueLabel: String = "Set my first wake-up", onSkip: (() -> Unit)? = null, onBack: (() -> Unit)? = null, vm: ReadyViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
-    Column(
-        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
-        verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
-    ) {
+    // Opened from Routines it is a pushed screen with a back bar; during setup it has none.
+    DetailScreen(onBack = onBack) {
         Text("Let's make sure your alarm rings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         Body("Android needs your OK for alarms to ring on time and show over the lock screen. Then play a test so you know how it sounds here.")
         ReadinessSection(vm)

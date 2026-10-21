@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -52,6 +51,7 @@ import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.WMIcon
 import androidx.compose.ui.res.painterResource
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailTopBar
 import androidx.compose.foundation.layout.offset
 import app.wakeme.designsystem.PrimaryButton
@@ -238,7 +238,7 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
                 Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                         reactions.forEach { e ->
-                            FilterChip(selected = e == myReaction, onClick = { vm.react(m, e); acting = null }, label = { Text(e) })
+                            ChoiceChip(e, selected = e == myReaction, onClick = { vm.react(m, e); acting = null })
                         }
                     }
                     if (myReaction != null) Body("Tap your reaction again to remove it.")
@@ -257,7 +257,7 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
                 Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                     Body("The sender isn't told who reported it.")
                     reportReasons.forEach { (code, label) ->
-                        FilterChip(selected = false, onClick = { vm.report(m, code); reporting = null }, label = { Text(label) })
+                        ChoiceChip(label, selected = false, onClick = { vm.report(m, code); reporting = null })
                     }
                 }
             },

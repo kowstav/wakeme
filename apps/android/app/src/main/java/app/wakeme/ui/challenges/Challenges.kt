@@ -1,6 +1,7 @@
 package app.wakeme.ui.challenges
 
 import app.wakeme.designsystem.WMIcon
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -57,6 +57,7 @@ import app.wakeme.data.net.CircleDto
 import app.wakeme.data.net.TemplateDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -249,13 +250,21 @@ private fun TryOut(c: ChallengeDto, def: ChallengeDefinition, vm: ChallengesView
     var finished by rememberSaveable(c.id, def) { mutableStateOf(false) }
     val draft = c.revisions.maxBy { it.revision }.state == "draft"
     if (!finished) {
+        // Back stops the try-out, as "Stop trying" does, instead of leaving the screen.
+        BackHandler { finished = true }
         Column(Modifier.fillMaxSize()) {
-            StatusPill(if (draft) "Trying your draft. Answers are checked on this phone." else "Practice run", Tone.Info)
+            StatusPill(
+                if (draft) "Trying your draft. Answers are checked on this phone." else "Practice run",
+                Tone.Info,
+                modifier = Modifier.padding(horizontal = WakeMeTokens.screenMargin, vertical = WakeMeTokens.spaceSm),
+            )
             ChallengeRunner(def, onComplete = { finished = true }, onEscape = { finished = true }, escapeLabel = "Stop trying", modifier = Modifier.weight(1f), sessionKey = "${c.id}:${c.latestRevision}")
         }
     } else {
-        Column(Modifier.padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-            Text(def.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary)
+        // Back (the bar or the system) leaves without publishing, as "Keep as draft" and "Done" do.
+        BackHandler { vm.finishedTrying(publish = false) }
+        DetailScreen(onBack = { vm.finishedTrying(publish = false) }) {
+            Text(def.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             val state by vm.state.collectAsState()
             Body(challengeAudience(c.circleId, state.circles))
             if (draft) {
@@ -320,8 +329,8 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
         if (editId != null) {
             Body("Your changes become version ${(editing?.latestRevision ?: 0) + 1}. You try it before publishing, and friends keep the version they accepted until they accept the new one.")
         } else FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            FilterChip(selected = mode == "quiz", onClick = { mode = "quiz" }, label = { Text("Build a quiz myself") })
-            FilterChip(selected = mode == "ai", onClick = { mode = "ai" }, label = { Text("Describe it") })
+            ChoiceChip("Build a quiz myself", selected = mode == "quiz", onClick = { mode = "quiz" })
+            ChoiceChip("Describe it", selected = mode == "ai", onClick = { mode = "ai" })
         }
         if (editId != null) {
             Body(challengeAudience(editing?.circleId, s.circles))
@@ -329,9 +338,9 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
         } else if (mode == "quiz") {
             SectionTitle("Who can see this quiz?")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                FilterChip(selected = circleId == null, onClick = { circleId = null }, enabled = s.busy == null, label = { Text("Only me") })
+                ChoiceChip("Only me", selected = circleId == null, onClick = { circleId = null }, enabled = s.busy == null)
                 s.circles.forEach { circle ->
-                    FilterChip(selected = circleId == circle.id, onClick = { circleId = circle.id }, enabled = s.busy == null, label = { Text(circle.name) })
+                    ChoiceChip(circle.name, selected = circleId == circle.id, onClick = { circleId = circle.id }, enabled = s.busy == null)
                 }
             }
             Body(if (circleId == null) "Only you can read this quiz here. You can still offer its published version in a wake-up someone accepts." else "Everyone in this circle can read the quiz and its answers, including drafts. Only you can edit or publish it. Circle membership gives no alarm permissions.")
@@ -342,7 +351,7 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
             s.credits?.let { Body("$it AI creation${if (it == 1) "" else "s"} left. Saved challenges never use credits again.") }
             OutlinedTextField(prompt, { prompt = it.take(500) }, label = { Text("Describe a challenge only your group would get") }, placeholder = { Text("Ask which café we call headquarters. Use the choices I give.") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                listOf("easy", "medium", "hard").forEach { d -> FilterChip(selected = difficulty == d, onClick = { difficulty = d }, label = { Text(d) }) }
+                listOf("easy", "medium", "hard").forEach { d -> ChoiceChip(d.replaceFirstChar { it.uppercase() }, selected = difficulty == d, onClick = { difficulty = d }) }
             }
         } else {
             OutlinedTextField(title, { title = it.take(60) }, label = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth())

@@ -226,6 +226,7 @@ SOS. Haptic quality is **not observable in CI** and needs physical phones.
 | Gradients, glass on content | Rejected (unchanged) | Flat fills survive high contrast and read faster |
 | Display face (bundled font) | Rejected | Condensed system widths give the look without shipping a font |
 | Motion | Unchanged | §5; new surfaces reuse the press spring |
+| Brand colours on the home-screen widget | Rejected | The Glance widget keeps wallpaper-derived dynamic colours, following Android widget guidance; app theme changes do not replace its system palette |
 
 ## 10. Verification
 
@@ -250,5 +251,7 @@ SOS. Haptic quality is **not observable in CI** and needs physical phones.
 ## 12. History
 
 - **Daybreak** (2026-10-20, ADR 0020): cream and yellow, outline roles, motion tokens, the duck and the delivery trail. Its audit: [audit-2026-10-20.md](audit-2026-10-20.md).
-- **Sizing pass** (2026-10-21): ranked findings and the type/size scale Bloom builds on, from CI renders (Android run 53, iOS run 35): [sizing-audit-2026-10-21.md](sizing-audit-2026-10-21.md). Bloom reaches the screens that list left out (Safety, You, Paywall, Focus, Circles, the grant editor, voice sounds) through the shared components and tokens; back bars on the remaining Android full-screen destinations are still open.
+- **Sizing pass** (2026-10-21): ranked findings and the type/size scale Bloom builds on, from CI renders (Android run 53, iOS run 35): [sizing-audit-2026-10-21.md](sizing-audit-2026-10-21.md). Bloom reaches the screens that list left out (Safety, You, Paywall, Focus, Circles, the grant editor, voice sounds) through the shared components and tokens.
 - **Bloom** (2026-10-21, ADR 0021): this document.
+
+- **Android acceptance integration** (2026-10-22): preserved the rounded-rectangle quiet button so large-text escape labels wrap without pill clipping; selected chips use `ChoiceChip`; challenge try-out/publish, Paywall and Routines readiness retain back affordances. The selected Bloom paywall plan uses the contrast-checked `accentText` border. The system location button gets full width. Shield and location screenshot capture waits for drawing. Physical haptics, frame pacing, assistive input and screenshot baseline acceptance remain owner checks.

@@ -42,6 +42,7 @@ import app.wakeme.billing.Offer
 import app.wakeme.billing.PurchaseOutcome
 import app.wakeme.data.net.BillingStatusDto
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
@@ -134,10 +135,8 @@ fun PaywallScreen(onClose: () -> Unit, vm: PaywallViewModel = hiltViewModel()) {
     val credits = s.status?.credits?.plusMonthlyAllowance ?: FALLBACK_MONTHLY_CREDITS
     val alreadyPlus = s.status?.plan == "plus"
 
-    Column(
-        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
-        verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
-    ) {
+    // A pushed screen like the others: Back and "Continue free" both close it.
+    DetailScreen(onBack = onClose) {
         QuietButton("Continue free", onClick = onClose, modifier = Modifier.align(Alignment.End))
         Text("Make your routine a team effort.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         Body("Quacks, wake requests, safety check-ins and your alarms stay free.")
