@@ -3,11 +3,19 @@
 # Simulator results are not device evidence: AlarmKit, audio routes and
 # lock-screen behaviour need physical iPhones (doc 04 Stage 0).
 # macOS minutes are billed at 10x on private repositories: runs are limited
-# to iOS changes on the working branch, or started by hand.
+# to iOS changes on pull requests/the working branch, or started by hand.
 name: ios
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main-o7h6l5]
+    paths:
+      - apps/ios/**
+      - packages/policy-fixtures/**
+      - .github/workflows/ios.yml
+      - scripts/ci/**
+      - services/api/src/entrypoints/dev.ts
   push:
     branches: [main-o7h6l5]
     paths:
