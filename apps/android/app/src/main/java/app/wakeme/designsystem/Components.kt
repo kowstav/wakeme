@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -73,7 +74,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.wakeme.core.DeliveryTrail
 import app.wakeme.core.TrailState
-import java.util.Locale
 
 /**
  * True inside a [WMCard] or tile. Quiet controls (secondary buttons, icon buttons, unselected
@@ -536,8 +536,10 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: (@Compos
  */
 @Composable
 fun DisplayText(text: String, modifier: Modifier = Modifier, color: Color = WM.colors.brandInk, textAlign: TextAlign = TextAlign.Start) {
+    // The configuration's locale, so a language change recomposes the capitals (lint: NonObservableLocale).
+    val locale = LocalConfiguration.current.locales[0]
     Text(
-        text.uppercase(Locale.getDefault()),
+        text.uppercase(locale),
         style = DisplayStyle,
         color = color,
         textAlign = textAlign,

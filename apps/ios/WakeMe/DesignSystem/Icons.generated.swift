@@ -120,5 +120,5 @@ enum WMIcon: String, CaseIterable, Sendable {
     /// You tab; your profile
     case you = "wm_you"
 
-    var image: Image { Image(rawValue) }
+    @MainActor var image: Image { Image(rawValue) }
 }
