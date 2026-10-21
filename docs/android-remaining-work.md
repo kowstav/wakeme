@@ -6,7 +6,7 @@ physical alarm reliability or release approval. This inventory follows docs 01â€
 
 | # | Workstream | Remaining completion evidence / dependency |
 |---|---|---|
-| 1 | CI stability and reliability verification | Codex: QuickActionsWidgetTest live-view lookup and repeated real host/tap checks on Android 16/17. Claude: Focus binding in PR #2. The Android 17 End-focus failure belongs to the Focus follow-up after PR #2 merges. Keep real shield, escape and routing assertions; never turn a failed journey into a skip. |
+| 1 | CI stability and reliability verification | Codex widget fix verified in run 67: four independent real host/tap checks per OS (eight total), with both journeys passing. Full CI is still red on Android 16 at End focus. Claude: Focus binding in PR #2. The End-focus follow-up now applies to both Android 16/17 and waits for PR #2 to merge. Keep real shield, escape and routing assertions; never turn a failed journey into a skip. |
 | 2 | Daybreak design/UX acceptance | Claude owns the design pass. Review final renders on small/large, light/dark and large text; accessibility/keyboard navigation and physical motion/haptic checks; approve screenshot baselines only after review. |
 | 3 | Real authentication | Owner-configured Supabase/Google providers; actual Google and email sign-in, account switching, sign-out/re-auth/deletion against staging. |
 | 4 | Real push delivery | Owner-configured Firebase/FCM and reachable backend; two-phone foreground/background/terminated/reboot tests, TTL/expiry, refresh and honest receipts. |
@@ -26,3 +26,6 @@ physical alarm reliability or release approval. This inventory follows docs 01â€
 - CI stability is still open until the widget fix and the separately owned Focus work pass.
   Any newly discovered functional defect becomes a concrete fix under workstream 1; this
   table is not a claim that eight individual edits will make the app release-ready.
+Conditional later experiments such as guitar/pose feedback and Spotify are outside the current
+core release scope. They add engineering work if their feasibility/permission gates are met;
+they are not claimed as implemented by this eight-workstream inventory.
