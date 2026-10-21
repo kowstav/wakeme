@@ -160,6 +160,9 @@ fun DangerButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
 /**
  * A tertiary action in the accent text colour. No side padding, so its label lines up with the
  * text it sits under (Material's 12 dp inset made these look indented); still a 48 dp target.
+ * Material's pill shape clipped the first letters once the label wrapped at large text ("Use the
+ * simple check-in instead" in the run 76 previews); corners no larger than the vertical padding
+ * stay clear of the label.
  */
 @Composable
 fun QuietButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
@@ -167,6 +170,7 @@ fun QuietButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.defaultMinSize(minWidth = WakeMeTokens.minTouchTarget, minHeight = WakeMeTokens.minTouchTarget),
+        shape = RoundedCornerShape(WakeMeTokens.radiusSm),
         contentPadding = PaddingValues(horizontal = 0.dp, vertical = WakeMeTokens.spaceXs),
     ) {
         Text(text, color = WM.colors.accentText.copy(alpha = if (enabled) 1f else WakeMeTokens.opacityDisabled), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
