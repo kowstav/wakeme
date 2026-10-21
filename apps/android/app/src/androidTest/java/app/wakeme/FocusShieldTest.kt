@@ -65,8 +65,9 @@ class FocusShieldTest {
         fun shell(command: String) = automation.executeShellCommand(command).use { pfd -> FileInputStream(pfd.fileDescriptor).use { String(it.readBytes()) } }
         // One "<name> services:{...}" line of the system's accessibility user state.
         fun systemState(name: String) = shell("dumpsys accessibility").lineSequence().map { it.trim() }.firstOrNull { it.startsWith("$name services:{") }
-        // The killed connection stays in the system's crashed set, which it skips while the service
-        // is enabled and clears only when it reads the setting without the service. Its observer
+        // The killed connection stays in the system's crashed or binding set (run 62's dumps show
+        // both), which it skips while the service is enabled and clears only when it reads the
+        // setting without the service. Its observer
         // reads the current value, so writing it back before the observer ran looked unchanged and
         // nothing was bound (Android 16, runs 55, 58 and 60). Wait until the system shows it off.
         var cycles = 0
@@ -96,6 +97,9 @@ class FocusShieldTest {
             instrumentation.runOnMainSync {
                 ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<FocusShieldActivity>().forEach { it.finish() }
             }
+            // finish() is asynchronous: on Android 17 the closing shield was still RESUMED when the
+            // next check ran (runs 61, 64 and 65; no shield was started after End focus).
+            assertTrue("the finished shield closes", waitFor(4_000) { !shieldShowing() })
             openSettings()
             assertFalse("no shield after End focus", waitFor(4_000) { shieldShowing() })
         } finally {
