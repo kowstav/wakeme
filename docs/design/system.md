@@ -207,6 +207,7 @@ SOS. Haptic quality is **not observable in CI** and needs physical phones.
 | Sound design for UI | Rejected | The product's sounds are alarms and quacks; extra UI sounds would blur them |
 | Particles / confetti / looping idle | Rejected | Battery, distraction |
 | Adaptive layouts | Kept (existing) | Rail, list-detail, 640 dp readable width |
+| Daybreak colours on the home-screen widget | Rejected | The Glance widget follows the wallpaper's dynamic colours, as Android's widget guidance recommends; Daybreak's `tertiary` is the success green, which would colour the header button (run 76 review) |
 | Skill guidance that conflicted | Platform and safety won | e.g. web-centric suggestions (CSS, Framer Motion) from installed skills were not applied to native screens |
 
 ## 10. Verification
@@ -238,8 +239,15 @@ Evidence was the CI renders of the previous code (Android run 53, iOS run 35).
    Macrobenchmark; Instruments on iOS), Reduce Motion / Remove animations, Increase Contrast.
 3. Extend the system to screens not touched in this pass: Safety (keep it still; tokens only),
    You, Paywall, Focus, Circles, Grant editor layout, challenge authoring, voice sounds.
+   **Android, acceptance pass (2026-10-21):** every selection chip is `ChoiceChip` (Safety, You,
+   Challenges, Focus, Conversation used Material's `FilterChip`, selection by fill alone); the
+   challenge try-out/publish step is a `DetailScreen`; the Paywall's selected plan uses
+   `accentText`/`outline` borders. Dark and large-text renders exist only for the screens in the
+   previews; Safety, You, Focus, Grant editor and Paywall have light emulator screenshots only.
 4. Android back affordance on the remaining full-screen destinations (Conversation, Grant editor,
-   Safety, Focus, Paywall) via `DetailTopBar`.
+   Safety, Focus, Paywall) via `DetailTopBar`. **Done on Android** (2026-10-21): the Paywall and the
+   readiness screen opened from Routines were the last without one; the challenge try-out step has
+   one too.
 5. Android card → detail shared bounds once a device/emulator can verify list-detail pane changes
    and predictive back.
 6. Usability rounds (doc 03 §9 step 8) on the quack + delivery trail: do people read "Reached their
