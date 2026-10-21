@@ -142,7 +142,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
         Body("Choose apps to keep closed during a focus session. Your choice stays on this phone; friends never see which apps.")
         if (!vm.available) {
             StatusPill("Focus isn't available in this build yet.", Tone.Neutral)
-            return@Column
+            return@DetailScreen
         }
         request?.let { r ->
             WMCard {

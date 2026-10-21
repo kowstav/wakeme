@@ -17,6 +17,6 @@ class VoiceSoundsTestActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { WakeMeTheme { VoiceSoundsScreen(voice) } }
+        setContent { WakeMeTheme { VoiceSoundsScreen(vm = voice) } }
     }
 }

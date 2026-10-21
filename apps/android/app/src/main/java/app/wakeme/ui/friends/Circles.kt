@@ -132,7 +132,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
     DetailScreen(onBack = onBack) {
         if (d == null) {
             Body("Loading…")
-            return@Column
+            return@DetailScreen
         }
         val admin = d.circle.role == "owner" || d.circle.role == "admin"
         Text(d.circle.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
