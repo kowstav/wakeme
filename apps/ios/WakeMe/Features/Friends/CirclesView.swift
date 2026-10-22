@@ -12,10 +12,6 @@ struct CirclesSection: View {
 
     var body: some View {
         Section {
-            if circles.isEmpty {
-                Text("A circle is a private group: your flat, study group or team, with its own chat.")
-                    .foregroundStyle(WMColor.textSecondary)
-            }
             ForEach(circles) { c in
                 NavigationLink {
                     CircleView(circleId: c.id)
@@ -39,6 +35,11 @@ struct CirclesSection: View {
             .accessibilityLabel("New circle")
         } header: {
             Text("Circles")
+        } footer: {
+            // Explained once, under the group, until there is a circle to show instead.
+            if circles.isEmpty {
+                Text("A private group, like your flat or team, with its own chat.")
+            }
         }
         .task { await load() }
         .alert("New circle", isPresented: $naming) {
@@ -76,20 +77,17 @@ struct CircleView: View {
     @State private var renaming = false
     @State private var newName = ""
     @State private var message: String?
+    @State private var chatting = false
 
     var body: some View {
         List {
             if let d = detail {
                 let admin = d.circle.role == "owner" || d.circle.role == "admin"
                 // Quick actions: the words stay visible ("Invite" is read as "Invite to this circle").
+                // Messages pushes through navigationDestination: a NavigationLink inside a List row
+                // draws a disclosure chevron between the circles.
                 HStack(alignment: .top, spacing: WMSpacing.xxs) {
-                    NavigationLink {
-                        ConversationView(conversationId: d.circle.conversationId, friendName: d.circle.name)
-                    } label: {
-                        QuickActionLabel(icon: .message, title: "Messages", primary: true)
-                    }
-                    .buttonStyle(WMPressStyle())
-                    .accessibilityLabel("Messages")
+                    QuickAction(icon: .message, title: "Messages", primary: true) { chatting = true }
                     QuickAction(icon: .personPlus, title: "Invite", family: WMPalette.sky, spokenLabel: "Invite to this circle") { Task { await createInvite() } }
                     if admin {
                         QuickAction(icon: .edit, title: "Rename", family: WMPalette.gold, spokenLabel: "Rename circle") { newName = d.circle.name; renaming = true }
@@ -98,10 +96,6 @@ struct CircleView: View {
                 .bentoRow()
                 Group {
                     Section {
-                        Text("Being in a circle together doesn't let anyone do anything on your phone. Each person still chooses that, friend by friend.")
-                            .foregroundStyle(WMColor.textSecondary)
-                    }
-                    Section("Members") {
                         ForEach(d.members, id: \.user.id) { m in
                             HStack(spacing: WMSpacing.sm) {
                                 FriendAvatar(name: m.user.displayName, key: m.user.id)
@@ -118,6 +112,10 @@ struct CircleView: View {
                             }
                             .frame(minHeight: WMSize.minTouchTarget)
                         }
+                    } header: {
+                        Text("Members")
+                    } footer: {
+                        Text("Being in a circle never lets anyone do anything on your phone.")
                     }
                     Section {
                         Button("Leave circle", role: .destructive) { confirmLeave = true }
@@ -131,6 +129,9 @@ struct CircleView: View {
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
         .navigationTitle(detail?.circle.name ?? "Circle")
+        .navigationDestination(isPresented: $chatting) {
+            if let d = detail { ConversationView(conversationId: d.circle.conversationId, friendName: d.circle.name) }
+        }
         .task { await load() }
         .sheet(item: $invite) { inv in InviteSheet(invite: inv) }
         .alert("Leave \(detail?.circle.name ?? "this circle")?", isPresented: $confirmLeave) {

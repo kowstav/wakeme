@@ -1,6 +1,24 @@
 # Wake Me — progress
 
-Last updated: 2026-10-21. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+Last updated: 2026-10-22. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+
+## Bloom polish from the first native renders (2026-10-22, Claude)
+
+- **Bloom verified at `b9d6ef0` (simulator/emulators, not devices):** [ci run 27](https://github.com/kowstav/wakeme/actions/runs/39745622892) passed every job, including the iOS app build. [ios run 44](https://github.com/kowstav/wakeme/actions/runs/39745622902) passed: the full simulator journey, after `b9d6ef0` scrolled the test up to Safety, now a tile near the top of You. [android-device run 88](https://github.com/kowstav/wakeme/actions/runs/39745622921) passed on attempt 2. Attempt 1 failed on Android 16 only: the edited quiz's "Save and try it" was still disabled when the journey tapped it. That passed on Android 17 and on the re-run; the cause is not established.
+- **What changed:** every one of the 101 renders (38 iOS, 33 Android 17, 30 previews) was reviewed at full size ([review](docs/design/review-2026-10-22-bloom-polish.md)).
+  - A new `Note` component on both platforms: one sentence beside the control it explains.
+  - Explanation paragraphs that sat alone in cards (guest home, Focus, Safety, Challenges, grant editor, circle) became `Note`s or section footers, or were cut.
+  - Readiness: one title instead of two, the status inside its card, numbered steps with chips, and Android checklist rows instead of nested cards.
+  - Welcome: the tagline is gone, the story is centred, and the privacy promise sits under the buttons.
+  - Friend page: one header pattern on every capability card; the preview button is labelled; Android no longer shows a disabled "Send quack"; each "turned off" status is said once.
+  - Challenges: "Create a challenge" leads as a lime button, templates are petal tiles, and your own challenges come first.
+  - Circle: the stray chevron between quick actions is gone, and members are one card of rows on Android.
+  - Invite dialogs: the code large, plus one line.
+  - Android's condensed display headline now loads at weight 800; the regular cut read thin next to iOS's Condensed Black.
+  - Every string the UI tests look up keeps its text.
+- **Tests actually run** (Windows 11, Node 24.19.0): `generate.ts --check` (contrast passes). It reports the generated files as stale only because this checkout converts them to CRLF line endings; they are unchanged from HEAD. Also a reference check of every icon and palette name used, an import review of the changed Kotlin files, and a scan of the iOS and Android test strings against the new copy.
+- **Not run:** any compile, lint or test of these edits (no Android SDK or macOS here). Nothing in this pass is verified until CI renders it. No physical device.
+- **Next:** run CI, fix what fails, and compare the new renders against the review's findings.
 
 ## Design pass: Bloom, vibrant colour, icons and bento layouts (2026-10-21, Claude)
 

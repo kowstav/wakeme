@@ -69,6 +69,7 @@ import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.PresetDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.Note
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
@@ -195,8 +196,8 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
     val d = s.draft
     DetailScreen(onBack = onDone) {
         Text("What can $name do?", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        Body("You're giving $name permission to help you, within limits you set. You can change or remove this anytime. It only works one way: it doesn't give you anything on $name's phone.")
-        Body("Being in a circle together doesn't change these settings. Only you can change them.")
+        // What this screen means, in one sentence; the controls follow at once.
+        Note("Only you set or change what $name can do here, and it works one way: you get nothing on $name's phone.", icon = WMIcon.Lock)
         f.iAllowThem?.let { g ->
             val day = DateTimeFormatter.ofPattern("d MMM yyyy").withZone(ZoneId.systemDefault())
             fun fmt(iso: String?) = iso?.let { runCatching { day.format(Instant.parse(it)) }.getOrNull() }

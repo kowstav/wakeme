@@ -26,8 +26,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.wakeme.alarm.LocalRoutines
 import app.wakeme.core.InstalledRoutine
-import app.wakeme.designsystem.Body
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
+import app.wakeme.designsystem.CardTitle
+import app.wakeme.designsystem.EmptyState
 import app.wakeme.designsystem.Gap
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SecondaryButton
@@ -77,22 +84,36 @@ fun GuestHome(onSignIn: () -> Unit, vm: GuestViewModel = hiltViewModel()) {
         fullWidth {
             Gap()
             Text("Your wake-ups", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-            Body("They live on this phone only and ring without a connection. Sign in when you want friends to help.")
+        }
+        if (s.routines.isEmpty()) {
+            fullWidth { EmptyState("No wake-ups yet", "They live on this phone and ring without a connection.") }
         }
         items(s.routines, key = { it.first.planId }) { (r, armed) ->
+            val (icon, family) = timeOfDay(r.localTime)
             WMCard {
-                Text("${r.localTime} · ${daysText(r.recurrence)}", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
-                if (r.label.isNotBlank()) Body(r.label)
-                if (armed) StatusPill("Ready on this phone", Tone.Success) else StatusPill("Not scheduled: allow “Alarms & reminders” below", Tone.Warning)
-                QuietButton("Delete this wake-up", onClick = { vm.delete(r.planId) })
+                Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                        Text("${r.localTime} · ${daysText(r.recurrence)}", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
+                        if (r.label.isNotBlank()) Supporting(r.label)
+                        if (armed) StatusPill("Ready on this phone", Tone.Success, icon = WMIcon.CheckCircle)
+                        else StatusPill("Not scheduled: allow “Alarms & reminders” below", Tone.Warning, icon = WMIcon.Warning)
+                    }
+                    IconChip(icon, family)
+                }
+                QuietButton("Delete this wake-up", onClick = { vm.delete(r.planId) }, icon = WMIcon.Trash)
             }
         }
         fullWidth { PrimaryButton("New wake-up", onClick = { editing = true }, icon = WMIcon.Plus) }
         fullWidth { WMCard { ReadinessSection() } }
         fullWidth {
             WMCard {
-                Text("Wake each other up", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                Body("Sign in to invite friends. Your wake-ups here move to your account and keep ringing on this phone.")
+                Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
+                    IconChip(WMIcon.Friends, WM.palette.sky)
+                    Column(Modifier.weight(1f)) {
+                        CardTitle("Wake each other up")
+                        Supporting("Your wake-ups come with you when you sign in.")
+                    }
+                }
                 SecondaryButton("Sign in to add friends", onClick = onSignIn, icon = WMIcon.PersonPlus)
             }
         }

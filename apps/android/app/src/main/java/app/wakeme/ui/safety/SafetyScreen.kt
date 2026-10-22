@@ -49,6 +49,7 @@ import app.wakeme.data.net.SafetySessionDto
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.Note
 import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailTopBar
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -217,7 +218,8 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
         item {
             if (onBack == null) Gap()
             Text("Safety", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-            Body("Share with friends you choose, for a time you choose. Wake Me is not an emergency service: in an emergency, call your local emergency number.")
+            // The one thing to know before anything else, said once.
+            Note("Wake Me is not an emergency service. In an emergency, call your local emergency number.", icon = WMIcon.Warning)
             if (s.offline) StatusPill("You're offline. Showing what was last loaded.", Tone.Warning)
         }
         sharing?.let { a ->

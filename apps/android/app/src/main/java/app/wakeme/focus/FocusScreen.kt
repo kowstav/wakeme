@@ -44,6 +44,7 @@ import app.wakeme.data.local.LocalDb
 import app.wakeme.data.local.Prefs
 import app.wakeme.data.net.WakeMeApiJson
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.Note
 import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
@@ -140,7 +141,6 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
     val state = session?.let { focusState(it, now) }
     DetailScreen(onBack = onBack) {
         Text("Focus", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-        Body("Choose apps to keep closed during a focus session. Your choice stays on this phone; friends never see which apps.")
         if (!vm.available) {
             StatusPill("Focus isn't available in this build yet.", Tone.Neutral)
             return@DetailScreen
@@ -172,13 +172,13 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
                     listOf(15, 25, 45, 60).forEach { m -> ChoiceChip("$m min", selected = minutes == m, onClick = { minutes = m }) }
                 }
                 PrimaryButton("Start focus", onClick = { vm.startSelf(minutes) }, enabled = serviceOn && chosen.isNotEmpty(), icon = WMIcon.Focus)
-                if (chosen.isEmpty()) Body("Choose at least one app below.")
+                if (chosen.isEmpty()) Note("Choose at least one app below.")
             }
         }
         if (!serviceOn) {
             WMCard {
-                StatusPill("Wake Me focus is off in Accessibility settings", Tone.Warning)
-                SecondaryButton("Turn it on", onClick = { disclosing = true })
+                StatusPill("Wake Me focus is off in Accessibility settings", Tone.Warning, icon = WMIcon.Warning)
+                SecondaryButton("Turn it on", onClick = { disclosing = true }, icon = WMIcon.ArrowUpRight)
             }
         }
         SectionTitle("Apps to keep closed")
@@ -187,6 +187,8 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
                 ChoiceChip(app.label, selected = app.packageName in chosen, onClick = { vm.toggle(app.packageName); chosen = vm.store.chosenApps })
             }
         }
+        // Said once, under the choice it is about.
+        Note("Your choice stays on this phone. Friends never see which apps.", icon = WMIcon.Lock)
         Gap(WakeMeTokens.spaceXl)
     }
     if (disclosing) {

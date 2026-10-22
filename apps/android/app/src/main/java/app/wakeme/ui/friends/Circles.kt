@@ -51,8 +51,7 @@ import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SectionTitle
-import app.wakeme.designsystem.StatusPill
-import app.wakeme.designsystem.Tone
+import app.wakeme.designsystem.Note
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.WMCard
@@ -145,7 +144,6 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
             IconChip(WMIcon.Circles, circleFamily(d.circle.id), size = WakeMeTokens.avatarHeader)
             Text(d.circle.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
         }
-        Body("Being in a circle together doesn't let anyone do anything on your phone. Each person still chooses that, friend by friend.")
         // Quick actions: the words stay visible ("Invite" is read as "Invite to this circle").
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
             QuickAction(WMIcon.Message, "Messages", onClick = { onMessages(d.circle.conversationId) }, primary = true, modifier = Modifier.weight(1f))
@@ -153,25 +151,29 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
             if (admin) QuickAction(WMIcon.Edit, "Rename", onClick = { renaming = d.circle.name }, family = WM.palette.gold, onClickLabel = "Rename circle", modifier = Modifier.weight(1f))
         }
         SectionTitle("Members")
-        d.members.forEach { m ->
-            WMCard {
+        // One card of member rows (avatar, name, role under it), like the friends list, rather than
+        // a card and a pill per person.
+        WMCard {
+            d.members.forEach { m ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                     FriendAvatar(m.user.displayName, m.user.id)
-                    Text(m.user.displayName + if (m.user.id == s.myId) " (you)" else "", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(m.user.displayName + if (m.user.id == s.myId) " (you)" else "", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                        Supporting(
+                            when {
+                                m.role == "owner" -> "Owner"
+                                m.role == "admin" -> "Admin"
+                                m.user.id == s.myId -> "Member"
+                                m.isFriend -> "Friend"
+                                else -> "Not your friend: no permissions either way"
+                            },
+                        )
+                    }
                 }
-                StatusPill(
-                    when {
-                        m.role == "owner" -> "Owner"
-                        m.role == "admin" -> "Admin"
-                        m.user.id == s.myId -> "Member"
-                        m.isFriend -> "Friend"
-                        else -> "Not your friend: no permissions either way"
-                    },
-                    if (m.isFriend || m.user.id == s.myId) Tone.Neutral else Tone.Info,
-                )
-                if (admin && m.role != "owner" && m.user.id != s.myId) QuietButton("Remove ${m.user.displayName}", onClick = { vm.remove(circleId, m.user.id) })
+                if (admin && m.role != "owner" && m.user.id != s.myId) QuietButton("Remove ${m.user.displayName}", onClick = { vm.remove(circleId, m.user.id) }, icon = WMIcon.Close)
             }
         }
+        Note("Being in a circle never lets anyone do anything on your phone.", icon = WMIcon.Lock)
         DangerButton("Leave circle", onClick = { confirmLeave = true }, icon = WMIcon.Logout)
         Gap(WakeMeTokens.spaceXl)
     }
@@ -198,7 +200,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
         AlertDialog(
             onDismissRequest = vm::dismiss,
             title = { Text("Invite to ${d?.circle?.name ?: "the circle"}") },
-            text = { Text("Link: ${inv.url}\n\nOr they can type this code: ${inv.code}\n\nJoining the circle doesn't make anyone friends or give any permissions.") },
+            text = { InviteDialogBody(inv.code, "Expires soon. Joining gives no one permissions on anyone's phone.") },
             confirmButton = {
                 TextButton(onClick = {
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "Join ${d?.circle?.name ?: "our circle"} on Wake Me: ${inv.url} (code ${inv.code})"), "Share invite"))
@@ -223,7 +225,7 @@ internal fun circleFamily(id: String): WakeMeFamily {
 fun CirclesList(circles: List<CircleDto>, onOpen: (String) -> Unit, onNew: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         SectionTitle("Circles")
-        if (circles.isEmpty()) Body("A circle is a private group: your flat, study group or team, with its own chat.")
+        if (circles.isEmpty()) Note("A private group, like your flat or team, with its own chat.", icon = WMIcon.Circles)
         circles.forEach { c ->
             // Same proportions as a friend row: a 17 sp title with its supporting line close below.
             WMCard(onClick = { onOpen(c.id) }, onClickLabel = "Open ${c.name}") {

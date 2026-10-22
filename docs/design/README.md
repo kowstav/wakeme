@@ -2,7 +2,8 @@
 
 ## 1. Product truth (what every screen must stay true to)
 
-- Headline: **Alert your friends. Wake each other up.** Supporting line: "From "where are you?" to
+- Headline: **Alert your friends. Wake each other up.** Supporting line (marketing and store copy,
+  no longer on the welcome screen, where it repeated the headline): "From "where are you?" to
   "we've got this."" The first screen makes contacting a trusted friend obvious.
 - Two behaviours share one set of friends and permissions: **I need you now** (quack, wake
   request) and **Help me become better** (shared wake-ups, focus, personal challenges).
@@ -43,7 +44,8 @@ WCAG in light, dark and both increased-contrast modes, see `contrast-report.md`.
 `PrimaryButton` (lime pill, optional icon), `SecondaryButton` (neutral pill; visibly disabled at 38–45 % when
 unavailable), `QuietButton`, `DangerButton` (destructive/SOS only, never animated), `WMCard` (flat),
 `HeroCard`, `BentoTile`/`BentoRow`, `QuickAction`, `IconChip`, `RoundIconButton`, `PillButton`,
-`DisplayText`, the `WMIcon` set, `StatusPill` (tinted, words + dot or icon, optional announcement), `ChoiceChip`, `DayChips`/`DayPicker`,
+`DisplayText`, `Note` (one sentence beside the control it explains, never a card of its own),
+the `WMIcon` set, `StatusPill` (tinted, words + dot or icon, optional announcement), `ChoiceChip`, `DayChips`/`DayPicker`,
 `TimeDisplay`, `FriendAvatar`, `DeliveryTrailView`, `DetailTopBar` (Android), `EmptyState`,
 `DuckMark`, `QuackBurst`, `SettingRow` (whole row toggles), `Stepper` (Android: 48 dp −/+ spoken as
 Fewer/More), app-switcher cover / `HideFromRecents` on Safety and Messages (ADR 0012).
@@ -56,6 +58,10 @@ Fewer/More), app-switcher cover / `HideFromRecents` on Safety and Messages (ADR 
 - Explain before every system prompt (notifications, alarms, Screen Time, accessibility,
   location), at the moment it's needed, never at sign-up.
 - No paywall, feed or upsell during an alarm, a focus shield or a safety flow.
+- At most one sentence of explanation per screen, beside the control it explains (`Note`). A
+  paragraph alone in a card, a card holding only a status pill, a second title that restates the
+  first and a primary action written as a link are all review findings
+  ([polish review](review-2026-10-22-bloom-polish.md)).
 
 ## 5. What is not done (owner / people needed)
 
@@ -83,4 +89,5 @@ Screenshots come from CI (printed into job logs; see ADR 0009 — not device evi
 | Daybreak pass | Android runs 54–56 (previews + 16/17 emulators), iOS runs 37–38 (iPhone 17 Pro simulator) | 2026-10-21 (Claude) | Before: run 53 / iOS run 35. After: alarm clock on tabular figures, 52 dp paired buttons, 17 sp card titles, pinned welcome actions, pinned iOS challenge escape above the keyboard. Fixed from the renders: an Em/Sp crash in labelled text fields (run 54), blue tab label, dark-mode disabled/neutral fills, circle card titles, trail labels at 2× text, duck-title gap, welcome cut-off at large text, heavy day discs, missing back bars. List in [sizing-audit](sizing-audit-2026-10-21.md). No screenshot baselines accepted. |
 | Bloom pass | HTML study from the same tokens and SVGs ([bloom.html](bloom.html)); native renders pending CI | 2026-10-21 (Claude) | Before: Daybreak renders (Android run 60, iOS run 39). The study was reviewed in a browser (light and dark); icons checked at 24 and 40 units, two redrawn. No native screenshots exist for Bloom yet. |
 | Android 76 → 80+ | previews + Android 16/17 emulators | 2026-10-21 (Claude) | Before: run 76 (all green). Fixed: "Use the simple check-in instead" clipped to "Jse … 'nstead" at large text (`QuietButton` kept Material's pill shape with no side padding); selection chips without a check mark on Safety, You, Challenges, Focus and Conversation; no back bar, a smaller heading and an edge-to-edge pill on the challenge try-out/publish step; no back bar on the Paywall and on readiness opened from Routines; the Paywall's selected plan bordered in yellow (< 3:1); "Share precise locatio" on Android 17's system button (sized from a local copy of the label). Test evidence: the Focus shield and location-button screenshots were taken before drawing (blank in runs 56, 64, 76). Not changed: the widget's dynamic colours (system.md §9). No screenshot baselines accepted. |
+| Bloom polish | ios run 44, android-device run 88 (previews + Android 16/17), commit `b9d6ef0` | 2026-10-22 (Claude) | All 38 iOS, 33 Android 17 and 30 preview renders read at full size. Fixed: paragraphs alone in cards (8 screens) → one-line `Note`s; duplicate title on readiness; a card holding only "Alarms allowed"; the welcome tagline and dead gap; the friend page's unlabelled speaker circle and repeated "hasn't turned on"; Challenges' primary action as a link and templates as text cards → lime button and petal tiles; a stray disclosure chevron between a circle's quick actions; three-paragraph invite dialogs; nested readiness cards on Android; Android's display headline at regular weight. List in [the review](review-2026-10-22-bloom-polish.md). Native renders of the fixes pending CI. |
 | Android 49 | Compose previews (layoutlib) | 2026-10-20 (Codex) | All 34 renders pass. Reviewed small-landscape alarm, large-text quiz and tablet chess: readable content with reachable fixed escape controls; chess content scrolls separately. No new baseline images accepted. |

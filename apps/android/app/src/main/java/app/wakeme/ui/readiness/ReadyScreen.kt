@@ -24,13 +24,20 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import app.wakeme.R
 import app.wakeme.alarm.AlarmAudio
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.CardTitle
 import app.wakeme.designsystem.DetailScreen
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.Note
+import app.wakeme.designsystem.PillButton
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SecondaryButton
-import app.wakeme.designsystem.SectionTitle
 import app.wakeme.designsystem.StatusPill
+import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.Tone
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
@@ -105,31 +112,46 @@ class ReadyViewModel @Inject constructor(@ApplicationContext private val context
     }
 }
 
-/** The readiness checklist and sound test, embeddable in other screens. */
+/** The setting each readiness step opens, as an icon (its words say what it is). */
+private fun readinessIcon(item: ReadinessItem): WMIcon = when (item) {
+    ReadinessItem.NOTIFICATIONS -> WMIcon.Bell
+    ReadinessItem.EXACT_ALARMS -> WMIcon.Alarm
+    ReadinessItem.FULL_SCREEN -> WMIcon.Phone
+    ReadinessItem.BATTERY -> WMIcon.Warning
+    ReadinessItem.ALARM_VOLUME -> WMIcon.Speaker
+}
+
+/**
+ * The readiness checklist and sound test, embeddable in other screens (inside a card on guest
+ * home, on the page in [ReadyScreen]). Each missing step is one row: its icon, one sentence and a
+ * compact "Open settings" pill, so several steps never stack card on card.
+ */
 @Composable
-fun ReadinessSection(vm: ReadyViewModel = hiltViewModel()) {
+fun ReadinessSection(vm: ReadyViewModel = hiltViewModel(), showTitle: Boolean = true) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     LifecycleResumeEffect(Unit) {
         vm.refresh()
         onPauseOrDispose { }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-        SectionTitle(stringResource(R.string.ready_title))
+    Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
+        if (showTitle) CardTitle(stringResource(R.string.ready_title))
         when {
-            s.readiness.missing.isEmpty() -> StatusPill(stringResource(R.string.ready_all_good), Tone.Success)
-            !s.readiness.readyForWake -> StatusPill("Wake-ups can't ring reliably on this phone yet", Tone.Warning)
-            else -> StatusPill("Ready for wake-ups · ${s.readiness.missing.size} optional step${if (s.readiness.missing.size == 1) "" else "s"}", Tone.Info)
+            s.readiness.missing.isEmpty() -> StatusPill(stringResource(R.string.ready_all_good), Tone.Success, icon = WMIcon.CheckCircle)
+            !s.readiness.readyForWake -> StatusPill("Wake-ups can't ring reliably on this phone yet", Tone.Warning, icon = WMIcon.Warning)
+            else -> StatusPill("Ready for wake-ups · ${s.readiness.missing.size} optional step${if (s.readiness.missing.size == 1) "" else "s"}", Tone.Info, icon = WMIcon.Info)
         }
         s.readiness.missing.forEach { r ->
-            WMCard {
-                Body(stringResource(readinessCopy(r)), color = WM.colors.textPrimary)
-                SecondaryButton("Open settings", onClick = { runCatching { context.startActivity(vm.settingsIntent(r)) } }, icon = WMIcon.ArrowUpRight)
+            Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.Top) {
+                IconChip(readinessIcon(r), WM.palette.apricot, size = 32.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                    Supporting(stringResource(readinessCopy(r)), color = WM.colors.textPrimary)
+                    PillButton("Open settings", onClick = { runCatching { context.startActivity(vm.settingsIntent(r)) } }, icon = WMIcon.ArrowUpRight)
+                }
             }
         }
-        SecondaryButton(if (s.testing) "Playing…" else stringResource(R.string.ready_test_sound), onClick = { vm.testSound() }, enabled = !s.testing)
-        Body(stringResource(R.string.ready_test_note) + " Try it with your headphones connected too.")
-        s.testResult?.let { Body(it, color = WM.colors.textPrimary) }
+        SecondaryButton(if (s.testing) "Playing…" else stringResource(R.string.ready_test_sound), onClick = { vm.testSound() }, enabled = !s.testing, icon = WMIcon.Speaker)
+        Note(s.testResult ?: stringResource(R.string.ready_test_note), icon = if (s.testResult != null) WMIcon.CheckCircle else WMIcon.Info)
     }
 }
 
@@ -144,16 +166,17 @@ fun ReadyScreen(onContinue: () -> Unit, continueLabel: String = "Set my first wa
     // Opened from Routines it is a pushed screen with a back bar; during setup it has none.
     DetailScreen(onBack = onBack) {
         Text("Let's make sure your alarm rings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        Body("Android needs your OK for alarms to ring on time and show over the lock screen. Then play a test so you know how it sounds here.")
-        ReadinessSection(vm)
+        Body("Android needs your OK for alarms to ring on time and over the lock screen.")
+        WMCard { ReadinessSection(vm, showTitle = false) }
+        // The one next step, or Ready: said once, right above the button it leads to.
         val nextStep = s.readiness.missing.firstOrNull { it == ReadinessItem.EXACT_ALARMS || it == ReadinessItem.NOTIFICATIONS }
         when {
-            nextStep != null -> Body("Next step: ${stringResource(readinessCopy(nextStep))}", color = WM.colors.textPrimary)
-            !s.testPlayed -> Body("Next step: play the test sound.", color = WM.colors.textPrimary)
-            else -> StatusPill("Ready on this phone", Tone.Success)
+            nextStep != null -> Note("Next step: ${stringResource(readinessCopy(nextStep))}", icon = WMIcon.Info)
+            !s.testPlayed -> Note("Next step: play the test sound.", icon = WMIcon.Speaker)
+            else -> StatusPill("Ready on this phone", Tone.Success, icon = WMIcon.CheckCircle)
         }
         PrimaryButton(continueLabel, onClick = onContinue, enabled = s.readiness.readyForWake)
-        if (!s.readiness.readyForWake) Body("You can still add friends and send quacks while you sort this out.")
+        if (!s.readiness.readyForWake) Note("You can still add friends and send quacks while you sort this out.")
         onSkip?.let { QuietButton("Do this later", onClick = it) }
     }
 }

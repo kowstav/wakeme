@@ -35,23 +35,30 @@ struct ChallengesView: View {
     }
 
     var body: some View {
+        let ready = challenges.filter { $0.publishedRevisionId != nil }
+        let drafts = challenges.filter { $0.publishedRevision == nil && $0.creatorId == app.me?.id }
         List {
+            // The screen's action leads as a button, not a link inside a paragraph; the one line of
+            // explanation sits under it.
+            VStack(alignment: .leading, spacing: WMSpacing.sm) {
+                PrimaryButton(title: "Create a challenge", icon: .plus) { creating = true }
+                Note(loaded && ready.isEmpty && drafts.isEmpty
+                     ? "No challenges yet. Make one, or start from a template."
+                     : "Your group's own jokes and goals. They work offline and always have a way out.",
+                     icon: .trophy)
+            }
+            .bentoRow()
             Group {
-                Section {
-                    Text("Build challenges from your group's own jokes and goals. They run on the phone, even offline, and always have a way out.")
-                        .foregroundStyle(WMColor.textSecondary)
-                    Button("Create a challenge") { creating = true }.frame(minHeight: WMSize.minTouchTarget)
-                }
-                let ready = challenges.filter { $0.publishedRevisionId != nil }
-                let drafts = challenges.filter { $0.publishedRevision == nil && $0.creatorId == app.me?.id }
-                if loaded && ready.isEmpty && drafts.isEmpty {
-                    Section { Text("No challenges yet. Make one, or start from a template.").foregroundStyle(WMColor.textSecondary) }
-                }
                 if !ready.isEmpty {
                     Section("Try one") {
                         ForEach(ready) { c in
                             HStack {
-                                Button(c.title) { Task { await practise(c) } }
+                                Button { Task { await practise(c) } } label: {
+                                    HStack(spacing: WMSpacing.sm) {
+                                        IconChip(icon: .trophy, family: familyFor(c.id), size: 32)
+                                        Text(c.title).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                                    }
+                                }
                                     .buttonStyle(.borderless)
                                     .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget, alignment: .leading)
                                 if c.creatorId == app.me?.id {
@@ -76,21 +83,27 @@ struct ChallengesView: View {
                         Text("Try a draft to publish it.")
                     }
                 }
-                if !templates.isEmpty {
-                    Section("Start from a template") {
-                        ForEach(templates) { t in
-                            VStack(alignment: .leading, spacing: WMSpacing.xxs) {
-                                Text(t.title).font(.headline).foregroundStyle(WMColor.textPrimary)
-                                Text(t.description).foregroundStyle(WMColor.textSecondary)
-                                Button("Try “\(t.title)”") { Task { await fromTemplate(t) } }
-                                    .frame(minHeight: WMSize.minTouchTarget)
-                                    .disabled(busy)
-                            }
-                        }
-                    }
-                }
             }
             .cardRows()
+            if !templates.isEmpty {
+                // Templates are tried with one tap: petal tiles, two to a row, each its own colour.
+                Section {
+                    ForEach(Array(stride(from: 0, to: templates.count, by: 2)), id: \.self) { i in
+                        BentoRow {
+                            ForEach(i..<min(i + 2, templates.count), id: \.self) { j in
+                                let t = templates[j]
+                                let look = templateLook(j)
+                                BentoTile(title: t.title, icon: look.icon, family: look.family, supporting: t.description) { Task { await fromTemplate(t) } }
+                                    .disabled(busy)
+                                    .accessibilityHint("Tries it on this phone. \(t.description)")
+                            }
+                        }
+                        .bentoRow()
+                    }
+                } header: {
+                    Text("Start from a template")
+                }
+            }
         }
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
@@ -130,6 +143,14 @@ struct ChallengesView: View {
             }
         }
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
+    }
+
+    /// Each template tile its own icon and petal, in a fixed order so a template keeps its look.
+    private func templateLook(_ index: Int) -> (icon: WMIcon, family: WMFamily) {
+        let looks: [(WMIcon, WMFamily)] = [(.sparkle, WMPalette.gold), (.trophy, WMPalette.sky), (.book, WMPalette.orchid),
+                                           (.focus, WMPalette.aqua), (.dumbbell, WMPalette.apricot), (.heart, WMPalette.periwinkle)]
+        let look = looks[index % looks.count]
+        return (look.0, look.1)
     }
 
     private func load() async {

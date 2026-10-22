@@ -37,13 +37,12 @@ struct GrantEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // What this screen means, in one sentence on the page; the controls follow at once.
+                Note("Only you set or change what \(name) can do here, and it works one way: you get nothing on \(name)'s phone.", icon: .lock)
+                    .bentoRow()
                 Group {
-                    Section {
-                        Text("You're giving \(name) permission to help you, within limits you set. You can change or remove this anytime. It only works one way: it doesn't give you anything on \(name)'s phone.")
-                            .foregroundStyle(WMColor.textPrimary)
-                        Text("Being in a circle together doesn't change these settings. Only you can change them.")
-                            .foregroundStyle(WMColor.textSecondary)
-                        if let g = friend.iAllowThem { Text(usageText(g)).foregroundStyle(WMColor.textSecondary) }
+                    if let g = friend.iAllowThem {
+                        Section { Text(usageText(g)).foregroundStyle(WMColor.textSecondary) }
                     }
                     if !presets.isEmpty {
                         Section("Start from") {

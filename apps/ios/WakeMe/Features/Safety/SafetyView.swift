@@ -25,12 +25,13 @@ struct SafetyView: View {
 
     var body: some View {
         List {
+            // The one thing to know before anything else, said once, on the page rather than in a card.
+            VStack(alignment: .leading, spacing: WMSpacing.sm) {
+                Note("Wake Me is not an emergency service. In an emergency, call your local emergency number.", icon: .warning)
+                if offline { StatusPill(text: "You're offline. Showing what was last loaded.", tone: .warning, icon: toneIcon(.warning)) }
+            }
+            .bentoRow()
             Group {
-                Section {
-                    Text("Share with friends you choose, for a time you choose. Wake Me is not an emergency service: in an emergency, call your local emergency number.")
-                        .foregroundStyle(WMColor.textSecondary)
-                    if offline { StatusPill(text: "You're offline. Showing what was last loaded.", tone: .warning) }
-                }
                 if let a = sharer.active {
                     Section {
                         StatusPill(text: "Sharing your location now", tone: .info)
@@ -47,9 +48,13 @@ struct SafetyView: View {
                     Section("Shared with you") { ForEach(shared) { s in viewerSession(s) } }
                 }
                 let active = mine.filter(\.active)
-                Section("You're sharing") {
-                    if active.isEmpty && sharer.active == nil { StatusPill(text: "You're not sharing anything") }
+                // Nothing to show is a status under the header, not a card holding only a pill.
+                Section {
                     ForEach(active) { s in mySession(s) }
+                } header: {
+                    Text("You're sharing")
+                } footer: {
+                    if active.isEmpty && sharer.active == nil { StatusPill(text: "You're not sharing anything") }
                 }
                 Section("Start") {
                     PrimaryButton(title: "Check in with friends later") { composing = .checkin }

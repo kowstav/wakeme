@@ -575,6 +575,19 @@ fun FieldGroup(label: String, modifier: Modifier = Modifier, content: @Composabl
     }
 }
 
+/**
+ * One sentence of explanation, set beside the control it explains: a small icon and supporting
+ * text on the page, never in a card of its own (a card holds things to act on). A screen keeps at
+ * most one or two of these.
+ */
+@Composable
+fun Note(text: String, modifier: Modifier = Modifier, icon: WMIcon = WMIcon.Info) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+        WMIconView(icon, Modifier.padding(top = 1.dp), tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = WM.colors.textSecondary, modifier = Modifier.weight(1f))
+    }
+}
+
 @Composable
 fun Body(text: String, modifier: Modifier = Modifier, color: Color = WM.colors.textSecondary) {
     Text(text, style = MaterialTheme.typography.bodyLarge, color = color, modifier = modifier)

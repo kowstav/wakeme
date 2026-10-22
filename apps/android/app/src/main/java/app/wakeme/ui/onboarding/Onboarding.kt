@@ -5,7 +5,9 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.heightIn
+import app.wakeme.designsystem.Note
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,9 +65,7 @@ import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.DisplayText
 import app.wakeme.designsystem.IconChip
 import app.wakeme.designsystem.PillButton
-import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.WMIcon
-import app.wakeme.designsystem.WMIconView
 import androidx.compose.ui.text.style.TextAlign
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
@@ -117,7 +117,7 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
     // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         val surface = WM.colors.surface
-        Column(
+        BoxWithConstraints(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -126,12 +126,17 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
                     drawContent()
                     val fade = WakeMeTokens.spaceLg.toPx()
                     drawRect(Brush.verticalGradient(listOf(surface.copy(alpha = 0f), surface), startY = size.height - fade, endY = size.height), topLeft = Offset(0f, size.height - fade), size = Size(size.width, fade))
-                }
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = WakeMeTokens.spaceLg),
-            verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
+                },
         ) {
-            Gap(WakeMeTokens.spaceXl)
+        // Centred in the space above the actions; at large text sizes it simply scrolls.
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceLg),
+            verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceLg, Alignment.CenterVertically),
+        ) {
             Entrance(0) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Box(
@@ -143,27 +148,20 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
                 }
             }
             Entrance(1) {
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-                    DisplayText(stringResource(R.string.headline), textAlign = TextAlign.Center)
-                    Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyLarge, color = WM.colors.textSecondary, textAlign = TextAlign.Center)
-                }
+                DisplayText(stringResource(R.string.headline), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
             Entrance(2) {
                 // The preview plays only on this phone; the duck above does the same.
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PillButton("Play preview", onClick = quack, icon = WMIcon.Speaker) }
             }
-            Entrance(3) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs), verticalAlignment = Alignment.Top) {
-                    WMIconView(WMIcon.Lock, tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
-                    Supporting("You decide what each friend can do. Nobody can ring your phone unless you allow it.", modifier = Modifier.weight(1f))
-                }
-            }
-            Gap(WakeMeTokens.spaceSm)
+        }
         }
         Entrance(4) {
+            // The one promise that matters at this moment sits with the decision it is about.
             Column(Modifier.padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
                 PrimaryButton("I have an invite", onClick = onInvite, icon = WMIcon.Ticket)
                 SecondaryButton("Set up my own wake-up", onClick = onSelf, icon = WMIcon.Alarm)
+                Note("You decide what each friend can do. Nobody can ring your phone unless you allow it.", Modifier.padding(top = WakeMeTokens.spaceXxs), icon = WMIcon.Lock)
             }
         }
     }

@@ -14,39 +14,59 @@ struct GuestView: View {
         NavigationStack {
             List {
                 Group {
-                    Section {
-                        Text("They live on this phone only and ring without a connection. Sign in when you want friends to help.")
-                            .foregroundStyle(WMColor.textSecondary)
-                    }
-                    if !routines.isEmpty {
+                    if routines.isEmpty {
+                        Section {
+                            EmptyState(title: "No wake-ups yet", message: "They live on this phone and ring without a connection.")
+                        }
+                    } else {
                         Section("On this phone") {
                             ForEach(routines, id: \.planId) { r in
-                                VStack(alignment: .leading, spacing: WMSpacing.xs) {
-                                    Text("\(Text(r.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(r.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
-                                    if !r.label.isEmpty { Text(r.label).foregroundStyle(WMColor.textSecondary) }
-                                    if WakeAlarms.shared.authorization == .authorized && WakeAlarms.shared.armedRoutine(planId: r.planId) != nil {
-                                        StatusPill(text: "Ready on this phone", tone: .success)
-                                    } else {
-                                        StatusPill(text: "Not scheduled: allow alarms first", tone: .warning)
+                                let tod = timeOfDay(r.localTime)
+                                HStack(alignment: .top, spacing: WMSpacing.sm) {
+                                    VStack(alignment: .leading, spacing: WMSpacing.xs) {
+                                        Text("\(Text(r.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(r.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
+                                        if !r.label.isEmpty { Text(r.label).foregroundStyle(WMColor.textSecondary) }
+                                        if WakeAlarms.shared.authorization == .authorized && WakeAlarms.shared.armedRoutine(planId: r.planId) != nil {
+                                            StatusPill(text: "Ready on this phone", tone: .success, icon: toneIcon(.success))
+                                        } else {
+                                            StatusPill(text: "Not scheduled: allow alarms first", tone: .warning, icon: toneIcon(.warning))
+                                        }
                                     }
+                                    Spacer(minLength: 0)
+                                    IconChip(icon: tod.icon, family: tod.family)
                                 }
                                 .swipeActions { Button("Delete", role: .destructive) { LocalRoutines.shared.delete(r.planId); reload() } }
                             }
                         }
                     }
                     Section {
-                        PrimaryButton(title: "New wake-up") { creating = true }
-                        NavigationLink("Make this phone ready") { ReadyView() }
-                            .frame(minHeight: WMSize.minTouchTarget)
+                        NavigationLink { ReadyView() } label: {
+                            Label { Text("Make this phone ready") } icon: { IconChip(icon: .phone, family: WMPalette.lime, size: 32) }
+                        }
+                        .frame(minHeight: WMSize.minTouchTarget)
                     }
                     Section {
-                        Text("Wake each other up").font(.headline).foregroundStyle(WMColor.textPrimary)
-                        Text("Sign in to invite friends. Your wake-ups here move to your account and keep ringing on this phone.")
-                            .foregroundStyle(WMColor.textSecondary)
-                        SecondaryButton(title: "Sign in to add friends") { app.signInFromGuest() }
+                        HStack(alignment: .top, spacing: WMSpacing.sm) {
+                            IconChip(icon: .friends, family: WMPalette.sky)
+                            VStack(alignment: .leading, spacing: WMSpacing.xxs) {
+                                Text("Wake each other up").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                                Text("Your wake-ups come with you when you sign in.").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                        SecondaryButton(title: "Sign in to add friends", icon: .personPlus) { app.signInFromGuest() }
                     }
                 }
                 .cardRows()
+            }
+            // The one action of this screen stays where a thumb reaches it.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                PrimaryButton(title: "New wake-up", icon: .plus) { creating = true }
+                    .padding(.horizontal, WMLayout.screenMargin)
+                    .padding(.vertical, WMSpacing.sm)
+                    .frame(maxWidth: WMLayout.readableWidth)
+                    .frame(maxWidth: .infinity)
+                    .background(WMColor.surface)
             }
             .scrollContentBackground(.hidden)
             .background(WMColor.surface)

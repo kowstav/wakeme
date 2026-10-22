@@ -53,7 +53,14 @@ import app.wakeme.data.net.FriendDto
 import app.wakeme.designsystem.AdaptiveList
 import app.wakeme.designsystem.BentoRow
 import app.wakeme.designsystem.BentoTile
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.sp
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.Note
 import app.wakeme.designsystem.CardTitle
 import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DeliveryTrailView
@@ -123,7 +130,7 @@ fun FriendsScreen(onOpen: (String) -> Unit, onOpenCircle: (String) -> Unit = {},
             onDismissRequest = vm::dismissMessage,
             icon = { WMIconView(WMIcon.PersonPlus, tint = WM.colors.accentText) },
             title = { Text("Share your invite") },
-            text = { Text("Link: ${inv.url}\n\nIf the link doesn't open the app, they can type this code: ${inv.code}\n\nIt works once and expires soon. Accepting makes you friends and nothing more: each of you chooses what the other can do.") },
+            text = { InviteDialogBody(inv.code, "Works once and expires soon. Accepting makes you friends and nothing more.") },
             confirmButton = {
                 TextButton(onClick = {
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "Let's wake each other up on Wake Me: ${inv.url} (code ${inv.code})"), "Share invite"))
@@ -175,7 +182,7 @@ fun FriendsList(
             fullWidth {
                 EmptyState(
                     title = "Invite someone you trust",
-                    body = "Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.",
+                    body = "They choose what you can do on their phone, and you choose what they can do on yours.",
                 )
             }
         }
@@ -241,6 +248,26 @@ private fun JoinWithCodeDialog(onDismiss: () -> Unit, onJoin: (String) -> Unit) 
         confirmButton = { TextButton(onClick = { onJoin(code) }, enabled = code.length >= 9) { Text("Join") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/**
+ * The body of an invite dialog: the code (the fallback when the link doesn't open the app) set
+ * large, and one line on what accepting means. The raw link isn't shown: Share sends it. The
+ * prompt and the code are one text, so TalkBack (and the journey test) read them together.
+ */
+@Composable
+internal fun InviteDialogBody(code: String, note: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
+        Text(
+            buildAnnotatedString {
+                append("Or they type this code\n")
+                withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 28.sp, color = WM.colors.textPrimary)) { append(code) }
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = WM.colors.textSecondary,
+        )
+        Note(note, icon = WMIcon.Lock)
+    }
 }
 
 /** A friend: who, what you can do on their phone, and whether a quack is possible right now. */
@@ -373,7 +400,11 @@ fun FriendDetailScreen(
                 QuickAction(WMIcon.Shield, "Safety", onClick = onSafety, family = palette.orchid, onClickLabel = "Safety check-in or SOS", modifier = Modifier.weight(1f))
             }
 
-            // ---- Send a quack: preview (local only) is a different control from Send.
+            // ---- Send a quack. The same header as every capability card: mark, title and one line
+            // (what's allowed, or why not), then the local-only preview at the end. Send shows only
+            // when it can work: a disabled button would say nothing the line above doesn't.
+            val sounds = f.theyAllowMe?.limits?.nudge?.sounds.orEmpty()
+            val canQuack = quack?.granted == true && quack.availableNow
             WMCard {
                 // The duck's canvas already reserves room for its sound marks, so the title sits close.
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
@@ -381,23 +412,19 @@ fun FriendDetailScreen(
                     QuackBurst(tick = if (quackSent) s.sentTick else 0, height = 48.dp)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         CardTitle("Quack")
-                        val sounds = f.theyAllowMe?.limits?.nudge?.sounds.orEmpty()
-                        if (sounds.isNotEmpty()) Supporting("Only sounds $name allowed.")
+                        Supporting(if (canQuack && sounds.isNotEmpty()) "Only sounds $name allowed." else reasonText(name, quack?.reason ?: "capability_not_granted"))
                     }
+                    RoundIconButton(WMIcon.Speaker, "Preview on my phone", onClick = { playQuackPreview(context) })
                 }
-                val sounds = f.theyAllowMe?.limits?.nudge?.sounds.orEmpty()
-                if (sounds.isNotEmpty()) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                        sounds.take(4).forEach { id -> ChoiceChip(soundName(id), selected = sound == id, onClick = { sound = id }) }
+                if (canQuack) {
+                    if (sounds.size > 1) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                            sounds.take(4).forEach { id -> ChoiceChip(soundName(id), selected = sound == id, onClick = { sound = id }) }
+                        }
                     }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                    if (sounds.isNotEmpty()) RoundIconButton(WMIcon.Speaker, "Preview on my phone", onClick = { playQuackPreview(context) })
-                    Column(Modifier.weight(1f)) {
-                        ActionButton("Send quack", quack, name, s.sending == Capability.NUDGE, icon = WMIcon.Send) {
-                            askNotifications("So you can see when $name replies, and hear quacks you've allowed.") {
-                                vm.send(Capability.NUDGE, mapOf("soundId" to (sound ?: "bundled:quack.classic")))
-                            }
+                    ActionButton("Send quack", quack, name, s.sending == Capability.NUDGE, icon = WMIcon.Send) {
+                        askNotifications("So you can see when $name replies, and hear quacks you've allowed.") {
+                            vm.send(Capability.NUDGE, mapOf("soundId" to (sound ?: "bundled:quack.classic")))
                         }
                     }
                 }
@@ -420,7 +447,7 @@ fun FriendDetailScreen(
                     }
                 }
             } else {
-                Body("$name hasn't enabled wake alarms for you. You can ask them in a message.")
+                Note("$name hasn't turned on wake alarms for you.", icon = WMIcon.Wake)
             }
 
             // ---- What the server knows about the last request, in words, then as a trail.
@@ -449,7 +476,8 @@ fun FriendDetailScreen(
                 if (mine == null) PrimaryButton("Choose what $name can do", onClick = { onEditPermissions(friendshipId) }, icon = WMIcon.Key)
                 else SecondaryButton("Change permissions", onClick = { onEditPermissions(friendshipId) }, icon = WMIcon.Sliders)
                 mine?.let { QuietButton(if (it.paused) "Resume $name's permissions" else "Pause $name's permissions", onClick = { vm.pause(!it.paused) }, icon = if (it.paused) WMIcon.Play else WMIcon.Pause) }
-                Supporting("Circles you share don't change these settings.")
+                // Recipient-owned: only you change this, and circles never do.
+                Note("Only you change this. Being in a circle together never does.", icon = WMIcon.Lock)
             }
             Gap(WakeMeTokens.spaceLg)
         }

@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">Wake Me</string>
     <string name="headline">Alert your friends. Wake each other up.</string>
-    <string name="tagline">From “where are you?” to “we’ve got this.”</string>
 
     <!-- Tabs -->
     <string name="tab_friends">Friends</string>

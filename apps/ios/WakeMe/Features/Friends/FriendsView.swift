@@ -36,7 +36,7 @@ struct FriendsView: View {
                 if loaded && friends.isEmpty {
                     Section {
                         EmptyState(title: "Invite someone you trust",
-                                   message: "Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
+                                   message: "They choose what you can do on their phone, and you choose what they can do on yours.")
                     }
                 }
                 if !friends.isEmpty {
@@ -196,12 +196,15 @@ struct InviteSheet: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
                 Text("Share your invite").font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
-                Text("If the link doesn't open the app, they can type this code:").foregroundStyle(WMColor.textSecondary)
-                Text(invite.code).font(.system(.title, design: .monospaced).bold()).foregroundStyle(WMColor.textPrimary).textSelection(.enabled)
-                    .accessibilityIdentifier("inviteCode")
-                Text(invite.kind == "circle"
-                     ? "It expires soon. Joining the circle doesn't make anyone friends or give any permissions."
-                     : "It works once and expires soon. Accepting makes you friends and nothing more: each of you chooses what the other can do.").foregroundStyle(WMColor.textSecondary)
+                // The code is the fallback when the link doesn't open the app: big, selectable, on its own card.
+                WMCard {
+                    Text("Or they type this code").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                    Text(invite.code).font(.system(.title, design: .monospaced).bold()).foregroundStyle(WMColor.textPrimary).textSelection(.enabled)
+                        .accessibilityIdentifier("inviteCode")
+                }
+                Note(invite.kind == "circle"
+                     ? "Expires soon. Joining gives no one permissions on anyone's phone."
+                     : "Works once and expires soon. Accepting makes you friends and nothing more.", icon: .lock)
                 ShareLink(item: "Let's wake each other up on Wake Me: \(invite.url) (code \(invite.code))") {
                     HStack(spacing: WMSpacing.xs) {
                         WMIconImage(.share, size: WMLayout.iconSizeSmall)
@@ -268,8 +271,6 @@ struct FriendDetailView: View {
                     }
                     if !suggested.isEmpty { suggestCard(f) }
                     permissionsCard(f)
-                    Text("What \(name) can do on your phone is up to you. Circle membership never changes it.")
-                        .foregroundStyle(WMColor.textSecondary)
                 }
                 .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md).frame(maxWidth: WMLayout.readableWidth).frame(maxWidth: .infinity)
                 .sheet(isPresented: $suggesting) { RoutineEditorView(friend: f, onSaved: { await load() }) }
@@ -353,36 +354,36 @@ struct FriendDetailView: View {
         let sounds = f.theyAllowMe?.limits.nudge?.sounds ?? []
         let quackTick = lastCommand?.capability == Capability.nudge ? sentTick : 0
         WMCard {
-            // The duck's frame already reserves room for its sound marks, so the title sits close.
+            // The same header as every capability card: mark, title (and one line), then the card's
+            // small action at the end. The duck's frame reserves room for its sound marks.
             HStack(spacing: WMSpacing.xxs) {
                 // Replays only after a send the server accepted; says nothing about delivery.
                 QuackBurst(tick: quackTick, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Quack").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
-                    if !sounds.isEmpty {
-                        Text("Only sounds \(f.user.displayName) allowed.").font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                    if quack?.granted == true && quack?.availableNow == true && !sounds.isEmpty {
+                        Text("Only sounds \(f.user.displayName) allowed.").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                    } else {
+                        Text(reasonText(f.user.displayName, quack?.reason ?? "capability_not_granted")).font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
                     }
                 }
-            }
-            if sounds.count > 1 {
-                Picker("Sound", selection: Binding(get: { quackSound ?? sounds[0] }, set: { quackSound = $0 })) {
-                    ForEach(sounds, id: \.self) { Text(soundName($0)).tag($0) }
-                }
-                .pickerStyle(.menu)
+                Spacer(minLength: WMSpacing.xs)
+                // Plays the quack here only: hear it before sending it.
+                RoundIconButton(icon: .speaker, label: "Preview on my phone") { QuackPreview.shared.play() }
             }
             if let quack, quack.granted, quack.availableNow {
-                HStack(spacing: WMSpacing.xs) {
-                    RoundIconButton(icon: .speaker, label: "Preview on my phone") { QuackPreview.shared.play() }
-                    PrimaryButton(title: sending == Capability.nudge ? "Sending…" : "Send quack", icon: .send) { Task { await maybeAskThenSend() } }
-                        .disabled(sending != nil)
+                if sounds.count > 1 {
+                    Picker("Sound", selection: Binding(get: { quackSound ?? sounds[0] }, set: { quackSound = $0 })) {
+                        ForEach(sounds, id: \.self) { Text(soundName($0)).tag($0) }
+                    }
+                    .pickerStyle(.menu)
                 }
+                PrimaryButton(title: sending == Capability.nudge ? "Sending…" : "Send quack", icon: .send) { Task { await maybeAskThenSend() } }
+                    .disabled(sending != nil)
                 if quackTick > 0 {
-                    Text("Sent to \(f.user.displayName)").font(.headline).foregroundStyle(WMColor.textPrimary)
+                    Text("Sent to \(f.user.displayName)").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         .transition(.opacity)
                 }
-            } else {
-                RoundIconButton(icon: .speaker, label: "Preview on my phone") { QuackPreview.shared.play() }
-                Text(reasonText(f.user.displayName, quack?.reason ?? "capability_not_granted")).foregroundStyle(WMColor.textSecondary)
             }
         }
     }
@@ -406,7 +407,7 @@ struct FriendDetailView: View {
                 }
             }
         } else {
-            Text("\(name) hasn't turned on wake alarms for you. You can ask them in a message.").foregroundStyle(WMColor.textSecondary)
+            Note("\(name) hasn't turned on wake alarms for you.", icon: .wake)
         }
     }
 
@@ -478,6 +479,8 @@ struct FriendDetailView: View {
                 Text("Nothing yet. \(name) can't make a sound or set an alarm on your phone.").foregroundStyle(WMColor.textSecondary)
                 PrimaryButton(title: "Choose what \(name) can do", icon: .key) { editing = true }
             }
+            // Recipient-owned: only you change this, and circles never do.
+            Note("Only you change this. Being in a circle together never does.", icon: .lock)
         }
     }
 

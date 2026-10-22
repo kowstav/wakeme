@@ -527,6 +527,32 @@ struct DeliveryTrailView: View {
     }
 }
 
+/// One sentence of explanation, set beside the control it explains: a small icon and supporting
+/// text on the page, never in a card of its own (a card holds things to act on). A screen keeps at
+/// most one or two of these; anything longer belongs in a help page, not on the way.
+struct Note: View {
+    let text: String
+    var icon: WMIcon = .info
+
+    init(_ text: String, icon: WMIcon = .info) {
+        self.text = text
+        self.icon = icon
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: WMSpacing.xs) {
+            WMIconImage(icon, size: WMLayout.iconSizeSmall)
+                .foregroundStyle(WMColor.textSecondary)
+                .padding(.top, 1)
+            Text(text)
+                .font(WMFont.supporting)
+                .foregroundStyle(WMColor.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 /// A calm empty state: the duck, what belongs here, and how to add the first one.
 struct EmptyState: View {
     let title: String

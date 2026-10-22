@@ -245,7 +245,8 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
 
         item {
             Gap(WakeMeTokens.spaceSm)
-            ReadinessSection()
+            // One card for the whole checklist: each missing step is a row inside it.
+            WMCard { ReadinessSection() }
         }
         item { PhonesSection(s.devices, s.thisDeviceId, busy = s.busy, onMakePrimary = vm::makeThisPhonePrimary) }
 
