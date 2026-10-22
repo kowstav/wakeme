@@ -364,8 +364,10 @@ final class LaunchTests: XCTestCase {
         let samId = try XCTUnwrap(alexFriends.compactMap { $0["user"] as? [String: Any] }.first { $0["displayName"] as? String == "Sam" }?["id"] as? String)
         _ = try await http("POST", "/v1/sos", alex, ["viewerIds": [samId], "shareLocation": false])
         app.tabBars.buttons["You"].tap()
+        // Safety is a tile near the top of You, and the account steps above left You scrolled to
+        // its end (Delete account): scroll back up to it.
         let safety = app.buttons["Safety check-ins and location"]
-        for _ in 0..<3 where !safety.isHittable { app.swipeUp() }
+        for _ in 0..<4 where !safety.isHittable { app.swipeDown() }
         safety.tap()
         try must(app.staticTexts["SOS from Alex"].waitForExistence(timeout: 20), "Sam sees Alex's SOS")
         try must(app.staticTexts["Check-in only · no location shared"].exists, "no location is shown as none, not as live")
