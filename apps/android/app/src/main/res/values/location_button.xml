@@ -6,7 +6,7 @@
     </style>
     <style name="Widget.WakeMe.LocationButton" parent="Widget.AndroidXCore.LocationButton">
         <item name="backgroundColor">@color/wm_accent</item>
-        <item name="android:textColor">#1B1D20</item>
-        <item name="iconTint">#1B1D20</item>
+        <item name="android:textColor">#163300</item>
+        <item name="iconTint">#163300</item>
     </style>
 </resources>

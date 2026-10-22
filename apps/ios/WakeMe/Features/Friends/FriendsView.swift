@@ -9,6 +9,7 @@ struct FriendsView: View {
     @State private var loaded = false
     @State private var invite: InviteCreatedDTO?
     @State private var code = ""
+    @State private var joining = false
     @State private var message: String?
 
     @State private var nextAlarm: (fireAt: Date, label: String)?
@@ -18,57 +19,46 @@ struct FriendsView: View {
     @Namespace private var friendZoom
 
     var body: some View {
+        // A white page with grey groups (rows take the card grey), a forest hero and petal tiles:
+        // the Bloom home. It stays a List for pull to refresh, native rows and VoiceOver order.
         List {
+            if app.offline { StatusPill(text: "Offline · showing nothing new. Your alarms still work.", tone: .warning, icon: .warning).bentoRow() }
             // Doc 03 §3: home shows the next alarm on this phone and, at most, one readiness issue.
             if let nextAlarm {
-                Section {
-                    VStack(alignment: .leading, spacing: WMSpacing.xs) {
-                        Text("Next alarm on this phone").font(.subheadline.weight(.medium)).foregroundStyle(WMColor.textSecondary)
-                        Text(nextAlarmText(nextAlarm.fireAt, label: nextAlarm.label)).font(.title2.weight(.semibold)).monospacedDigit().foregroundStyle(WMColor.textPrimary)
-                        if WakeAlarms.shared.authorization != .authorized {
-                            StatusPill(text: "Alarm access is off, so it can't ring.", tone: .warning)
-                            SecondaryButton(title: "Open Settings") {
-                                if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
-                            }
-                        }
+                NextAlarmHero(fireAt: nextAlarm.fireAt, label: nextAlarm.label).bentoRow()
+            }
+            BentoRow {
+                BentoTile(title: "Invite a friend", icon: .personPlus, family: WMPalette.lime, supporting: "Send a private link") { Task { await createInvite() } }
+                BentoTile(title: "Join with a code", icon: .ticket, family: WMPalette.sky, supporting: "From a friend's invite") { joining = true }
+            }
+            .bentoRow()
+            Group {
+                if loaded && friends.isEmpty {
+                    Section {
+                        EmptyState(title: "Invite someone you trust",
+                                   message: "They choose what you can do on their phone, and you choose what they can do on yours.")
                     }
-                    .accessibilityElement(children: .contain)
                 }
-            }
-            if loaded && friends.isEmpty {
-                Section {
-                    EmptyState(title: "Invite someone you trust",
-                               message: "Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
-                }
-            }
-            if !friends.isEmpty {
-                Section("Friends") {
-                    ForEach(friends) { f in
-                        NavigationLink(value: f.friendshipId) {
-                            HStack(spacing: WMSpacing.sm) {
-                                FriendAvatar(name: f.user.displayName, key: f.user.id)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(f.user.displayName).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
-                                    Text(summary(f)).font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                if !friends.isEmpty {
+                    Section("Your friends · \(friends.count)") {
+                        ForEach(friends) { f in
+                            NavigationLink(value: f.friendshipId) {
+                                HStack(spacing: WMSpacing.sm) {
+                                    FriendAvatar(name: f.user.displayName, key: f.user.id, size: 48)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(f.user.displayName).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                                        Text(summary(f)).font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                                    }
                                 }
+                                .frame(minHeight: WMSize.minTouchTarget)
                             }
-                            .frame(minHeight: WMSize.minTouchTarget)
+                            .matchedTransitionSource(id: f.friendshipId, in: friendZoom)
                         }
-                        .matchedTransitionSource(id: f.friendshipId, in: friendZoom)
                     }
                 }
+                CirclesSection()
             }
-            CirclesSection()
-            Section {
-                PrimaryButton(title: "Invite a friend") { Task { await createInvite() } }
-                HStack {
-                    TextField("Have a code?", text: $code)
-                        .textInputAutocapitalization(.characters).autocorrectionDisabled()
-                        .onChange(of: code) { _, v in if v.count > 11 { code = String(v.prefix(11)) } }
-                    Button("Join") { Task { await preview() } }.disabled(code.count < 9)
-                }
-            }
-            if app.offline { Section { StatusPill(text: "Offline · showing nothing new. Your alarms still work.", tone: .warning) } }
+            .cardRows()
         }
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
@@ -80,6 +70,14 @@ struct FriendsView: View {
         .task { await load() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { nextAlarm = WakeAlarms.shared.nextMainAlarm() } }
         .sheet(item: $invite) { inv in InviteSheet(invite: inv) }
+        .alert("Join with a code", isPresented: $joining) {
+            TextField("Have a code?", text: $code)
+                .textInputAutocapitalization(.characters).autocorrectionDisabled()
+            Button("Join") { if code.count >= 9 { Task { await preview() } } }
+            Button("Cancel", role: .cancel) { code = "" }
+        } message: {
+            Text("For when the invite link didn't open the app.")
+        }
         .alert(inviteTitle, isPresented: Binding(get: { pendingInvite != nil }, set: { if !$0 { pendingInvite = nil } })) {
             if let p = pendingInvite, !p.ownInvite, !p.alreadyConnected {
                 Button("Accept") { pendingInvite = nil; Task { await redeem() } }
@@ -153,6 +151,44 @@ struct FriendsView: View {
 }
 
 
+/// The next alarm on this phone as the home's hero: lime time on forest, the day and label under
+/// it, and the one readiness problem that would stop it ringing, with the way to fix it.
+private struct NextAlarmHero: View {
+    let fireAt: Date
+    let label: String
+    @ScaledMetric(relativeTo: .largeTitle) private var timeSize: CGFloat = 60
+
+    init(fireAt: Date, label: String) {
+        self.fireAt = fireAt
+        self.label = label
+    }
+
+    var body: some View {
+        let parts = nextAlarmText(fireAt, label: "").split(separator: " ", maxSplits: 1).map(String.init)
+        HeroCard {
+            HStack(spacing: WMSpacing.xs) {
+                WMIconImage(.alarm, size: WMLayout.iconSizeSmall)
+                Text("Next alarm on this phone").font(WMFont.label)
+            }
+            .foregroundStyle(WMColor.onHeroSecondary)
+            Text(parts.last ?? "")
+                .font(.system(size: min(timeSize, 60 * 1.5), weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(WMColor.onHero)
+            Text((parts.first ?? "") + (label.isEmpty ? "" : " · \(label)"))
+                .font(WMFont.cardTitle)
+                .foregroundStyle(WMColor.onHeroSecondary)
+            if WakeAlarms.shared.authorization != .authorized {
+                StatusPill(text: "Alarm access is off, so it can't ring.", tone: .warning, icon: .warning)
+                PrimaryButton(title: "Open Settings", icon: .arrowUpRight) {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
 struct InviteSheet: View {
     let invite: InviteCreatedDTO
     @Environment(\.dismiss) private var dismiss
@@ -160,16 +196,24 @@ struct InviteSheet: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
                 Text("Share your invite").font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
-                Text("If the link doesn't open the app, they can type this code:").foregroundStyle(WMColor.textSecondary)
-                Text(invite.code).font(.system(.title, design: .monospaced).bold()).foregroundStyle(WMColor.textPrimary).textSelection(.enabled)
-                    .accessibilityIdentifier("inviteCode")
-                Text(invite.kind == "circle"
-                     ? "It expires soon. Joining the circle doesn't make anyone friends or give any permissions."
-                     : "It works once and expires soon. Accepting makes you friends and nothing more: each of you chooses what the other can do.").foregroundStyle(WMColor.textSecondary)
-                ShareLink(item: "Let's wake each other up on Wake Me: \(invite.url) (code \(invite.code))") {
-                    Text("Share").font(.headline).frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
+                // The code is the fallback when the link doesn't open the app: big, selectable, on its own card.
+                WMCard {
+                    Text("Or they type this code").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                    Text(invite.code).font(.system(.title, design: .monospaced).bold()).foregroundStyle(WMColor.textPrimary).textSelection(.enabled)
+                        .accessibilityIdentifier("inviteCode")
                 }
-                .buttonStyle(.borderedProminent).tint(WMColor.accent).foregroundStyle(WMColor.textOnAccent)
+                Note(invite.kind == "circle"
+                     ? "Expires soon. Joining gives no one permissions on anyone's phone."
+                     : "Works once and expires soon. Accepting makes you friends and nothing more.", icon: .lock)
+                ShareLink(item: "Let's wake each other up on Wake Me: \(invite.url) (code \(invite.code))") {
+                    HStack(spacing: WMSpacing.xs) {
+                        WMIconImage(.share, size: WMLayout.iconSizeSmall)
+                        Text("Share").font(WMFont.cardTitle)
+                    }
+                    .foregroundStyle(WMColor.textOnAccent)
+                    .frame(maxWidth: .infinity, minHeight: WMLayout.buttonHeight)
+                }
+                .buttonStyle(WMPressStyle(fill: WMColor.accent, pressedFill: WMColor.accentPressed))
                 Spacer()
             }
             .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md)
@@ -209,10 +253,11 @@ struct FriendDetailView: View {
                         VStack(alignment: .leading, spacing: WMSpacing.xxs) {
                             Text(name).font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                             if f.actions?.first(where: { $0.capability == Capability.nudge })?.availableNow == true {
-                                StatusPill(text: "Quack available now", tone: .success)
+                                StatusPill(text: "Quack available now", tone: .success, icon: .quack)
                             }
                         }
                     }
+                    quickActions(f)
                     quackCard(f)
                     wakeCard(f)
                     if let c = lastCommand {
@@ -224,20 +269,8 @@ struct FriendDetailView: View {
                             }
                         }
                     }
-                    if f.theyAllowMe?.capabilities.contains(Capability.alarmSchedule) == true || !suggested.isEmpty { suggestCard(f) }
-                    if let conversation = f.conversationId {
-                        NavigationLink {
-                            ConversationView(conversationId: conversation, friendName: name)
-                        } label: {
-                            Label("Messages", systemImage: "bubble.left.and.bubble.right")
-                                .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget, alignment: .leading)
-                        }
-                    }
+                    if !suggested.isEmpty { suggestCard(f) }
                     permissionsCard(f)
-                    Text("What \(name) can do on your phone is up to you. Circle membership never changes it.")
-                        .foregroundStyle(WMColor.textSecondary)
-                    SecondaryButton(title: "Remove \(name) as a friend") { confirmRemove = true }
-                    SecondaryButton(title: "Block or report \(name)") { confirmBlock = true }
                 }
                 .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md).frame(maxWidth: WMLayout.readableWidth).frame(maxWidth: .infinity)
                 .sheet(isPresented: $suggesting) { RoutineEditorView(friend: f, onSaved: { await load() }) }
@@ -246,6 +279,20 @@ struct FriendDetailView: View {
             }
         }
         .background(WMColor.surface)
+        // Remove and block live in the More menu, away from everyday actions.
+        .toolbar {
+            if let f = friend {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button { confirmRemove = true } label: { Label { Text("Remove \(f.user.displayName) as a friend") } icon: { WMIcon.close.image } }
+                        Button(role: .destructive) { confirmBlock = true } label: { Label { Text("Block or report \(f.user.displayName)") } icon: { WMIcon.block.image } }
+                    } label: {
+                        WMIconImage(.more, size: 22).foregroundStyle(WMColor.textPrimary)
+                    }
+                    .accessibilityLabel("More for \(f.user.displayName)")
+                }
+            }
+        }
         .task { await load() }
         // While a request is on its way, show what their phone reports, in words.
         .task(id: lastCommand?.id) { await followLastCommand() }
@@ -275,38 +322,68 @@ struct FriendDetailView: View {
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
     }
 
+    /// One word each, every circle its own petal colour (the reference apps' row of round actions).
+    /// The longer action is what VoiceOver says ("Suggest" → "Suggest a wake-up routine").
+    @ViewBuilder private func quickActions(_ f: FriendDTO) -> some View {
+        let name = f.user.displayName
+        HStack(alignment: .top, spacing: WMSpacing.xxs) {
+            if let conversation = f.conversationId {
+                NavigationLink {
+                    ConversationView(conversationId: conversation, friendName: name)
+                } label: {
+                    QuickActionLabel(icon: .message, title: "Messages", family: WMPalette.sky)
+                }
+                .buttonStyle(WMPressStyle())
+                .accessibilityLabel("Messages")
+            }
+            if f.theyAllowMe?.capabilities.contains(Capability.alarmSchedule) == true {
+                QuickAction(icon: .calendarPlus, title: "Suggest", family: WMPalette.apricot, spokenLabel: "Suggest a wake-up routine") { suggesting = true }
+            }
+            NavigationLink {
+                SafetyView()
+            } label: {
+                QuickActionLabel(icon: .shield, title: "Safety", family: WMPalette.orchid)
+            }
+            .buttonStyle(WMPressStyle())
+            .accessibilityLabel("Safety check-ins and location")
+        }
+    }
+
     @ViewBuilder private func quackCard(_ f: FriendDTO) -> some View {
         let quack = f.actions?.first { $0.capability == Capability.nudge }
         let sounds = f.theyAllowMe?.limits.nudge?.sounds ?? []
         let quackTick = lastCommand?.capability == Capability.nudge ? sentTick : 0
         WMCard {
-            // The duck's frame already reserves room for its sound marks, so the title sits close.
+            // The same header as every capability card: mark, title (and one line), then the card's
+            // small action at the end. The duck's frame reserves room for its sound marks.
             HStack(spacing: WMSpacing.xxs) {
                 // Replays only after a send the server accepted; says nothing about delivery.
                 QuackBurst(tick: quackTick, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Quack").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
-                    if !sounds.isEmpty {
-                        Text("Only sounds \(f.user.displayName) allowed.").font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                    if quack?.granted == true && quack?.availableNow == true && !sounds.isEmpty {
+                        Text("Only sounds \(f.user.displayName) allowed.").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                    } else {
+                        Text(reasonText(f.user.displayName, quack?.reason ?? "capability_not_granted")).font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
                     }
                 }
+                Spacer(minLength: WMSpacing.xs)
+                // Plays the quack here only: hear it before sending it.
+                RoundIconButton(icon: .speaker, label: "Preview on my phone") { QuackPreview.shared.play() }
             }
-            if sounds.count > 1 {
-                Picker("Sound", selection: Binding(get: { quackSound ?? sounds[0] }, set: { quackSound = $0 })) {
-                    ForEach(sounds, id: \.self) { Text(soundName($0)).tag($0) }
-                }
-                .pickerStyle(.menu)
-            }
-            SecondaryButton(title: "Preview on my phone") { QuackPreview.shared.play() }
             if let quack, quack.granted, quack.availableNow {
-                PrimaryButton(title: sending == Capability.nudge ? "Sending…" : "Send quack") { Task { await maybeAskThenSend() } }
+                if sounds.count > 1 {
+                    Picker("Sound", selection: Binding(get: { quackSound ?? sounds[0] }, set: { quackSound = $0 })) {
+                        ForEach(sounds, id: \.self) { Text(soundName($0)).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                }
+                PrimaryButton(title: sending == Capability.nudge ? "Sending…" : "Send quack", icon: .send) { Task { await maybeAskThenSend() } }
                     .disabled(sending != nil)
                 if quackTick > 0 {
-                    Text("Sent to \(f.user.displayName)").font(.headline).foregroundStyle(WMColor.textPrimary)
+                    Text("Sent to \(f.user.displayName)").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         .transition(.opacity)
                 }
-            } else {
-                Text(reasonText(f.user.displayName, quack?.reason ?? "capability_not_granted")).foregroundStyle(WMColor.textSecondary)
             }
         }
     }
@@ -316,18 +393,21 @@ struct FriendDetailView: View {
         let name = f.user.displayName
         if let wake = f.actions?.first(where: { $0.capability == Capability.alarmRequest }), wake.granted {
             WMCard {
-                Text("Wake alarm").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                HStack(spacing: WMSpacing.sm) {
+                    IconChip(icon: .wake, family: WMPalette.apricot)
+                    Text("Wake alarm").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                }
                 Text("Rings \(name)'s phone for up to \(f.theyAllowMe?.limits.alarm?.maxAlarmSeconds ?? 60) seconds, inside the wake hours they chose.")
                     .foregroundStyle(WMColor.textSecondary)
                 if wake.availableNow {
-                    PrimaryButton(title: sending == Capability.alarmRequest ? "Sending…" : "Send wake alarm") { Task { await sendWakeAlarm() } }
+                    PrimaryButton(title: sending == Capability.alarmRequest ? "Sending…" : "Send wake alarm", icon: .wake) { Task { await sendWakeAlarm() } }
                         .disabled(sending != nil)
                 } else {
                     Text(reasonText(name, wake.reason)).foregroundStyle(WMColor.textSecondary)
                 }
             }
         } else {
-            Text("\(name) hasn't turned on wake alarms for you. You can ask them in a message.").foregroundStyle(WMColor.textSecondary)
+            Note("\(name) hasn't turned on wake alarms for you.", icon: .wake)
         }
     }
 
@@ -335,18 +415,20 @@ struct FriendDetailView: View {
     @ViewBuilder private func suggestCard(_ f: FriendDTO) -> some View {
         let name = f.user.displayName
         WMCard {
-            Text("Wake-ups for \(name)").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+            HStack(spacing: WMSpacing.sm) {
+                IconChip(icon: .calendarPlus, family: WMPalette.apricot)
+                Text("Wake-ups for \(name)").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+            }
             ForEach(suggested) { p in
                 if let v = p.pending ?? p.accepted {
                     VStack(alignment: .leading, spacing: WMSpacing.xxs) {
                         Text("\(v.localTime) · \(daysText(v.recurrence))").foregroundStyle(WMColor.textPrimary)
                         let r = readinessText(p.readiness, owner: name, mine: false)
-                        StatusPill(text: r.0, tone: r.1)
+                        StatusPill(text: r.0, tone: r.1, icon: toneIcon(r.1))
                     }
                 }
             }
             if f.theyAllowMe?.capabilities.contains(Capability.alarmSchedule) == true {
-                SecondaryButton(title: "Suggest a wake-up routine") { suggesting = true }
                 Text("It's a suggestion: nothing changes on \(name)'s phone until they accept it.").font(.footnote).foregroundStyle(WMColor.textSecondary)
             }
         }
@@ -384,16 +466,21 @@ struct FriendDetailView: View {
         let name = f.user.displayName
         let mine = f.iAllowThem.flatMap { $0.revokedAt == nil ? $0 : nil }
         WMCard {
-            Text("What \(name) can do on your phone").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+            HStack(spacing: WMSpacing.sm) {
+                IconChip(icon: .key, family: WMPalette.lime)
+                Text("What \(name) can do on your phone").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+            }
             if let g = mine {
                 Text("\(name) can \(g.capabilities.map(capabilityText).sorted().joined(separator: ", ")).").foregroundStyle(WMColor.textPrimary)
-                if g.paused { StatusPill(text: "Paused", tone: .neutral) }
-                SecondaryButton(title: "Change permissions") { editing = true }
-                SecondaryButton(title: g.paused ? "Resume \(name)'s permissions" : "Pause \(name)'s permissions") { Task { await pause(g, !g.paused) } }
+                if g.paused { StatusPill(text: "Paused", tone: .neutral, icon: .pause) }
+                SecondaryButton(title: "Change permissions", icon: .sliders) { editing = true }
+                SecondaryButton(title: g.paused ? "Resume \(name)'s permissions" : "Pause \(name)'s permissions", icon: g.paused ? .play : .pause) { Task { await pause(g, !g.paused) } }
             } else {
                 Text("Nothing yet. \(name) can't make a sound or set an alarm on your phone.").foregroundStyle(WMColor.textSecondary)
-                PrimaryButton(title: "Choose what \(name) can do") { editing = true }
+                PrimaryButton(title: "Choose what \(name) can do", icon: .key) { editing = true }
             }
+            // Recipient-owned: only you change this, and circles never do.
+            Note("Only you change this. Being in a circle together never does.", icon: .lock)
         }
     }
 

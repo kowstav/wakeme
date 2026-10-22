@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.UiAutomation
 import android.content.Intent
 import android.provider.Settings
+import android.view.ViewGroup
 import android.view.accessibility.AccessibilityManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.FileInputStream
@@ -35,6 +36,18 @@ class FocusShieldTest {
             showing = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).any { it is FocusShieldActivity }
         }
         return showing
+    }
+
+    /** The shield has laid out its content: its first frame can come over a second after it resumes. */
+    private fun shieldDrawn(): Boolean {
+        var drawn = false
+        instrumentation.runOnMainSync {
+            drawn = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<FocusShieldActivity>().any { shield ->
+                val content = shield.findViewById<ViewGroup>(android.R.id.content)
+                content.childCount > 0 && content.getChildAt(0).let { it.isLaidOut && it.height > 0 }
+            }
+        }
+        return drawn
     }
 
     private fun waitFor(ms: Long, condition: () -> Boolean): Boolean {
@@ -90,6 +103,9 @@ class FocusShieldTest {
             store.start(startFocus("instrumented", System.currentTimeMillis(), 25)!!)
             openSettings()
             assertTrue("the shield covers the chosen app during focus", waitFor(15_000) { shieldShowing() })
+            // Screenshots taken 0.8 s after it resumed showed only the window background (runs 56,
+            // 64 and 76; logcat put its first frame at +1.6 s on the software-rendered emulator).
+            assertTrue("the shield draws its content", waitFor(10_000) { shieldDrawn() })
             Thread.sleep(800)
             DeviceEvidence.screenshot("13-focus-shield")
 

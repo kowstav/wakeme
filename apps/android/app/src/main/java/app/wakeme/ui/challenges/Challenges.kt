@@ -1,5 +1,7 @@
 package app.wakeme.ui.challenges
 
+import app.wakeme.designsystem.WMIcon
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,11 +19,9 @@ import androidx.compose.ui.semantics.semantics
 import app.wakeme.designsystem.AdaptiveList
 import app.wakeme.designsystem.ReloadWhenBackOnTop
 import app.wakeme.designsystem.fullWidth
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -56,7 +56,21 @@ import app.wakeme.data.net.CircleDto
 import app.wakeme.data.net.TemplateDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.Body
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import app.wakeme.designsystem.BentoRow
+import app.wakeme.designsystem.BentoTile
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailScreen
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.Note
+import app.wakeme.designsystem.PillButton
+import app.wakeme.designsystem.Supporting
+import app.wakeme.designsystem.WakeMeFamily
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
@@ -218,29 +232,62 @@ fun ChallengesList(
         fullWidth {
             Gap()
             Text("Challenges", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-            Body("Build challenges from your group's own jokes and goals. They run on the phone, even offline, and always have a way out.")
-            PrimaryButton("Create a challenge", onClick = onNew)
         }
-        fullWidth { SectionTitle("Start from a template") }
-        items(s.templates, key = { it.id }) { t ->
-            WMCard {
-                Text(t.title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                Body(t.description)
-                SecondaryButton("Try it", onClick = { onTry(t) })
+        // The screen's action leads; its one line of explanation sits under it.
+        fullWidth {
+            Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                PrimaryButton("Create a challenge", onClick = onNew, icon = WMIcon.Plus)
+                Note("Your group's own jokes and goals. They work offline and always have a way out.", icon = WMIcon.Trophy)
             }
         }
+        // Yours first: what you made is what you came back for.
         if (s.challenges.isNotEmpty()) fullWidth { SectionTitle("Yours and your circles'") }
         items(s.challenges, key = { it.id }) { c ->
             WMCard {
-                Text(c.title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                Body(challengeAudience(c.circleId, s.circles))
-                StatusPill(if (c.publishedRevision != null) "Ready to use · version ${c.publishedRevision}" else "Draft", if (c.publishedRevision != null) Tone.Success else Tone.Neutral)
-                QuietButton("Open", onClick = { onOpen(c) })
-                if (canEdit(c)) QuietButton("Edit", onClick = { onEdit(c.id) })
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                    IconChip(WMIcon.Trophy, circleOrOwnFamily(c.id))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(c.title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                        Supporting(challengeAudience(c.circleId, s.circles))
+                    }
+                }
+                StatusPill(if (c.publishedRevision != null) "Ready to use · version ${c.publishedRevision}" else "Draft", if (c.publishedRevision != null) Tone.Success else Tone.Neutral, icon = if (c.publishedRevision != null) WMIcon.CheckCircle else WMIcon.Edit)
+                Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                    PillButton("Open", onClick = { onOpen(c) }, icon = WMIcon.Play)
+                    if (canEdit(c)) PillButton("Edit", onClick = { onEdit(c.id) }, icon = WMIcon.Edit)
+                }
+            }
+        }
+        // Templates are tried with one tap: petal tiles, two to a row, each its own colour.
+        if (s.templates.isNotEmpty()) fullWidth { SectionTitle("Start from a template") }
+        s.templates.chunked(2).forEachIndexed { row, pair ->
+            fullWidth {
+                BentoRow {
+                    pair.forEachIndexed { i, t ->
+                        val (icon, family) = templateLook(row * 2 + i)
+                        BentoTile(t.title, icon, family, onClick = { onTry(t) }, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = t.description)
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
             }
         }
         fullWidth { Gap(WakeMeTokens.spaceXl) }
     }
+}
+
+/** Each template tile its own icon and petal, in a fixed order (same order as iOS). */
+@Composable
+private fun templateLook(index: Int): Pair<WMIcon, WakeMeFamily> {
+    val p = WM.palette
+    val looks = listOf(WMIcon.Sparkle to p.gold, WMIcon.Trophy to p.sky, WMIcon.Book to p.orchid, WMIcon.Focus to p.aqua, WMIcon.Dumbbell to p.apricot, WMIcon.Heart to p.periwinkle)
+    return looks[index % looks.size]
+}
+
+/** A challenge's petal, stable for its id. */
+@Composable
+private fun circleOrOwnFamily(id: String): WakeMeFamily {
+    val all = WM.palette.avatars
+    return all[Math.floorMod(id.hashCode(), all.size)]
 }
 
 @Composable
@@ -248,18 +295,26 @@ private fun TryOut(c: ChallengeDto, def: ChallengeDefinition, vm: ChallengesView
     var finished by rememberSaveable(c.id, def) { mutableStateOf(false) }
     val draft = c.revisions.maxBy { it.revision }.state == "draft"
     if (!finished) {
+        // Back stops the try-out, as "Stop trying" does, instead of leaving the screen.
+        BackHandler { finished = true }
         Column(Modifier.fillMaxSize()) {
-            StatusPill(if (draft) "Trying your draft. Answers are checked on this phone." else "Practice run", Tone.Info)
+            StatusPill(
+                if (draft) "Trying your draft. Answers are checked on this phone." else "Practice run",
+                Tone.Info,
+                modifier = Modifier.padding(horizontal = WakeMeTokens.screenMargin, vertical = WakeMeTokens.spaceSm),
+            )
             ChallengeRunner(def, onComplete = { finished = true }, onEscape = { finished = true }, escapeLabel = "Stop trying", modifier = Modifier.weight(1f), sessionKey = "${c.id}:${c.latestRevision}")
         }
     } else {
-        Column(Modifier.padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-            Text(def.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary)
+        // Back (the bar or the system) leaves without publishing, as "Keep as draft" and "Done" do.
+        BackHandler { vm.finishedTrying(publish = false) }
+        DetailScreen(onBack = { vm.finishedTrying(publish = false) }) {
+            Text(def.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             val state by vm.state.collectAsState()
             Body(challengeAudience(c.circleId, state.circles))
             if (draft) {
                 Body("Publishing freezes this version. Friends who accept it get exactly this; later edits become a new version they must accept.")
-                PrimaryButton("Publish", onClick = { vm.finishedTrying(publish = true) })
+                PrimaryButton("Publish", onClick = { vm.finishedTrying(publish = true) }, icon = WMIcon.Share)
                 SecondaryButton("Keep as draft", onClick = { vm.finishedTrying(publish = false) })
             } else PrimaryButton("Done", onClick = { vm.finishedTrying(publish = false) })
         }
@@ -319,8 +374,8 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
         if (editId != null) {
             Body("Your changes become version ${(editing?.latestRevision ?: 0) + 1}. You try it before publishing, and friends keep the version they accepted until they accept the new one.")
         } else FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            FilterChip(selected = mode == "quiz", onClick = { mode = "quiz" }, label = { Text("Build a quiz myself") })
-            FilterChip(selected = mode == "ai", onClick = { mode = "ai" }, label = { Text("Describe it") })
+            ChoiceChip("Build a quiz myself", selected = mode == "quiz", onClick = { mode = "quiz" })
+            ChoiceChip("Describe it", selected = mode == "ai", onClick = { mode = "ai" })
         }
         if (editId != null) {
             Body(challengeAudience(editing?.circleId, s.circles))
@@ -328,9 +383,9 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
         } else if (mode == "quiz") {
             SectionTitle("Who can see this quiz?")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                FilterChip(selected = circleId == null, onClick = { circleId = null }, enabled = s.busy == null, label = { Text("Only me") })
+                ChoiceChip("Only me", selected = circleId == null, onClick = { circleId = null }, enabled = s.busy == null)
                 s.circles.forEach { circle ->
-                    FilterChip(selected = circleId == circle.id, onClick = { circleId = circle.id }, enabled = s.busy == null, label = { Text(circle.name) })
+                    ChoiceChip(circle.name, selected = circleId == circle.id, onClick = { circleId = circle.id }, enabled = s.busy == null)
                 }
             }
             Body(if (circleId == null) "Only you can read this quiz here. You can still offer its published version in a wake-up someone accepts." else "Everyone in this circle can read the quiz and its answers, including drafts. Only you can edit or publish it. Circle membership gives no alarm permissions.")
@@ -341,7 +396,7 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
             s.credits?.let { Body("$it AI creation${if (it == 1) "" else "s"} left. Saved challenges never use credits again.") }
             OutlinedTextField(prompt, { prompt = it.take(500) }, label = { Text("Describe a challenge only your group would get") }, placeholder = { Text("Ask which café we call headquarters. Use the choices I give.") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                listOf("easy", "medium", "hard").forEach { d -> FilterChip(selected = difficulty == d, onClick = { difficulty = d }, label = { Text(d) }) }
+                listOf("easy", "medium", "hard").forEach { d -> ChoiceChip(d.replaceFirstChar { it.uppercase() }, selected = difficulty == d, onClick = { difficulty = d }) }
             }
         } else {
             OutlinedTextField(title, { title = it.take(60) }, label = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth())

@@ -12,24 +12,34 @@ struct CirclesSection: View {
 
     var body: some View {
         Section {
-            if circles.isEmpty {
-                Text("A circle is a private group: your flat, study group or team, with its own chat.")
-                    .foregroundStyle(WMColor.textSecondary)
-            }
             ForEach(circles) { c in
                 NavigationLink {
                     CircleView(circleId: c.id)
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(c.name).font(.headline).foregroundStyle(WMColor.textPrimary)
-                        Text("\(c.memberCount) member\(c.memberCount == 1 ? "" : "s")").font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                    HStack(spacing: WMSpacing.sm) {
+                        IconChip(icon: .circles, family: familyFor(c.id, offset: 3), size: 48)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(c.name).font(.headline).foregroundStyle(WMColor.textPrimary)
+                            Text("\(c.memberCount) member\(c.memberCount == 1 ? "" : "s")").font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                        }
                     }
                     .frame(minHeight: WMSize.minTouchTarget)
                 }
             }
-            Button("New circle") { naming = true }.frame(minHeight: WMSize.minTouchTarget)
+            Button { naming = true } label: {
+                Label { Text("New circle") } icon: { WMIconImage(.plus, size: WMLayout.iconSizeSmall) }
+                    .font(WMFont.cardTitle)
+                    .foregroundStyle(WMColor.accentText)
+            }
+            .frame(minHeight: WMSize.minTouchTarget)
+            .accessibilityLabel("New circle")
         } header: {
             Text("Circles")
+        } footer: {
+            // Explained once, under the group, until there is a circle to show instead.
+            if circles.isEmpty {
+                Text("A private group, like your flat or team, with its own chat.")
+            }
         }
         .task { await load() }
         .alert("New circle", isPresented: $naming) {
@@ -67,42 +77,51 @@ struct CircleView: View {
     @State private var renaming = false
     @State private var newName = ""
     @State private var message: String?
+    @State private var chatting = false
 
     var body: some View {
         List {
             if let d = detail {
                 let admin = d.circle.role == "owner" || d.circle.role == "admin"
-                Section {
-                    Text("Being in a circle together doesn't let anyone do anything on your phone. Each person still chooses that, friend by friend.")
-                        .foregroundStyle(WMColor.textSecondary)
-                    NavigationLink {
-                        ConversationView(conversationId: d.circle.conversationId, friendName: d.circle.name)
-                    } label: {
-                        Label("Messages", systemImage: "bubble.left.and.bubble.right").frame(minHeight: WMSize.minTouchTarget, alignment: .leading)
+                // Quick actions: the words stay visible ("Invite" is read as "Invite to this circle").
+                // Messages pushes through navigationDestination: a NavigationLink inside a List row
+                // draws a disclosure chevron between the circles.
+                HStack(alignment: .top, spacing: WMSpacing.xxs) {
+                    QuickAction(icon: .message, title: "Messages", primary: true) { chatting = true }
+                    QuickAction(icon: .personPlus, title: "Invite", family: WMPalette.sky, spokenLabel: "Invite to this circle") { Task { await createInvite() } }
+                    if admin {
+                        QuickAction(icon: .edit, title: "Rename", family: WMPalette.gold, spokenLabel: "Rename circle") { newName = d.circle.name; renaming = true }
                     }
-                    Button("Invite to this circle") { Task { await createInvite() } }.frame(minHeight: WMSize.minTouchTarget)
                 }
-                Section("Members") {
-                    ForEach(d.members, id: \.user.id) { m in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(m.user.displayName + (m.user.id == app.me?.id ? " (you)" : "")).foregroundStyle(WMColor.textPrimary)
-                                Text(roleText(m)).font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                .bentoRow()
+                Group {
+                    Section {
+                        ForEach(d.members, id: \.user.id) { m in
+                            HStack(spacing: WMSpacing.sm) {
+                                FriendAvatar(name: m.user.displayName, key: m.user.id)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(m.user.displayName + (m.user.id == app.me?.id ? " (you)" : "")).foregroundStyle(WMColor.textPrimary)
+                                    Text(roleText(m)).font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                                }
+                                Spacer()
+                                if admin && m.role != "owner" && m.user.id != app.me?.id {
+                                    Button("Remove") { Task { await remove(m.user.id) } }
+                                        .buttonStyle(.borderless)
+                                        .accessibilityLabel("Remove \(m.user.displayName)")
+                                }
                             }
-                            Spacer()
-                            if admin && m.role != "owner" && m.user.id != app.me?.id {
-                                Button("Remove") { Task { await remove(m.user.id) } }
-                                    .buttonStyle(.borderless)
-                                    .accessibilityLabel("Remove \(m.user.displayName)")
-                            }
+                            .frame(minHeight: WMSize.minTouchTarget)
                         }
-                        .frame(minHeight: WMSize.minTouchTarget)
+                    } header: {
+                        Text("Members")
+                    } footer: {
+                        Text("Being in a circle never lets anyone do anything on your phone.")
+                    }
+                    Section {
+                        Button("Leave circle", role: .destructive) { confirmLeave = true }
                     }
                 }
-                Section {
-                    if admin { Button("Rename circle") { newName = d.circle.name; renaming = true } }
-                    Button("Leave circle", role: .destructive) { confirmLeave = true }
-                }
+                .cardRows()
             } else {
                 ProgressView()
             }
@@ -110,6 +129,9 @@ struct CircleView: View {
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
         .navigationTitle(detail?.circle.name ?? "Circle")
+        .navigationDestination(isPresented: $chatting) {
+            if let d = detail { ConversationView(conversationId: d.circle.conversationId, friendName: d.circle.name) }
+        }
         .task { await load() }
         .sheet(item: $invite) { inv in InviteSheet(invite: inv) }
         .alert("Leave \(detail?.circle.name ?? "this circle")?", isPresented: $confirmLeave) {

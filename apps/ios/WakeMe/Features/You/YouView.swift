@@ -3,9 +3,13 @@ import UniformTypeIdentifiers
 import WakeMeAPI
 import WakeMeCore
 
-/// You: readiness, consent settings and account. Every control works without a subscription.
+/// You: who you are, the places you go from here as a bento grid (each its own petal colour and
+/// icon), consent settings and account. Every control works without a subscription.
 struct YouView: View {
     @Environment(AppModel.self) private var app
+    @State private var showSafety = false
+    @State private var showFocus = false
+    @State private var showReady = false
     @State private var confirmSignOut = false
     @State private var confirmDelete = false
     @State private var showPlus = false
@@ -17,47 +21,79 @@ struct YouView: View {
     var body: some View {
         List {
             if let me = app.me {
-                Section {
-                    Text(me.displayName).font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
-                    Text(me.timeZone).foregroundStyle(WMColor.textSecondary)
-                }
-                Section("This phone") {
-                    NavigationLink("Make this phone ready") { ReadyView() }
-                }
-                Section("Safety") {
-                    NavigationLink("Safety check-ins and location") { SafetyView() }
-                    NavigationLink("Focus") { FocusView() }
-                }
-                Section("When friends can reach you") {
-                    Toggle("Quiet hours (\(me.settings.quietHours.start)–\(me.settings.quietHours.end))", isOn: Binding(
-                        get: { me.settings.quietHours.enabled },
-                        set: { on in Task { await update(.init(quietHours: QuietHoursDTO(enabled: on, start: me.settings.quietHours.start, end: me.settings.quietHours.end))) } }
-                    ))
-                    if let until = me.settings.pausedUntil, let date = try? Instant.parse(until), date > Date() {
-                        StatusPill(text: "Requests paused until \(date.formatted(date: .abbreviated, time: .shortened))", tone: .info)
-                        Button("Resume now") { Task { await pause(nil) } }
-                    } else {
-                        Button("Pause all requests for 8 hours") { Task { await pause(Date().addingTimeInterval(8 * 3600)) } }
-                    }
-                    Text("Your own alarms still ring while requests are paused.").font(.footnote).foregroundStyle(WMColor.textSecondary)
-                }
-                Section("Subscription") {
-                    Text("AI credits: \(me.billing.credits.available) available").foregroundStyle(WMColor.textPrimary)
-                    Text("Routines \(me.limits.activeRoutines.used)/\(me.limits.activeRoutines.max) · Custom sounds \(me.limits.customSounds.used)/\(me.limits.customSounds.max)")
+                HStack(spacing: WMSpacing.md) {
+                    FriendAvatar(name: me.displayName, key: me.id, size: 64)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(me.displayName).font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
+                        HStack(spacing: WMSpacing.xxs) {
+                            WMIconImage(.globe, size: 16)
+                            Text(me.timeZone)
+                        }
+                        .font(WMFont.supporting)
                         .foregroundStyle(WMColor.textSecondary)
-                    Button(me.billing.plan == "plus" ? "Manage Plus" : "See Plus") { showPlus = true }
-                        .frame(minHeight: WMSize.minTouchTarget)
+                    }
                 }
-                Section("Your data") {
-                    Button(working ? "Preparing…" : "Export my data") { Task { await export() } }.disabled(working)
-                    Button("Delete account", role: .destructive) { confirmDelete = true }
+                .bentoRow()
+                BentoRow {
+                    BentoTile(title: "Safety check-ins and location", icon: .shield, family: WMPalette.orchid) { showSafety = true }
+                    BentoTile(title: "Focus", icon: .focus, family: WMPalette.aqua, supporting: "Time with chosen apps paused") { showFocus = true }
+                }
+                .bentoRow()
+                BentoRow {
+                    BentoTile(title: "Make this phone ready", icon: .phone, family: WMPalette.lime, supporting: "Alarm access and sound") { showReady = true }
+                    BentoTile(title: me.billing.plan == "plus" ? "Manage Plus" : "Wake Me Plus", icon: .sparkle, family: WMPalette.gold, supporting: me.billing.plan == "plus" ? "Your subscription" : "See what's included") { showPlus = true }
+                }
+                .bentoRow()
+                Group {
+                    Section("When friends can reach you") {
+                        Toggle(isOn: Binding(
+                            get: { me.settings.quietHours.enabled },
+                            set: { on in Task { await update(.init(quietHours: QuietHoursDTO(enabled: on, start: me.settings.quietHours.start, end: me.settings.quietHours.end))) } }
+                        )) {
+                            Label { Text("Quiet hours (\(me.settings.quietHours.start)–\(me.settings.quietHours.end))") } icon: { IconChip(icon: .moon, family: WMPalette.periwinkle, size: 32) }
+                        }
+                        if let until = me.settings.pausedUntil, let date = try? Instant.parse(until), date > Date() {
+                            StatusPill(text: "Requests paused until \(date.formatted(date: .abbreviated, time: .shortened))", tone: .info, icon: .pause)
+                            Button { Task { await pause(nil) } } label: {
+                                Label { Text("Resume now") } icon: { IconChip(icon: .play, family: WMPalette.sky, size: 32) }
+                            }
+                        } else {
+                            Button { Task { await pause(Date().addingTimeInterval(8 * 3600)) } } label: {
+                                Label { Text("Pause all requests for 8 hours") } icon: { IconChip(icon: .hourglass, family: WMPalette.sky, size: 32) }
+                            }
+                        }
+                        Text("Your own alarms still ring while requests are paused.").font(.footnote).foregroundStyle(WMColor.textSecondary)
+                    }
+                    Section("Subscription") {
+                        Text("AI credits: \(me.billing.credits.available) available").foregroundStyle(WMColor.textPrimary)
+                        Text("Routines \(me.limits.activeRoutines.used)/\(me.limits.activeRoutines.max) · Custom sounds \(me.limits.customSounds.used)/\(me.limits.customSounds.max)")
+                            .foregroundStyle(WMColor.textSecondary)
+                    }
+                    Section("Your data") {
+                        Button { Task { await export() } } label: {
+                            Label { Text(working ? "Preparing…" : "Export my data") } icon: { WMIconImage(.download, size: WMLayout.iconSizeSmall) }
+                        }
+                        .disabled(working)
+                        Button(role: .destructive) { confirmDelete = true } label: {
+                            Label { Text("Delete account") } icon: { WMIconImage(.trash, size: WMLayout.iconSizeSmall) }
+                        }
+                    }
+                }
+                .cardRows()
+            }
+            Section {
+                Button(role: .destructive) { confirmSignOut = true } label: {
+                    Label { Text("Sign out") } icon: { WMIconImage(.logout, size: WMLayout.iconSizeSmall) }
                 }
             }
-            Section { Button("Sign out", role: .destructive) { confirmSignOut = true } }
+            .cardRows()
         }
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
         .navigationTitle("You")
+        .navigationDestination(isPresented: $showSafety) { SafetyView() }
+        .navigationDestination(isPresented: $showFocus) { FocusView() }
+        .navigationDestination(isPresented: $showReady) { ReadyView() }
         .task { await app.refreshMe() }
         .sheet(isPresented: $showPlus) { PaywallView() }
         .confirmationDialog("Sign out?", isPresented: $confirmSignOut) {

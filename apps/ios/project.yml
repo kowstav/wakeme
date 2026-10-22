@@ -79,6 +79,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: YES
+        # Icons.xcassets holds the Bloom UI icons only; there is no app icon set yet (a store gate),
+        # so the asset compiler must not look for XcodeGen's default "AppIcon".
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
         WAKEME_API_BASE_URL: "http://127.0.0.1:8787"
         WAKEME_SUPABASE_URL: ""
         WAKEME_SUPABASE_ANON_KEY: ""

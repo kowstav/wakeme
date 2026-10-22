@@ -60,6 +60,14 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.HeroCard
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.WMIcon
+import app.wakeme.designsystem.WMIconView
+import app.wakeme.designsystem.WakeMeFamily
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import app.wakeme.designsystem.CardTitle
 import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.FieldGroup
@@ -209,10 +217,12 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
             Gap()
             Text("Routines", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             if (!s.exactAlarmsOk) {
-                StatusPill("Alarms aren't allowed to ring on time yet", Tone.Warning)
-                SecondaryButton("Make this phone ready", onClick = onFixReadiness)
+                Gap(WakeMeTokens.spaceXs)
+                StatusPill("Alarms aren't allowed to ring on time yet", Tone.Warning, icon = WMIcon.Warning)
+                Gap(WakeMeTokens.spaceXs)
+                SecondaryButton("Make this phone ready", onClick = onFixReadiness, icon = WMIcon.Phone)
             }
-            if (s.pendingEnds > 0) StatusPill("Ended on this phone · account update waiting to sync", Tone.Warning)
+            if (s.pendingEnds > 0) StatusPill("Ended on this phone · account update waiting to sync", Tone.Warning, icon = WMIcon.Clock)
         }
         val proposals = s.mine.filter { it.pending != null }
         if (proposals.isNotEmpty()) fullWidth { SectionTitle("Waiting for you") }
@@ -226,7 +236,7 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
         }
         fullWidth {
             Gap()
-            PrimaryButton("New wake-up", onClick = onNew)
+            PrimaryButton("New wake-up", onClick = onNew, icon = WMIcon.Plus)
             Gap(WakeMeTokens.spaceXl)
         }
     }
@@ -238,13 +248,41 @@ private fun PlanCard(p: PlanDto, myId: String?, onOpen: (String) -> Unit, modifi
     val mine = p.owner.id == myId
     val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
     WMCard(modifier, onClick = { onOpen(p.id) }, onClickLabel = "Open routine") {
-        Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
-            Text(timeAndDays(v.localTime, daysText(v.recurrence), WM.colors.textSecondary), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-            if (v.label.isNotBlank()) Text(v.label, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-            if (!mine) Supporting("For ${p.owner.displayName}") else if (p.creator.id != myId) Supporting("Suggested by ${p.creator.displayName}")
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
+                Text(timeAndDays(v.localTime, daysText(v.recurrence), WM.colors.textSecondary), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                if (v.label.isNotBlank()) Text(v.label, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                if (!mine) Supporting("For ${p.owner.displayName}") else if (p.creator.id != myId) Supporting("Suggested by ${p.creator.displayName}")
+            }
+            val (icon, family) = timeOfDay(v.localTime)
+            IconChip(icon, family, size = 48.dp)
         }
-        StatusPill(label, tone, announce = true)
+        StatusPill(label, tone, announce = true, icon = toneIcon(tone))
     }
+}
+
+/**
+ * A routine's time of day as an icon in its own petal colour: mornings are a gold sun, afternoons
+ * an apricot sun, evenings and nights a periwinkle moon. Decorative; the time itself is the text.
+ */
+@Composable
+internal fun timeOfDay(localTime: String): Pair<WMIcon, WakeMeFamily> {
+    val hour = localTime.substringBefore(':').toIntOrNull() ?: 7
+    val p = WM.palette
+    return when (hour) {
+        in 4..11 -> WMIcon.Sun to p.gold
+        in 12..16 -> WMIcon.Sun to p.apricot
+        else -> WMIcon.Moon to p.periwinkle
+    }
+}
+
+/** The icon a status pill leads with, so its tone is a shape as well as a colour. */
+internal fun toneIcon(tone: Tone): WMIcon? = when (tone) {
+    Tone.Success -> WMIcon.CheckCircle
+    Tone.Warning -> WMIcon.Warning
+    Tone.Info -> WMIcon.Info
+    Tone.Danger -> WMIcon.Warning
+    Tone.Neutral -> null
 }
 
 /**
@@ -271,25 +309,30 @@ fun RoutineDetailScreen(planId: String, onBack: () -> Unit, onReuse: () -> Unit 
             val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
             Text("Wake-up routine", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             (p.accepted ?: p.pending)?.let { v ->
-                Text(v.localTime, style = TimeDisplayStyle, color = WM.colors.textPrimary)
-                Body(daysText(v.recurrence) + if (v.label.isNotBlank()) " · ${v.label}" else "")
+                HeroCard(Modifier.semantics(mergeDescendants = true) { }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(v.localTime, style = TimeDisplayStyle, color = WM.colors.onHero, modifier = Modifier.weight(1f))
+                        WMIconView(timeOfDay(v.localTime).first, tint = WM.colors.onHero, size = WakeMeTokens.iconSizeLarge)
+                    }
+                    Text(daysText(v.recurrence) + if (v.label.isNotBlank()) " · ${v.label}" else "", style = MaterialTheme.typography.titleMedium, color = WM.colors.onHeroSecondary)
+                }
             }
-            StatusPill(label, tone, announce = true)
+            StatusPill(label, tone, announce = true, icon = toneIcon(tone))
             p.accepted?.let { VersionCard("Active version", it) }
             p.nextOccurrences.firstOrNull()?.let { Body("Next: ${it.localDate}") }
             p.pending?.let { pending ->
                 VersionCard(if (p.accepted == null) "Proposed by ${p.creator.displayName}" else "Proposed change from ${p.creator.displayName}", pending)
                 if (mine) {
                     Body("Nothing changes until you accept. You can change your mind anytime.")
-                    PrimaryButton("Accept this version", onClick = { vm.act({ acceptPlan(p.id, pending.version) }) })
-                    SecondaryButton(if (p.accepted == null) "Decline" else "Keep the current version", onClick = { vm.act({ declinePlan(p.id, pending.version) }) })
+                    PrimaryButton("Accept this version", onClick = { vm.act({ acceptPlan(p.id, pending.version) }) }, icon = WMIcon.Check)
+                    SecondaryButton(if (p.accepted == null) "Decline" else "Keep the current version", onClick = { vm.act({ declinePlan(p.id, pending.version) }) }, icon = WMIcon.Close)
                 }
             }
             if (mine && p.state in setOf("active", "paused")) {
-                SecondaryButton(if (p.state == "paused") "Resume" else "Pause", onClick = { vm.pause(p, p.state != "paused") })
+                SecondaryButton(if (p.state == "paused") "Resume" else "Pause", onClick = { vm.pause(p, p.state != "paused") }, icon = if (p.state == "paused") WMIcon.Play else WMIcon.Pause)
             }
-            if (p.accepted != null) SecondaryButton("Use this routine again", onClick = onReuse)
-            if (p.state !in setOf("cancelled", "declined")) DangerButton("End this routine", onClick = { vm.cancel(p); onBack() })
+            if (p.accepted != null) SecondaryButton("Use this routine again", onClick = onReuse, icon = WMIcon.Repeat)
+            if (p.state !in setOf("cancelled", "declined")) DangerButton("End this routine", onClick = { vm.cancel(p); onBack() }, icon = WMIcon.Trash)
         }
     }
 }
@@ -298,13 +341,22 @@ fun RoutineDetailScreen(planId: String, onBack: () -> Unit, onReuse: () -> Unit 
 private fun VersionCard(title: String, v: PlanVersionDto) {
     WMCard {
         CardTitle(title)
-        Body("${v.localTime} · ${daysText(v.recurrence)} · ${v.timeZone}${if (v.timeZonePolicy == "device") " (follows your phone when travelling)" else ""}")
-        Body("Rings for up to ${v.ringSeconds} seconds with ${soundName(v.soundId).lowercase()}")
-        v.followUpDelaySeconds?.let { Body("One follow-up alarm ${it / 60} min later unless you finish the challenge") }
+        DetailLine(WMIcon.Globe, "${v.localTime} · ${daysText(v.recurrence)} · ${v.timeZone}${if (v.timeZonePolicy == "device") " (follows your phone when travelling)" else ""}")
+        DetailLine(WMIcon.Speaker, "Rings for up to ${v.ringSeconds} seconds with ${soundName(v.soundId).lowercase()}")
+        v.followUpDelaySeconds?.let { DetailLine(WMIcon.Repeat, "One follow-up alarm ${it / 60} min later unless you finish the challenge") }
         (v.challengePreview as? JsonObject)?.let { pv ->
-            Body("Challenge: ${pv["title"]?.jsonPrimitive?.content} · about ${pv["estimatedSeconds"]?.jsonPrimitive?.content}s · ${pv["verificationLabel"]?.jsonPrimitive?.content}")
+            DetailLine(WMIcon.Trophy, "Challenge: ${pv["title"]?.jsonPrimitive?.content} · about ${pv["estimatedSeconds"]?.jsonPrimitive?.content}s · ${pv["verificationLabel"]?.jsonPrimitive?.content}")
             Body(pv["escape"]?.jsonPrimitive?.content ?: "")
         }
+    }
+}
+
+/** One fact about a routine with its icon, so a card of facts can be scanned instead of read. */
+@Composable
+private fun DetailLine(icon: WMIcon, text: String) {
+    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+        WMIconView(icon, tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall, modifier = Modifier.padding(top = 2.dp))
+        Body(text, modifier = Modifier.weight(1f))
     }
 }
 
@@ -436,8 +488,8 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
         Body("Use routines for waking, study, gym or practice. These are reminders you choose; Wake Me doesn't verify attendance or penalize missed days.")
         if (reuseId != null) Body("This creates a new routine for you. Your existing routine and your friends' permissions stay as they are. Choose any challenge again.")
         FieldGroup("Start with") { FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            listOf("Wake-up", "Study", "Gym", "Language practice", "Music practice").forEach { preset ->
-                ChoiceChip(preset, selected = selectedPreset == preset, onClick = {
+            listOf("Wake-up" to WMIcon.Sun, "Study" to WMIcon.Book, "Gym" to WMIcon.Dumbbell, "Language practice" to WMIcon.Language, "Music practice" to WMIcon.Music).forEach { (preset, icon) ->
+                ChoiceChip(preset, selected = selectedPreset == preset, icon = icon, onClick = {
                     selectedPreset = preset
                     label = if (preset == "Wake-up") "" else preset
                     ring = if (preset == "Wake-up") 90 else 30
@@ -484,8 +536,8 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
             if (canFollowUp) SettingRow("One follow-up alarm", "Rings ${followUpDelay / 60} min later unless the challenge is finished. You can always end the session.", followUp) { followUp = it }
         }
         if (ownerId == null) SettingRow("Follow my phone when I travel", "Off keeps the time in your home time zone.", followTravel) { followTravel = it }
-        if (!vm.exactAlarmsAllowed()) StatusPill("This phone can't ring alarms on time yet. Allow “Alarms & reminders” first.", Tone.Warning)
-        PrimaryButton(if (s.saving) "Saving…" else if (ownerId == null) "Save wake-up" else "Send suggestion", enabled = !s.saving && (reuseId == null || s.reuseChecked) && !outsideHours && sound in sounds && ring in rings, onClick = {
+        if (!vm.exactAlarmsAllowed()) StatusPill("This phone can't ring alarms on time yet. Allow “Alarms & reminders” first.", Tone.Warning, icon = WMIcon.Warning)
+        PrimaryButton(if (s.saving) "Saving…" else if (ownerId == null) "Save wake-up" else "Send suggestion", icon = if (ownerId == null) WMIcon.Check else WMIcon.Send, enabled = !s.saving && (reuseId == null || s.reuseChecked) && !outsideHours && sound in sounds && ring in rings, onClick = {
             val terms =
                 PlanTerms(
                     label = label,

@@ -35,57 +35,73 @@ struct ChallengesView: View {
     }
 
     var body: some View {
+        let ready = challenges.filter { $0.publishedRevisionId != nil }
+        let drafts = challenges.filter { $0.publishedRevision == nil && $0.creatorId == app.me?.id }
         List {
-            Section {
-                Text("Build challenges from your group's own jokes and goals. They run on the phone, even offline, and always have a way out.")
-                    .foregroundStyle(WMColor.textSecondary)
-                Button("Create a challenge") { creating = true }.frame(minHeight: WMSize.minTouchTarget)
+            // The screen's action leads as a button, not a link inside a paragraph; the one line of
+            // explanation sits under it.
+            VStack(alignment: .leading, spacing: WMSpacing.sm) {
+                PrimaryButton(title: "Create a challenge", icon: .plus) { creating = true }
+                Note(loaded && ready.isEmpty && drafts.isEmpty
+                     ? "No challenges yet. Make one, or start from a template."
+                     : "Your group's own jokes and goals. They work offline and always have a way out.",
+                     icon: .trophy)
             }
-            let ready = challenges.filter { $0.publishedRevisionId != nil }
-            let drafts = challenges.filter { $0.publishedRevision == nil && $0.creatorId == app.me?.id }
-            if loaded && ready.isEmpty && drafts.isEmpty {
-                Section { Text("No challenges yet. Make one, or start from a template.").foregroundStyle(WMColor.textSecondary) }
-            }
-            if !ready.isEmpty {
-                Section("Try one") {
-                    ForEach(ready) { c in
-                        HStack {
-                            Button(c.title) { Task { await practise(c) } }
-                                .buttonStyle(.borderless)
-                                .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget, alignment: .leading)
-                            if c.creatorId == app.me?.id {
-                                Button("Edit") { Task { await edit(c.id) } }
+            .bentoRow()
+            Group {
+                if !ready.isEmpty {
+                    Section("Try one") {
+                        ForEach(ready) { c in
+                            HStack {
+                                Button { Task { await practise(c) } } label: {
+                                    HStack(spacing: WMSpacing.sm) {
+                                        IconChip(icon: .trophy, family: familyFor(c.id), size: 32)
+                                        Text(c.title).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                                    }
+                                }
                                     .buttonStyle(.borderless)
-                                    .frame(minHeight: WMSize.minTouchTarget)
-                                    .accessibilityLabel("Edit \(c.title)")
-                                    .disabled(busy)
+                                    .frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget, alignment: .leading)
+                                if c.creatorId == app.me?.id {
+                                    Button("Edit") { Task { await edit(c.id) } }
+                                        .buttonStyle(.borderless)
+                                        .frame(minHeight: WMSize.minTouchTarget)
+                                        .accessibilityLabel("Edit \(c.title)")
+                                        .disabled(busy)
+                                }
                             }
                         }
                     }
                 }
-            }
-            if !drafts.isEmpty {
-                Section {
-                    ForEach(drafts) { c in
-                        Button(c.title) { Task { await openDraft(c.id) } }.frame(minHeight: WMSize.minTouchTarget)
+                if !drafts.isEmpty {
+                    Section {
+                        ForEach(drafts) { c in
+                            Button(c.title) { Task { await openDraft(c.id) } }.frame(minHeight: WMSize.minTouchTarget)
+                        }
+                    } header: {
+                        Text("Your drafts")
+                    } footer: {
+                        Text("Try a draft to publish it.")
                     }
-                } header: {
-                    Text("Your drafts")
-                } footer: {
-                    Text("Try a draft to publish it.")
                 }
             }
+            .cardRows()
             if !templates.isEmpty {
-                Section("Start from a template") {
-                    ForEach(templates) { t in
-                        VStack(alignment: .leading, spacing: WMSpacing.xxs) {
-                            Text(t.title).font(.headline).foregroundStyle(WMColor.textPrimary)
-                            Text(t.description).foregroundStyle(WMColor.textSecondary)
-                            Button("Try “\(t.title)”") { Task { await fromTemplate(t) } }
-                                .frame(minHeight: WMSize.minTouchTarget)
-                                .disabled(busy)
+                // Templates are tried with one tap: petal tiles, two to a row, each its own colour.
+                Section {
+                    ForEach(Array(stride(from: 0, to: templates.count, by: 2)), id: \.self) { i in
+                        BentoRow {
+                            ForEach(i..<min(i + 2, templates.count), id: \.self) { j in
+                                let t = templates[j]
+                                let look = templateLook(j)
+                                BentoTile(title: t.title, icon: look.icon, family: look.family, supporting: t.description) { Task { await fromTemplate(t) } }
+                                    .disabled(busy)
+                                    .accessibilityHint("Tries it on this phone. \(t.description)")
+                            }
                         }
+                        .bentoRow()
                     }
+                } header: {
+                    Text("Start from a template")
                 }
             }
         }
@@ -127,6 +143,14 @@ struct ChallengesView: View {
             }
         }
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
+    }
+
+    /// Each template tile its own icon and petal, in a fixed order so a template keeps its look.
+    private func templateLook(_ index: Int) -> (icon: WMIcon, family: WMFamily) {
+        let looks: [(WMIcon, WMFamily)] = [(.sparkle, WMPalette.gold), (.trophy, WMPalette.sky), (.book, WMPalette.orchid),
+                                           (.focus, WMPalette.aqua), (.dumbbell, WMPalette.apricot), (.heart, WMPalette.periwinkle)]
+        let look = looks[index % looks.count]
+        return (look.0, look.1)
     }
 
     private func load() async {
@@ -292,66 +316,69 @@ struct ChallengeCreatorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let editing {
-                    Section {
-                        Text("Your changes become version \(editing.nextRevision). You try it before publishing, and friends keep the version they accepted until they accept the new one.")
-                            .foregroundStyle(WMColor.textSecondary)
-                    }
-                } else {
-                    Section {
-                        Picker("How", selection: $mode) {
-                            ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                Group {
+                    if let editing {
+                        Section {
+                            Text("Your changes become version \(editing.nextRevision). You try it before publishing, and friends keep the version they accepted until they accept the new one.")
+                                .foregroundStyle(WMColor.textSecondary)
                         }
-                        .pickerStyle(.segmented)
-                    }
-                }
-                if mode == .ai {
-                    Section {
-                        TextField("Describe a challenge only your group would get", text: $prompt, axis: .vertical)
-                            .lineLimit(3...6)
-                            .onChange(of: prompt) { _, v in if v.count > 500 { prompt = String(v.prefix(500)) } }
-                        Picker("Difficulty", selection: $difficulty) {
-                            Text("Easy").tag("easy")
-                            Text("Medium").tag("medium")
-                            Text("Hard").tag("hard")
-                        }
-                    } footer: {
-                        let credits = app.me?.billing.credits.available ?? 0
-                        Text("\(credits) AI creation\(credits == 1 ? "" : "s") left. Saved challenges never use credits again. Quiz answers come only from the facts below.")
-                    }
-                } else {
-                    Section {
-                        labelled("Title") {
-                            TextField("e.g. Thursday quiz", text: $title)
-                                .accessibilityIdentifier("quizTitle")
-                                .onChange(of: title) { _, v in if v.count > 60 { title = String(v.prefix(60)) } }
+                    } else {
+                        Section {
+                            Picker("How", selection: $mode) {
+                                ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
                         }
                     }
-                }
-                ForEach($questions) { $q in
-                    Section(mode == .ai ? "Fact (optional)" : "Question") {
-                        labelled("Question") {
-                            TextField("e.g. What do we call our Thursday dinner?", text: $q.question, axis: .vertical)
-                                .accessibilityIdentifier("quizQuestion")
-                                .onChange(of: q.question) { _, v in if v.count > 200 { q.question = String(v.prefix(200)) } }
+                    if mode == .ai {
+                        Section {
+                            TextField("Describe a challenge only your group would get", text: $prompt, axis: .vertical)
+                                .lineLimit(3...6)
+                                .onChange(of: prompt) { _, v in if v.count > 500 { prompt = String(v.prefix(500)) } }
+                            Picker("Difficulty", selection: $difficulty) {
+                                Text("Easy").tag("easy")
+                                Text("Medium").tag("medium")
+                                Text("Hard").tag("hard")
+                            }
+                        } footer: {
+                            let credits = app.me?.billing.credits.available ?? 0
+                            Text("\(credits) AI creation\(credits == 1 ? "" : "s") left. Saved challenges never use credits again. Quiz answers come only from the facts below.")
                         }
-                        labelled("Right answer") {
-                            TextField("e.g. Chaos curry", text: $q.answer)
-                                .accessibilityIdentifier("quizAnswer")
-                                .onChange(of: q.answer) { _, v in if v.count > 60 { q.answer = String(v.prefix(60)) } }
-                        }
-                        labelled("Wrong options (optional, comma separated)") {
-                            TextField("e.g. Brunch, Pasta night", text: $q.wrong)
-                                .accessibilityIdentifier("quizWrong")
+                    } else {
+                        Section {
+                            labelled("Title") {
+                                TextField("e.g. Thursday quiz", text: $title)
+                                    .accessibilityIdentifier("quizTitle")
+                                    .onChange(of: title) { _, v in if v.count > 60 { title = String(v.prefix(60)) } }
+                            }
                         }
                     }
+                    ForEach($questions) { $q in
+                        Section(mode == .ai ? "Fact (optional)" : "Question") {
+                            labelled("Question") {
+                                TextField("e.g. What do we call our Thursday dinner?", text: $q.question, axis: .vertical)
+                                    .accessibilityIdentifier("quizQuestion")
+                                    .onChange(of: q.question) { _, v in if v.count > 200 { q.question = String(v.prefix(200)) } }
+                            }
+                            labelled("Right answer") {
+                                TextField("e.g. Chaos curry", text: $q.answer)
+                                    .accessibilityIdentifier("quizAnswer")
+                                    .onChange(of: q.answer) { _, v in if v.count > 60 { q.answer = String(v.prefix(60)) } }
+                            }
+                            labelled("Wrong options (optional, comma separated)") {
+                                TextField("e.g. Brunch, Pasta night", text: $q.wrong)
+                                    .accessibilityIdentifier("quizWrong")
+                            }
+                        }
+                    }
+                    if questions.count < 8 {
+                        Button("Add another") { questions.append(Question()) }
+                    }
+                    if let progress {
+                        Section { Text(progress).foregroundStyle(WMColor.textSecondary) }
+                    }
                 }
-                if questions.count < 8 {
-                    Button("Add another") { questions.append(Question()) }
-                }
-                if let progress {
-                    Section { Text(progress).foregroundStyle(WMColor.textSecondary) }
-                }
+                .cardRows()
             }
             .scrollContentBackground(.hidden)
             .background(WMColor.surface)

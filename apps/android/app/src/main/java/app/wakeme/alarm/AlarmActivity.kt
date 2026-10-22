@@ -1,5 +1,6 @@
 package app.wakeme.alarm
 
+import app.wakeme.designsystem.WMIcon
 import android.os.Bundle
 import android.os.UserManager
 import android.content.Intent
@@ -79,7 +80,7 @@ class AlarmActivity : ComponentActivity() {
                         Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
                             Text("You're up", style = MaterialTheme.typography.headlineLarge, color = WM.colors.alarmText)
                             Body("Your wake session has ended.", color = WM.colors.alarmText)
-                            if (thanksRoute != null) SecondaryButton("Thank your wake buddy", onClick = {
+                            if (thanksRoute != null) SecondaryButton("Thank your wake buddy", icon = WMIcon.Heart, onClick = {
                                 startActivity(Intent(this@AlarmActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, thanksRoute))
                                 finish()
                             })

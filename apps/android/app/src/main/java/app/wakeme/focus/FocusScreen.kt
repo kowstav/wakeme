@@ -1,5 +1,6 @@
 package app.wakeme.focus
 
+import app.wakeme.designsystem.WMIcon
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +44,8 @@ import app.wakeme.data.local.LocalDb
 import app.wakeme.data.local.Prefs
 import app.wakeme.data.net.WakeMeApiJson
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.Note
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
@@ -139,7 +141,6 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
     val state = session?.let { focusState(it, now) }
     DetailScreen(onBack = onBack) {
         Text("Focus", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-        Body("Choose apps to keep closed during a focus session. Your choice stays on this phone; friends never see which apps.")
         if (!vm.available) {
             StatusPill("Focus isn't available in this build yet.", Tone.Neutral)
             return@DetailScreen
@@ -148,7 +149,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
             WMCard {
                 Text("${r.friendName} asks you to focus for ${r.minutes} min", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 Body("You choose. Nothing changes unless you start it, and you can end it anytime.")
-                PrimaryButton("Start focus", onClick = { vm.acceptRequest() }, enabled = serviceOn && chosen.isNotEmpty())
+                PrimaryButton("Start focus", onClick = { vm.acceptRequest() }, enabled = serviceOn && chosen.isNotEmpty(), icon = WMIcon.Focus)
                 QuietButton("Not now", onClick = { vm.declineRequest() })
             }
         }
@@ -162,30 +163,32 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
                 }
                 Text("Focusing" + (s.friendName?.let { " with $it" } ?: "") + " · ${(left + 59_999) / 60_000} min left", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 if (state is FocusState.OnBreak) StatusPill("On a break for ${(state.breakRemainingMs + 59_999) / 60_000} min", Tone.Info)
-                DangerButton("End focus", onClick = { vm.store.end() })
+                DangerButton("End focus", onClick = { vm.store.end() }, icon = WMIcon.Stop)
             }
         } else {
             WMCard {
                 Text("Start a focus session", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                    listOf(15, 25, 45, 60).forEach { m -> FilterChip(selected = minutes == m, onClick = { minutes = m }, label = { Text("$m min") }) }
+                    listOf(15, 25, 45, 60).forEach { m -> ChoiceChip("$m min", selected = minutes == m, onClick = { minutes = m }) }
                 }
-                PrimaryButton("Start focus", onClick = { vm.startSelf(minutes) }, enabled = serviceOn && chosen.isNotEmpty())
-                if (chosen.isEmpty()) Body("Choose at least one app below.")
+                PrimaryButton("Start focus", onClick = { vm.startSelf(minutes) }, enabled = serviceOn && chosen.isNotEmpty(), icon = WMIcon.Focus)
+                if (chosen.isEmpty()) Note("Choose at least one app below.")
             }
         }
         if (!serviceOn) {
             WMCard {
-                StatusPill("Wake Me focus is off in Accessibility settings", Tone.Warning)
-                SecondaryButton("Turn it on", onClick = { disclosing = true })
+                StatusPill("Wake Me focus is off in Accessibility settings", Tone.Warning, icon = WMIcon.Warning)
+                SecondaryButton("Turn it on", onClick = { disclosing = true }, icon = WMIcon.ArrowUpRight)
             }
         }
         SectionTitle("Apps to keep closed")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             vm.apps.forEach { app ->
-                FilterChip(selected = app.packageName in chosen, onClick = { vm.toggle(app.packageName); chosen = vm.store.chosenApps }, label = { Text(app.label) })
+                ChoiceChip(app.label, selected = app.packageName in chosen, onClick = { vm.toggle(app.packageName); chosen = vm.store.chosenApps })
             }
         }
+        // Said once, under the choice it is about.
+        Note("Your choice stays on this phone. Friends never see which apps.", icon = WMIcon.Lock)
         Gap(WakeMeTokens.spaceXl)
     }
     if (disclosing) {

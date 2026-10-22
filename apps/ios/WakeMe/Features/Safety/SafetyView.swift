@@ -25,50 +25,58 @@ struct SafetyView: View {
 
     var body: some View {
         List {
-            Section {
-                Text("Share with friends you choose, for a time you choose. Wake Me is not an emergency service: in an emergency, call your local emergency number.")
-                    .foregroundStyle(WMColor.textSecondary)
-                if offline { StatusPill(text: "You're offline. Showing what was last loaded.", tone: .warning) }
+            // The one thing to know before anything else, said once, on the page rather than in a card.
+            VStack(alignment: .leading, spacing: WMSpacing.sm) {
+                Note("Wake Me is not an emergency service. In an emergency, call your local emergency number.", icon: .warning)
+                if offline { StatusPill(text: "You're offline. Showing what was last loaded.", tone: .warning, icon: toneIcon(.warning)) }
             }
-            if let a = sharer.active {
+            .bentoRow()
+            Group {
+                if let a = sharer.active {
+                    Section {
+                        StatusPill(text: "Sharing your location now", tone: .info)
+                        Text("With \(a.viewerNames.joined(separator: ", ")) until \(a.endsAt.formatted(date: .omitted, time: .shortened)).")
+                            .foregroundStyle(WMColor.textPrimary)
+                        Text(a.lastAccuracyMeters.map { "Last sent \(a.lastSentAt?.formatted(date: .omitted, time: .shortened) ?? "") · accuracy about \($0) m" }
+                             ?? "Waiting for a location fix. Your friends see “No location available” until one arrives.")
+                            .foregroundStyle(WMColor.textSecondary)
+                    }
+                }
+                // What friends share with you comes first, an SOS before anything else.
+                let shared = sharedWithMe.filter(\.active).sorted { ($0.purpose == "sos" ? 0 : 1) < ($1.purpose == "sos" ? 0 : 1) }
+                if !shared.isEmpty {
+                    Section("Shared with you") { ForEach(shared) { s in viewerSession(s) } }
+                }
+                let active = mine.filter(\.active)
+                // Nothing to show is a status under the header, not a card holding only a pill.
                 Section {
-                    StatusPill(text: "Sharing your location now", tone: .info)
-                    Text("With \(a.viewerNames.joined(separator: ", ")) until \(a.endsAt.formatted(date: .omitted, time: .shortened)).")
-                        .foregroundStyle(WMColor.textPrimary)
-                    Text(a.lastAccuracyMeters.map { "Last sent \(a.lastSentAt?.formatted(date: .omitted, time: .shortened) ?? "") · accuracy about \($0) m" }
-                         ?? "Waiting for a location fix. Your friends see “No location available” until one arrives.")
-                        .foregroundStyle(WMColor.textSecondary)
+                    ForEach(active) { s in mySession(s) }
+                } header: {
+                    Text("You're sharing")
+                } footer: {
+                    if active.isEmpty && sharer.active == nil { StatusPill(text: "You're not sharing anything") }
                 }
-            }
-            // What friends share with you comes first, an SOS before anything else.
-            let shared = sharedWithMe.filter(\.active).sorted { ($0.purpose == "sos" ? 0 : 1) < ($1.purpose == "sos" ? 0 : 1) }
-            if !shared.isEmpty {
-                Section("Shared with you") { ForEach(shared) { s in viewerSession(s) } }
-            }
-            let active = mine.filter(\.active)
-            Section("You're sharing") {
-                if active.isEmpty && sharer.active == nil { StatusPill(text: "You're not sharing anything") }
-                ForEach(active) { s in mySession(s) }
-            }
-            Section("Start") {
-                PrimaryButton(title: "Check in with friends later") { composing = .checkin }
+                Section("Start") {
+                    PrimaryButton(title: "Check in with friends later") { composing = .checkin }
+                        .disabled(busy || friends.isEmpty)
+                    SecondaryButton(title: "Share my location for a while") { composing = .share }
+                        .disabled(busy || friends.isEmpty)
+                    if loaded && friends.isEmpty {
+                        Text("Add a friend first. Only friends you pick can see a session.").foregroundStyle(WMColor.textSecondary)
+                    }
+                }
+                Section {
+                    Button(role: .destructive) { composing = .sos } label: {
+                        Text("Send SOS to friends").font(.headline).frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(WMColor.dangerFill)
+                    .foregroundStyle(WMColor.textOnDanger)
                     .disabled(busy || friends.isEmpty)
-                SecondaryButton(title: "Share my location for a while") { composing = .share }
-                    .disabled(busy || friends.isEmpty)
-                if loaded && friends.isEmpty {
-                    Text("Add a friend first. Only friends you pick can see a session.").foregroundStyle(WMColor.textSecondary)
+                    Text("Alerts the friends you pick, and shares your location for 2 hours if you allow it.").foregroundStyle(WMColor.textSecondary)
                 }
             }
-            Section {
-                Button(role: .destructive) { composing = .sos } label: {
-                    Text("Send SOS to friends").font(.headline).frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(WMColor.dangerFill)
-                .foregroundStyle(WMColor.textOnDanger)
-                .disabled(busy || friends.isEmpty)
-                Text("Alerts the friends you pick, and shares your location for 2 hours if you allow it.").foregroundStyle(WMColor.textSecondary)
-            }
+            .cardRows()
         }
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)

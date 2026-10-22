@@ -33,8 +33,7 @@ import kotlin.math.sin
  */
 @Composable
 fun DuckMark(modifier: Modifier = Modifier, size: Dp = 48.dp, beakOpen: Float = 0f) {
-    val c = WM.colors
-    Canvas(modifier.size(size).clearAndSetSemantics { }) { drawDuck(c.accent, c.accentPressed, beakOpen) }
+    Canvas(modifier.size(size).clearAndSetSemantics { }) { drawDuck(WakeMeTokens.illustrationDuckBody, WakeMeTokens.illustrationDuckWing, beakOpen) }
 }
 
 /**
@@ -63,7 +62,7 @@ fun QuackBurst(tick: Int, modifier: Modifier = Modifier, height: Dp = 56.dp) {
             val hop = if (still) 0f else hopAt(p)
             translate(top = -5f * hop) {
                 rotate(-7f * hop, pivot = Offset(32f, 46f)) {
-                    drawDuckUnits(c.accent, c.accentPressed, if (still) 0.7f else beakAt(p))
+                    drawDuckUnits(WakeMeTokens.illustrationDuckBody, WakeMeTokens.illustrationDuckWing, if (still) 0.7f else beakAt(p))
                 }
             }
             for (i in 0..2) {

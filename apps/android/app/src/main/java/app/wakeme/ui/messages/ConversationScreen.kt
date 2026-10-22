@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -25,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -51,7 +48,10 @@ import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.MessageDto
 import app.wakeme.data.net.OfflineException
 import app.wakeme.designsystem.HideFromRecents
+import app.wakeme.designsystem.WMIcon
+import androidx.compose.ui.res.painterResource
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailTopBar
 import androidx.compose.foundation.layout.offset
 import app.wakeme.designsystem.PrimaryButton
@@ -223,7 +223,7 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
                 colors = IconButtonDefaults.filledIconButtonColors(containerColor = WM.colors.accent, contentColor = WM.colors.textOnAccent),
             ) {
                 if (s.sending) CircularProgressIndicator(Modifier.size(WakeMeTokens.iconSizeSmall), color = WM.colors.textOnAccent, strokeWidth = 2.dp)
-                else Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", modifier = Modifier.size(WakeMeTokens.iconSizeSmall))
+                else Icon(painterResource(WMIcon.Send.res), contentDescription = "Send", modifier = Modifier.size(WakeMeTokens.iconSizeSmall))
             }
         }
     }
@@ -238,7 +238,7 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
                 Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                         reactions.forEach { e ->
-                            FilterChip(selected = e == myReaction, onClick = { vm.react(m, e); acting = null }, label = { Text(e) })
+                            ChoiceChip(e, selected = e == myReaction, onClick = { vm.react(m, e); acting = null })
                         }
                     }
                     if (myReaction != null) Body("Tap your reaction again to remove it.")
@@ -257,7 +257,7 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
                 Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                     Body("The sender isn't told who reported it.")
                     reportReasons.forEach { (code, label) ->
-                        FilterChip(selected = false, onClick = { vm.report(m, code); reporting = null }, label = { Text(label) })
+                        ChoiceChip(label, selected = false, onClick = { vm.report(m, code); reporting = null })
                     }
                 }
             },
@@ -277,7 +277,7 @@ private fun Bubble(m: MessageDto, mine: Boolean, onLongPress: () -> Unit, modifi
         else -> m.body.orEmpty()
     }
     val time = runCatching { timeFmt.format(Instant.parse(m.createdAt)) }.getOrDefault("")
-    // Your messages are butter with a small corner toward you; theirs sit on the raised surface.
+    // Your messages are light lime with a small corner toward you; theirs sit on the card grey.
     val big = 18.dp
     val small = 6.dp
     val shape = RoundedCornerShape(topStart = big, topEnd = big, bottomStart = if (mine) big else small, bottomEnd = if (mine) small else big)
@@ -285,8 +285,8 @@ private fun Bubble(m: MessageDto, mine: Boolean, onLongPress: () -> Unit, modifi
         Column(
             Modifier
                 .widthIn(max = 320.dp)
-                .background(if (mine) WM.colors.accentContainer else WM.colors.surfaceRaised, shape)
-                .border(1.dp, if (mine) WM.colors.accentContainer else WM.colors.border, shape)
+                .background(if (mine) WM.colors.accentContainer else WM.colors.surfaceNeutral, shape)
+                .border(1.dp, if (mine) WM.colors.accentContainer else WM.colors.surfaceNeutral, shape)
                 .combinedClickable(onClick = {}, onLongClick = onLongPress, onLongClickLabel = "React or report")
                 .padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceSm)
                 .semantics(mergeDescendants = true) { contentDescription = (if (mine) "You" else "Them") + ", $time: $text" },

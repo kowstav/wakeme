@@ -1,6 +1,31 @@
 # Wake Me — progress
 
-Last updated: 2026-10-21. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+Last updated: 2026-10-22. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+
+## Bloom polish from the first native renders (2026-10-22, Claude)
+
+- **Bloom verified at `b9d6ef0` (simulator/emulators, not devices):** [ci run 27](https://github.com/kowstav/wakeme/actions/runs/39745622892) passed every job, including the iOS app build. [ios run 44](https://github.com/kowstav/wakeme/actions/runs/39745622902) passed: the full simulator journey, after `b9d6ef0` scrolled the test up to Safety, now a tile near the top of You. [android-device run 88](https://github.com/kowstav/wakeme/actions/runs/39745622921) passed on attempt 2. Attempt 1 failed on Android 16 only: the edited quiz's "Save and try it" was still disabled when the journey tapped it. That passed on Android 17 and on the re-run; the cause is not established.
+- **What changed:** every one of the 101 renders (38 iOS, 33 Android 17, 30 previews) was reviewed at full size ([review](docs/design/review-2026-10-22-bloom-polish.md)).
+  - A new `Note` component on both platforms: one sentence beside the control it explains.
+  - Explanation paragraphs that sat alone in cards (guest home, Focus, Safety, Challenges, grant editor, circle) became `Note`s or section footers, or were cut.
+  - Readiness: one title instead of two, the status inside its card, numbered steps with chips, and Android checklist rows instead of nested cards.
+  - Welcome: the tagline is gone, the story is centred, and the privacy promise sits under the buttons.
+  - Friend page: one header pattern on every capability card; the preview button is labelled; Android no longer shows a disabled "Send quack"; each "turned off" status is said once.
+  - Challenges: "Create a challenge" leads as a lime button, templates are petal tiles, and your own challenges come first.
+  - Circle: the stray chevron between quick actions is gone, and members are one card of rows on Android.
+  - Invite dialogs: the code large, plus one line.
+  - Android's condensed display headline now loads at weight 800; the regular cut read thin next to iOS's Condensed Black.
+  - Every string the UI tests look up keeps its text.
+- **Tests actually run** (Windows 11, Node 24.19.0): `generate.ts --check` (contrast passes). It reports the generated files as stale only because this checkout converts them to CRLF line endings; they are unchanged from HEAD. Also a reference check of every icon and palette name used, an import review of the changed Kotlin files, and a scan of the iOS and Android test strings against the new copy.
+- **Not run:** any compile, lint or test of these edits (no Android SDK or macOS here). Nothing in this pass is verified until CI renders it. No physical device.
+- **Next:** run CI, fix what fails, and compare the new renders against the review's findings.
+
+## Design pass: Bloom, vibrant colour, icons and bento layouts (2026-10-21, Claude)
+
+- **What changed** (details in [docs/design/system.md](docs/design/system.md), research in [docs/design/research-2026-10-21-top-apps.md](docs/design/research-2026-10-21-top-apps.md), decision in ADR 0021): reviewed the US Top Free chart of 2026-10-21 and App Store screenshots of 16 apps (Capital One, Vinted, ChatGPT, Threads, McDonald's, Kalshi, Maps, Depop, Muse, Duolingo, Alarmy, Revolut, Cash App, Airbnb, Robinhood, Locket); sampled the owner's two reference images pixel by pixel. Tokens v3: white page, flat grey cards, Wise lime `#9FE870` actions with forest `#163300` ink, a forest hero, eight petal families from the images, condensed capital display type, 56-high buttons, radius 24 cards. 57 owned SVG icons generated into Android vector drawables and an iOS asset catalog (directional ones mirror in RTL); Android no longer depends on material-icons-extended. New components on both platforms (hero card, bento tiles, quick actions, icon chips, round icon buttons, pills, display text). Rebuilt Friends home (next-alarm hero, Invite / Join-with-a-code tiles), friend page (quick actions, icon cards, More menu for remove/block), circles, routines (time-of-day chips, time hero, icon facts), You (bento grid), welcome (Wise-style), chat (icon Send), grant editor (icon chips), plus icons on primary actions elsewhere; iOS grouped lists take the card grey. Launcher icon lime with a forest duck. A visual study of the main screens, built from the same tokens and SVGs: [docs/design/bloom.html](docs/design/bloom.html).
+- **Tests actually run** (Windows 11, Node 24.19.0): `npm run generate:tokens` and `node packages/design-tokens/generate.ts --check` (43 contrast pairs × 4 modes and 8 palette families pass); icons and the study rendered in a browser and reviewed. A duplicate-import scan of the 24 changed Kotlin files.
+- **Not run**: any Android or iOS compile, lint, unit, instrumented, journey or preview job (no Android SDK or macOS here). The Android journey test now taps "Invite" on a circle (was "Invite to this circle"); every other test-visible word is kept, and iOS labels keep the old phrases where a quick action shows one word. Nothing in this pass is verified until CI runs on it. No physical device.
+- **Next**: run CI on this branch, fix what fails, review the Bloom preview sheet and simulator screenshots; physical-device check of tile heights and the condensed headline at large text sizes.
 
 ## Design pass: Daybreak system, motion and signature journey (2026-10-21, Claude)
 
@@ -19,6 +44,19 @@ Last updated: 2026-10-21. Status words: **specified**, **implemented**, **verifi
 - **Verified (emulators, not device evidence):** at `c26b85a` the Android 16 Focus step passed in runs 62, 64, 65 and 68, each binding after one off/on cycle (Android 17 binding 4/4 too). At `0559807` the Focus step passed on both Android 16 and 17 in [run 69](https://github.com/kowstav/wakeme/actions/runs/39576135980) (PR #2), [70](https://github.com/kowstav/wakeme/actions/runs/39577956224) and [71](https://github.com/kowstav/wakeme/actions/runs/39579688303), each binding after one off/on cycle; run 70 passed every job. Android 16 Focus step: 7 consecutive passes (runs 62–71).
 - **Not run:** no Android SDK on this machine; the test compiled and ran only in CI. Nothing on a physical phone.
 - **Still open:** `QuickActionsWidgetTest` ("Choose a friend to quack" not found; runs 61 and 65 on both emulators, Android 17 in 55 and 58) fails the instrumented-tests step independently of Focus (again in run 69, Android 16). In run 71 the Android 17 journey skipped itself ("dev backend not reachable", socket timeout), which the step counts as a failure.
+
+## Android design acceptance (2026-10-21, Claude)
+
+Workstream 2 of [android-remaining-work](docs/android-remaining-work.md), on branch `design/android-acceptance`. Reviewed: run 76's 38 Compose previews (phone, foldable, tablet, desktop, dark, increased contrast, large text, small landscape) and its Android 16/17 emulator screenshots (33 each).
+
+- **Fixed (accessibility):** at large text the always-available "Use the simple check-in instead" rendered as "Jse … 'nstead": `QuietButton` has no side padding and kept Material's pill shape, whose radius grows with a wrapped label. Its corners are now 8 dp, no larger than its vertical padding (all 31 quiet buttons).
+- **Fixed (consistency):** Safety, You, Challenges, Focus and Conversation used Material's `FilterChip` (selection shown by fill alone); all use the Daybreak `ChoiceChip` (check mark, 3:1 border). The challenge try-out/publish step had no back bar, a smaller heading and an edge-to-edge status pill; it is a `DetailScreen`, and system Back stops a try-out or leaves the publish step without publishing instead of leaving the tab. The Paywall and the readiness screen opened from Routines get the back bar. The Paywall's selected plan had a yellow border on cream (< 3:1); it uses `accentText`, unselected `outline`.
+- **Fixed (Android 17):** the SOS system location button read "Share precise locatio" (runs 65, 76, 80): `androidx.core.locationbutton` sizes it from a local copy of the label and the system draws its own. It now takes the full width.
+- **Test evidence:** the Focus shield screenshot was blank in runs 56, 64 and 76 (taken before the shield's first frame, logged at +1.6 s); the test now waits for the shield to lay out and fails if it never does. The location-button screenshot is taken after its 2 s rendering wait.
+- **Reviewed, not changed:** the widget keeps the wallpaper's dynamic colours (Android widget guidance; system.md §9). Home's next alarm (Friends) and readiness card (guest home) are visible in run 76.
+- **Owner checklist:** [android-owner-setup.md](docs/android-owner-setup.md) lists, for workstreams 3–8, what to create, where each value goes and the check that verifies it. The media "scan" is the worker's size/hash/format/duration check, not a malware scanner.
+- **Verified (emulators/layoutlib, not devices):** [android-device run 80](https://github.com/kowstav/wakeme/actions/runs/39615974876) at `03a7785` passed every job (unit tests, lint, both emulators' component tests, Focus, journey, 38 previews); its screenshots show the drawn shield, chips with check marks and the publish step's back bar. [Run 82](https://github.com/kowstav/wakeme/actions/runs/39618604876) at `4075d01` (all fixes) passed every job; its large-text quiz preview shows "Use the simple check-in instead" whole and the Android 17 system button reads "Share precise location". Run 81 was cancelled by run 82 (same branch). The Focus binding held: one off/on cycle on both emulators in runs 80 and 82.
+- **Not run:** nothing compiled locally (no Android SDK on this machine). No keyboard/switch-access pass, no physical-device motion or haptics. Dark and large-text renders of Safety, You, Focus, Grant editor and Paywall don't exist yet (no previews of them).
 
 ## Android continuation (2026-10-20, Codex)
 

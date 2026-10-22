@@ -1,19 +1,22 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Generates native token files for SwiftUI and Compose from tokens.json and
-// fails if any declared foreground/background pair misses its WCAG contrast
+// Generates native token files for SwiftUI and Compose from tokens.json, and the Bloom icon set
+// (icons/*.svg) as Android vector drawables and an iOS asset catalog. Fails if any declared
+// foreground/background pair, or any palette family's ink on its fill, misses its WCAG contrast
 // target in light, dark, or either increased-contrast variant.
 // Run: npm run generate:tokens (CI can run it with --check).
 
 interface Pair { light: string; dark: string; lightHc?: string; darkHc?: string }
+interface FamilyMode { fill: string; ink: string }
+interface Family { light: FamilyMode; dark: FamilyMode; source?: string }
 interface Spring { response: number; damping: number }
-interface TypeRole { use: string; size: number; line: number; weight: number; tracking: number; maxScale?: number; ios: string; iosWeight: string; iosSize?: number }
+interface TypeRole { use: string; size: number; line: number; weight: number; tracking: number; maxScale?: number; family?: 'condensed'; uppercase?: boolean; ios: string; iosWeight: string; iosSize?: number }
 interface Tokens {
   color: Record<string, Pair>;
+  palette: { families: Record<string, Family>; avatars: string[] };
   illustration: Record<string, string>;
-  avatar: { tints: { name: string; light: string; dark: string }[] };
   contrast: { fg: string; bg: string; min: number; note?: string }[];
   spacing: Record<string, number>;
   radius: Record<string, number>;
@@ -90,14 +93,19 @@ for (const c of tokens.contrast) {
   if (!ok) failed = true;
   report.push(`| ${c.fg} on ${c.bg}${c.note ? ` (${c.note.split(':')[0]})` : ''} | ${ratios.map((r) => r.toFixed(2)).join(' | ')} | ${c.min} | ${ok ? 'pass' : '**FAIL**'} |`);
 }
-for (const t of tokens.avatar.tints) {
-  const ratios = [contrast(tokens.color.textPrimary!.light, t.light), contrast(tokens.color.textPrimary!.dark, t.dark)];
-  const ok = ratios.every((r) => r >= 7);
+const families = Object.entries(tokens.palette.families);
+for (const [name, f] of families) {
+  // Families have no increased-contrast variant: their inks already clear 4.5:1.
+  const ratios = [contrast(f.light.ink, f.light.fill), contrast(f.dark.ink, f.dark.fill)];
+  const ok = ratios.every((r) => r >= 4.5);
   if (!ok) failed = true;
-  report.push(`| textPrimary on avatar ${t.name} | ${ratios[0]!.toFixed(2)} | ${ratios[1]!.toFixed(2)} | – | – | 7 | ${ok ? 'pass' : '**FAIL**'} |`);
+  report.push(`| ${name} ink on ${name} fill (palette) | ${ratios[0]!.toFixed(2)} | ${ratios[1]!.toFixed(2)} | – | – | 4.5 | ${ok ? 'pass' : '**FAIL**'} |`);
 }
+for (const a of tokens.palette.avatars) if (!tokens.palette.families[a]) throw new Error(`Unknown avatar family ${a}`);
 report.push('', '## Roles in OKLCH (L × 100, C, h)', '', '| Token | Light | Dark |', '|---|---|---|');
 for (const [k, v] of Object.entries(tokens.color)) report.push(`| ${k} | \`${v.light}\` ${lch(v.light)} | \`${v.dark}\` ${lch(v.dark)} |`);
+report.push('', '## Palette families (fill / ink)', '', '| Family | Light | Dark | Source |', '|---|---|---|---|');
+for (const [k, f] of families) report.push(`| ${k} | \`${f.light.fill}\` / \`${f.light.ink}\` | \`${f.dark.fill}\` / \`${f.dark.ink}\` | ${f.source ?? ''} |`);
 
 const camel = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const hex = (h: string) => `0x${h.slice(1).toUpperCase()}`;
@@ -112,6 +120,117 @@ const layout = tokens.layout as Record<string, number>;
 /** Numeric entries of a token group (skips its "note"). */
 const numeric = (group: Record<string, number | string>) => Object.entries(group).filter((e): e is [string, number] => typeof e[1] === 'number');
 
+// ------------------------------------------------------------------ icons
+interface Icon { file: string; res: string; title: string; paths: string[] }
+const iconDir = new URL('packages/design-tokens/icons/', root);
+const icons: Icon[] = readdirSync(iconDir)
+  .filter((f) => f.endsWith('.svg'))
+  .sort()
+  .map((file) => {
+    const svg = readFileSync(new URL(file, iconDir), 'utf8');
+    const paths = [...svg.matchAll(/<path d="([^"]+)"\/>/g)].map((m) => m[1]!);
+    if (paths.length === 0) throw new Error(`No paths in icons/${file}`);
+    return { file, res: `wm_${file.replace('.svg', '').replaceAll('-', '_')}`, title: /<title>([^<]+)<\/title>/.exec(svg)?.[1] ?? '', paths };
+  });
+const words = (i: Icon) => i.file.replace('.svg', '').split('-');
+/** Icons that point along the reading direction flip in right-to-left languages. */
+const directional = new Set(['back', 'chevron-right', 'send', 'arrow-up-right', 'logout']);
+const mirrors = (i: Icon) => directional.has(i.file.replace('.svg', ''));
+const kotlinIconName = (i: Icon) => words(i).map(camel).join('');
+const swiftKeywords = new Set(['repeat', 'return', 'switch', 'case', 'default', 'import', 'class', 'struct', 'enum', 'in', 'is', 'as', 'do', 'if', 'else', 'for', 'while', 'guard', 'defer', 'throw', 'try', 'catch', 'init', 'self', 'super', 'true', 'false', 'nil', 'func', 'let', 'var']);
+const swiftIconName = (i: Icon) => {
+  const [first, ...rest] = words(i);
+  const name = first! + rest.map(camel).join('');
+  return swiftKeywords.has(name) ? `\`${name}\`` : name;
+};
+
+/**
+ * Android path data with every number written out (`0.7`, not `.7`; `1.8 0.7`, not `1.8.7`), as
+ * lint's InvalidVectorPath check and older path parsers require. The SVG sources stay compact.
+ */
+function fullNumbers(d: string): string {
+  let out = '';
+  let afterCommand = false;
+  for (const [, command, number] of d.matchAll(/([MmLlHhVvCcSsQqTtAaZz])|(-?(?:\d*\.\d+|\d+\.?))/g)) {
+    if (command) {
+      out += (out ? ' ' : '') + command;
+      afterCommand = true;
+    } else {
+      out += (afterCommand ? '' : ' ') + String(Number.parseFloat(number!));
+      afterCommand = false;
+    }
+  }
+  return out;
+}
+
+const androidVector = (i: Icon) => `<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by packages/design-tokens/generate.ts from icons/${i.file}. Do not edit by hand. -->
+<!-- ${i.title} -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"${mirrors(i) ? '\n    android:autoMirrored="true"' : ''}>
+${i.paths.map((d) => `    <path
+        android:fillColor="#00000000"
+        android:pathData="${fullNumbers(d)}"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />`).join('\n')}
+</vector>
+`;
+
+const iosSvg = (i: Icon) => `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+${i.paths.map((d) => `  <path d="${d}"/>`).join('\n')}
+</svg>
+`;
+
+const iosImageSet = (i: Icon) => `${JSON.stringify(
+  {
+    images: [{ filename: `${i.res}.svg`, idiom: 'universal', ...(mirrors(i) ? { 'language-direction': 'left-to-right' } : {}) }],
+    info: { author: 'xcode', version: 1 },
+    properties: { 'preserves-vector-representation': true, 'template-rendering-intent': 'template' },
+  },
+  null,
+  2,
+)}\n`;
+
+const swiftIcons = `// Generated by packages/design-tokens/generate.ts. Do not edit by hand.
+import SwiftUI
+
+/// The Bloom icon set (packages/design-tokens/icons): 24-unit grid, 2-unit rounded strokes, stored
+/// as template vectors in Icons.xcassets so they take the foreground colour. Android draws the
+/// same SVGs as vector drawables (\`WMIcon\` in Icons.kt).
+enum WMIcon: String, CaseIterable, Sendable {
+${icons.map((i) => `    /// ${i.title}\n    case ${swiftIconName(i)} = "${i.res}"`).join('\n')}
+
+    @MainActor var image: Image { Image(rawValue) }
+}
+`;
+
+const kotlinIcons = `// Generated by packages/design-tokens/generate.ts. Do not edit by hand.
+package app.wakeme.designsystem
+
+import androidx.annotation.DrawableRes
+import app.wakeme.R
+
+/**
+ * The Bloom icon set (packages/design-tokens/icons): 24-unit grid, 2-unit rounded strokes, as
+ * vector drawables tinted by the caller. iOS draws the same SVGs (\`WMIcon\` in Icons.generated.swift).
+ */
+enum class WMIcon(@DrawableRes val res: Int) {
+${icons.map((i) => `    /** ${i.title} */\n    ${kotlinIconName(i)}(R.drawable.${i.res}),`).join('\n')}
+}
+`;
+
+// ------------------------------------------------------------------ Swift
+const swiftFamily = (f: Family) => `WMFamily(fill: Color(light: ${hex(f.light.fill)}, dark: ${hex(f.dark.fill)}), ink: Color(light: ${hex(f.light.ink)}, dark: ${hex(f.dark.ink)}))`;
+const swiftFont = (r: TypeRole) => {
+  const base = r.iosSize ? `.system(size: ${r.iosSize}, weight: .${r.iosWeight})` : `.${r.ios}.weight(.${r.iosWeight})`;
+  return r.family === 'condensed' ? `${base}.width(.condensed)` : base;
+};
+
 const swift = `// Generated by packages/design-tokens/generate.ts. Do not edit by hand.
 import SwiftUI
 import UIKit
@@ -124,10 +243,19 @@ ${Object.entries(tokens.color)
       : `    static let ${k} = Color(light: ${hex(v.light)}, dark: ${hex(v.dark)})`,
   )
   .join('\n')}
-    /// Friend monogram tints (equal perceptual lightness).
-    static let avatarTints: [Color] = [
-${tokens.avatar.tints.map((t) => `        Color(light: ${hex(t.light)}, dark: ${hex(t.dark)}), // ${t.name}`).join('\n')}
-    ]
+}
+
+/// A petal family: \`fill\` for tiles, chips and avatars, \`ink\` for text and icons on it (≥ 4.5:1
+/// in both themes). Families mark things of the same kind; they never carry status.
+struct WMFamily: Sendable {
+    let fill: Color
+    let ink: Color
+}
+
+enum WMPalette {
+${families.map(([k, f]) => `    static let ${k} = ${swiftFamily(f)}`).join('\n')}
+    /// Friend avatars, in the same order as Android, so a friend has one colour on both.
+    static let avatars: [WMFamily] = [${tokens.palette.avatars.join(', ')}]
 }
 
 /// Illustration colours for the duck; the same in both themes.
@@ -152,7 +280,7 @@ enum WMSize {
 /// Semantic type roles. Each follows Dynamic Type through its text style; roles with a fixed
 /// design size (iosSize) are for views that scale it with @ScaledMetric(relativeTo:).
 enum WMFont {
-${typeRoles.map(([k, r]) => `    /// ${r.use}\n    static var ${k}: Font { ${r.iosSize ? `.system(size: ${r.iosSize}, weight: .${r.iosWeight})` : `.${r.ios}.weight(.${r.iosWeight})`} }`).join('\n')}
+${typeRoles.map(([k, r]) => `    /// ${r.use}\n    static var ${k}: Font { ${swiftFont(r)} }`).join('\n')}
 }
 
 /// Semantic spacing (4-point scale) and component sizes.
@@ -166,10 +294,8 @@ enum WMOpacity {
 ${Object.entries(tokens.opacity).map(([k, v]) => `    static let ${k}: Double = ${v}`).join('\n')}
 }
 
+/// Cards and tiles are flat; only overlays cast a shadow.
 enum WMElevation {
-    static let cardShadowOpacity: Double = ${elevation.cardShadowOpacity}
-    static let cardShadowRadius: CGFloat = ${elevation.cardShadowRadius}
-    static let cardShadowY: CGFloat = ${elevation.cardShadowY}
     static let overlayShadowOpacity: Double = ${elevation.overlayShadowOpacity}
     static let overlayShadowRadius: CGFloat = ${elevation.overlayShadowRadius}
     static let overlayShadowY: CGFloat = ${elevation.overlayShadowY}
@@ -196,7 +322,12 @@ extension Color {
 }
 `;
 
+// ------------------------------------------------------------------ Kotlin
 const kotlinPalette = (m: Mode) => Object.entries(tokens.color).map(([k, v]) => `        ${k} = Color(0xFF${value(v, m).slice(1).toUpperCase()}),`).join('\n');
+const kotlinColor = (h: string) => `Color(0xFF${h.slice(1).toUpperCase()})`;
+const kotlinFamilies = (m: 'light' | 'dark') => families.map(([k, f]) => `        ${k} = WakeMeFamily(fill = ${kotlinColor(f[m].fill)}, ink = ${kotlinColor(f[m].ink)}),`).join('\n');
+const kotlinStyle = (r: TypeRole) =>
+  `TextStyle(fontSize = ${r.size}.sp, lineHeight = ${r.line}.sp, fontWeight = FontWeight.W${r.weight}, letterSpacing = ${(r.tracking * r.size).toFixed(2)}.sp, fontFeatureSettings = "tnum"${r.family === 'condensed' ? ', fontFamily = CondensedFontFamily' : ''})`;
 
 const kotlin = `// Generated by packages/design-tokens/generate.ts. Do not edit by hand.
 package app.wakeme.designsystem
@@ -213,6 +344,21 @@ data class WakeMeColors(
 ${Object.keys(tokens.color).map((k) => `    val ${k}: Color,`).join('\n')}
 )
 
+/**
+ * A petal family: [fill] for tiles, chips and avatars, [ink] for text and icons on it (≥ 4.5:1 in
+ * both themes). Families mark things of the same kind; they never carry status.
+ */
+@Immutable
+data class WakeMeFamily(val fill: Color, val ink: Color)
+
+@Immutable
+data class WakeMePalette(
+${families.map(([k]) => `    val ${k}: WakeMeFamily,`).join('\n')}
+) {
+    /** Friend avatars, in the same order as iOS, so a friend has one colour on both. */
+    val avatars: List<WakeMeFamily> get() = listOf(${tokens.palette.avatars.join(', ')})
+}
+
 object WakeMeTokens {
     val Light = WakeMeColors(
 ${kotlinPalette('light')}
@@ -227,17 +373,19 @@ ${kotlinPalette('lightHc')}
     val DarkHighContrast = WakeMeColors(
 ${kotlinPalette('darkHc')}
     )
-    /** Friend monogram tints (equal perceptual lightness), light then dark. */
-    val AvatarLight = listOf(${tokens.avatar.tints.map((t) => `Color(0xFF${t.light.slice(1)})`).join(', ')})
-${illustration.map(([k, v]) => `    val illustration${camel(k)} = Color(0xFF${v.slice(1).toUpperCase()})`).join('\n')}
-    val AvatarDark = listOf(${tokens.avatar.tints.map((t) => `Color(0xFF${t.dark.slice(1)})`).join(', ')})
+    val PaletteLight = WakeMePalette(
+${kotlinFamilies('light')}
+    )
+    val PaletteDark = WakeMePalette(
+${kotlinFamilies('dark')}
+    )
+${illustration.map(([k, v]) => `    val illustration${camel(k)} = ${kotlinColor(v)}`).join('\n')}
 ${Object.entries(tokens.spacing).map(([k, v]) => `    val space${camel(k)} = ${v}.dp`).join('\n')}
 ${Object.entries(tokens.radius).map(([k, v]) => `    val radius${camel(k)} = ${v}.dp`).join('\n')}
     val minTouchTarget = ${tokens.touchTarget.androidDp}.dp
     val alarmControl = ${tokens.touchTarget.alarmControlMin}.dp
     val controlHeight = ${tokens.touchTarget.controlHeight}.dp
 ${Object.entries(tokens.opacity).map(([k, v]) => `    const val opacity${camel(k)} = ${v}f`).join('\n')}
-    val elevationCard = ${elevation.cardAndroidDp}.dp
     val elevationOverlay = ${elevation.overlayAndroidDp}.dp
 ${Object.entries(tokens.motion.durationMs).map(([k, v]) => `    const val motion${camel(k)}Ms = ${v}`).join('\n')}
 ${springs.map(([k, s]) => `    const val spring${camel(k)}Damping = ${s.damping}f\n    const val spring${camel(k)}Stiffness = ${stiffness(s.response).toFixed(1)}f`).join('\n')}
@@ -251,15 +399,23 @@ ${numeric(tokens.component).map(([k, v]) => `    val ${k} = ${v}.dp`).join('\n')
 
 /** Semantic type roles (sp, so they follow font scale). Figures are tabular in every role. */
 object WakeMeType {
-${typeRoles.map(([k, r]) => `    /** ${r.use} */\n    val ${k} = TextStyle(fontSize = ${r.size}.sp, lineHeight = ${r.line}.sp, fontWeight = FontWeight.W${r.weight}, letterSpacing = ${(r.tracking * r.size).toFixed(2)}.sp, fontFeatureSettings = "tnum")`).join('\n')}
+${typeRoles.map(([k, r]) => `    /** ${r.use} */\n    val ${k} = ${kotlinStyle(r)}`).join('\n')}
 ${typeRoles.filter(([, r]) => r.maxScale !== undefined).map(([k, r]) => `    /** ${k} grows with font scale up to ${r.maxScale}× and no further, so it can't overflow. */\n    const val ${k}MaxScale = ${r.maxScale}f`).join('\n')}
 }
 `;
 
 const outputs: [string, string][] = [
   ['apps/ios/WakeMe/DesignSystem/Tokens.generated.swift', swift],
+  ['apps/ios/WakeMe/DesignSystem/Icons.generated.swift', swiftIcons],
+  ['apps/ios/WakeMe/Resources/Icons.xcassets/Contents.json', `${JSON.stringify({ info: { author: 'xcode', version: 1 } }, null, 2)}\n`],
   ['apps/android/app/src/main/java/app/wakeme/designsystem/Tokens.kt', kotlin],
+  ['apps/android/app/src/main/java/app/wakeme/designsystem/Icons.kt', kotlinIcons],
   ['packages/design-tokens/contrast-report.md', report.join('\n') + '\n'],
+  ...icons.flatMap((i): [string, string][] => [
+    [`apps/android/app/src/main/res/drawable/${i.res}.xml`, androidVector(i)],
+    [`apps/ios/WakeMe/Resources/Icons.xcassets/${i.res}.imageset/${i.res}.svg`, iosSvg(i)],
+    [`apps/ios/WakeMe/Resources/Icons.xcassets/${i.res}.imageset/Contents.json`, iosImageSet(i)],
+  ]),
 ];
 const check = process.argv.includes('--check');
 let stale = false;
@@ -279,6 +435,7 @@ for (const [rel, content] of outputs) {
   }
 }
 console.log(report.join('\n'));
+console.log(`\n${icons.length} icons.`);
 if (failed) {
   console.error('\nContrast check failed.');
   process.exit(1);

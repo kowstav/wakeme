@@ -5,7 +5,9 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.heightIn
+import app.wakeme.designsystem.Note
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +62,11 @@ import app.wakeme.R
 import app.wakeme.config.AppConfig
 import app.wakeme.data.net.InvitePreviewDto
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DisplayText
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.PillButton
+import app.wakeme.designsystem.WMIcon
+import androidx.compose.ui.text.style.TextAlign
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
@@ -96,9 +103,11 @@ private fun Page(content: @Composable () -> Unit) {
 private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
 
 /**
- * Doc 03 §5 step 1: the headline with an interactive quack. Tapping the duck (or "Play preview")
- * plays the quack on this phone only and the duck quacks with it. The blocks arrive with a short
- * stagger the first time; with Remove animations on, everything is simply there.
+ * Doc 03 §5 step 1: the headline with an interactive quack, laid out like the reference apps'
+ * welcome: a large illustration, a condensed capital headline, one line under it, and the two ways
+ * in pinned where a thumb reaches them (lime first, grey second). Tapping the duck (or "Play
+ * preview") plays the quack on this phone only and the duck quacks with it. The blocks arrive with
+ * a short stagger the first time; with Remove animations on, everything is simply there.
  */
 @Composable
 fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
@@ -108,7 +117,7 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
     // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         val surface = WM.colors.surface
-        Column(
+        BoxWithConstraints(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -117,42 +126,42 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
                     drawContent()
                     val fade = WakeMeTokens.spaceLg.toPx()
                     drawRect(Brush.verticalGradient(listOf(surface.copy(alpha = 0f), surface), startY = size.height - fade, endY = size.height), topLeft = Offset(0f, size.height - fade), size = Size(size.width, fade))
-                }
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = WakeMeTokens.spaceLg),
-            verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
+                },
         ) {
-            Gap(WakeMeTokens.spaceXl)
+        // Centred in the space above the actions; at large text sizes it simply scrolls.
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceLg),
+            verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceLg, Alignment.CenterVertically),
+        ) {
             Entrance(0) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(WakeMeTokens.radiusLg))
-                        .clickable(onClickLabel = "Play a quack on this phone", role = Role.Button, onClick = quack)
-                        .padding(WakeMeTokens.spaceXs),
-                ) { QuackBurst(tick = quacks, height = 88.dp) }
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(WakeMeTokens.radiusXl))
+                            .clickable(onClickLabel = "Play a quack on this phone", role = Role.Button, onClick = quack)
+                            .padding(WakeMeTokens.spaceXs),
+                    ) { QuackBurst(tick = quacks, height = 140.dp) }
+                }
             }
             Entrance(1) {
-                Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                    Text(stringResource(R.string.headline), style = MaterialTheme.typography.headlineLarge, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-                    Body(stringResource(R.string.tagline))
-                }
+                DisplayText(stringResource(R.string.headline), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
             Entrance(2) {
-                WMCard {
-                    Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
-                        Text("Hear what a quack sounds like", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                        Body("Tap the duck or the button. This preview plays only on your phone.")
-                    }
-                    SecondaryButton("Play preview", onClick = quack)
-                }
+                // The preview plays only on this phone; the duck above does the same.
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PillButton("Play preview", onClick = quack, icon = WMIcon.Speaker) }
             }
-            Entrance(3) { Body("You decide what each friend can do. Nobody can ring your phone unless you allow it.") }
-            Gap(WakeMeTokens.spaceSm)
+        }
         }
         Entrance(4) {
+            // The one promise that matters at this moment sits with the decision it is about.
             Column(Modifier.padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
-                PrimaryButton("I have an invite", onClick = onInvite)
-                SecondaryButton("Set up my own wake-up", onClick = onSelf)
+                PrimaryButton("I have an invite", onClick = onInvite, icon = WMIcon.Ticket)
+                SecondaryButton("Set up my own wake-up", onClick = onSelf, icon = WMIcon.Alarm)
+                Note("You decide what each friend can do. Nobody can ring your phone unless you allow it.", Modifier.padding(top = WakeMeTokens.spaceXxs), icon = WMIcon.Lock)
             }
         }
     }
@@ -202,10 +211,13 @@ fun SignInScreen(app: AppViewModel) {
         if (!AppConfig.supabaseConfigured) {
             Body("Email sign-in isn't configured for this build.")
         } else WMCard {
-            Text("Email me a code", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                IconChip(WMIcon.Lock, WM.palette.sky)
+                Text("Email me a code", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+            }
             OutlinedTextField(email, { email = it.trim() }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
             if (!sent) {
-                SecondaryButton("Send code", onClick = { app.requestCode(email) { sent = true } }, enabled = email.contains("@"))
+                SecondaryButton("Send code", onClick = { app.requestCode(email) { sent = true } }, enabled = email.contains("@"), icon = WMIcon.Send)
             } else {
                 OutlinedTextField(code, { code = it.filter(Char::isDigit).take(8) }, label = { Text("Code from the email") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))
                 PrimaryButton("Sign in", onClick = { app.verifyCode(email, code) }, enabled = code.length >= 6)
@@ -255,10 +267,7 @@ fun InviteScreen(preview: InvitePreviewDto?, onAccept: () -> Unit, onDecline: ()
         val who = preview.inviter.displayName
         Heading(if (preview.kind == "circle") "$who invited you to ${preview.circle?.name ?: "a circle"}" else "$who wants to quack you.")
         Body("Connect so you can get each other's attention, with rules you choose.")
-        WMCard {
-            Text("Hear what a quack sounds like", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-            SecondaryButton("Play preview", onClick = { playQuackPreview(context) })
-        }
+        PillButton("Play preview", onClick = { playQuackPreview(context) }, icon = WMIcon.Speaker)
         Body("Accepting doesn't give $who any permissions. Next you'll choose exactly what they can do, if anything.")
         if (preview.ownInvite) {
             Body("This is your own invite. Share it with a friend.")
@@ -267,7 +276,7 @@ fun InviteScreen(preview: InvitePreviewDto?, onAccept: () -> Unit, onDecline: ()
             Body("You're already connected.")
             PrimaryButton("Continue", onClick = onDecline)
         } else {
-            PrimaryButton("Accept invitation", onClick = onAccept)
+            PrimaryButton("Accept invitation", onClick = onAccept, icon = WMIcon.Check)
             SecondaryButton("Not now", onClick = onDecline)
         }
     }

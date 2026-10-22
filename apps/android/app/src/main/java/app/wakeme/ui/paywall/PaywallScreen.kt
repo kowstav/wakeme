@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +42,7 @@ import app.wakeme.billing.Offer
 import app.wakeme.billing.PurchaseOutcome
 import app.wakeme.data.net.BillingStatusDto
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
@@ -133,10 +135,8 @@ fun PaywallScreen(onClose: () -> Unit, vm: PaywallViewModel = hiltViewModel()) {
     val credits = s.status?.credits?.plusMonthlyAllowance ?: FALLBACK_MONTHLY_CREDITS
     val alreadyPlus = s.status?.plan == "plus"
 
-    Column(
-        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
-        verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
-    ) {
+    // A pushed screen like the others: Back and "Continue free" both close it.
+    DetailScreen(onBack = onClose) {
         QuietButton("Continue free", onClick = onClose, modifier = Modifier.align(Alignment.End))
         Text("Make your routine a team effort.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         Body("Quacks, wake requests, safety check-ins and your alarms stay free.")
@@ -192,8 +192,8 @@ private fun OfferRow(o: Offer, selected: Boolean, onSelect: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().selectable(selected = selected, onClick = onSelect, role = Role.RadioButton),
         shape = RoundedCornerShape(WakeMeTokens.radiusLg),
-        colors = CardDefaults.cardColors(containerColor = WM.colors.surfaceRaised),
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) WM.colors.accent else WM.colors.border),
+        colors = CardDefaults.cardColors(containerColor = if (selected) WM.colors.accentContainer else WM.colors.surfaceNeutral),
+        border = BorderStroke(2.dp, if (selected) WM.colors.accentText else Color.Transparent),
     ) {
         androidx.compose.foundation.layout.Row(Modifier.padding(WakeMeTokens.spaceMd), verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = selected, onClick = null)

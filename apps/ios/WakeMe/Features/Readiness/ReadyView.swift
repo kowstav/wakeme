@@ -15,32 +15,36 @@ struct ReadyView: View {
                     .font(.largeTitle.bold())
                     .foregroundStyle(WMColor.textPrimary)
                     .accessibilityAddTraits(.isHeader)
-                Text("Wake Me uses iPhone alarms, which ring even in silent mode or a Focus once you allow them. Then set a test alarm to hear it here.")
+                Text("iPhone alarms ring even in silent mode or a Focus, once you allow them.")
                     .foregroundStyle(WMColor.textSecondary)
-                WMCard {
-                    switch authorization {
-                    case .authorized:
-                        StatusPill(text: "Alarms allowed", tone: .success)
-                    case .denied:
-                        StatusPill(text: "Alarms are turned off for Wake Me", tone: .danger)
-                        Text("Turn them on in Settings → Wake Me → Alarms. You can still add friends and send quacks.")
-                            .foregroundStyle(WMColor.textSecondary)
-                        SecondaryButton(title: "Open Settings") {
-                            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
-                        }
-                    case .notDetermined:
-                        StatusPill(text: "Alarms not set up yet", tone: .warning)
-                        PrimaryButton(title: "Allow alarms") {
-                            Task { authorization = await WakeAlarms.shared.requestAuthorization() }
+                // Step 1: alarm access. Once allowed it shrinks to its status, inside step 2's card.
+                if authorization != .authorized {
+                    WMCard {
+                        stepHeader(icon: .alarm, family: WMPalette.lime, title: "Allow alarms")
+                        switch authorization {
+                        case .denied:
+                            StatusPill(text: "Alarms are turned off for Wake Me", tone: .danger, icon: toneIcon(.danger))
+                            Text("Turn them on in Settings → Wake Me → Alarms. You can still add friends and send quacks.")
+                                .font(WMFont.supporting)
+                                .foregroundStyle(WMColor.textSecondary)
+                            SecondaryButton(title: "Open Settings", icon: .arrowUpRight) {
+                                if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                            }
+                        default:
+                            PrimaryButton(title: "Allow alarms") {
+                                Task { authorization = await WakeAlarms.shared.requestAuthorization() }
+                            }
                         }
                     }
                 }
                 if authorization == .authorized {
                     WMCard {
-                        Text("Test alarm").font(.headline).foregroundStyle(WMColor.textPrimary)
-                        Text("Rings once in about a minute on this phone only. Try it with headphones connected too.")
+                        stepHeader(icon: .wake, family: WMPalette.gold, title: "Test alarm")
+                        StatusPill(text: "Alarms allowed", tone: .success, icon: toneIcon(.success))
+                        Text("Rings once in about a minute, on this phone only. Try it with headphones too.")
+                            .font(WMFont.supporting)
                             .foregroundStyle(WMColor.textSecondary)
-                        SecondaryButton(title: working ? "Setting…" : "Ring a test alarm in 1 minute") {
+                        SecondaryButton(title: working ? "Setting…" : "Ring a test alarm in 1 minute", icon: .alarm) {
                             working = true
                             Task {
                                 let r = await WakeAlarms.shared.scheduleTestAlarm()
@@ -52,9 +56,9 @@ struct ReadyView: View {
                                 }
                             }
                         }
-                        if let testResult { Text(testResult).foregroundStyle(WMColor.textPrimary) }
+                        // The result is the next step: lock the phone and listen.
+                        if let testResult { Note(testResult, icon: .clock) }
                     }
-                    StatusPill(text: testResult == nil ? "Next step: ring a test alarm" : "Ready on this phone once you've heard it", tone: testResult == nil ? .info : .success)
                 }
             }
             .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.md)
@@ -62,7 +66,17 @@ struct ReadyView: View {
             .frame(maxWidth: .infinity)
         }
         .background(WMColor.surface)
+        // The heading above is the screen's one visible title; the bar keeps the name for VoiceOver
+        // and the back button without showing it a second time.
         .navigationTitle("Make this phone ready")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .principal) { EmptyView() } }
+    }
+
+    private func stepHeader(icon: WMIcon, family: WMFamily, title: String) -> some View {
+        HStack(spacing: WMSpacing.sm) {
+            IconChip(icon: icon, family: family)
+            Text(title).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+        }
     }
 }

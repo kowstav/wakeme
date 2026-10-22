@@ -1,5 +1,6 @@
 package app.wakeme.ui.safety
 
+import app.wakeme.designsystem.WMIcon
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -49,6 +49,8 @@ import app.wakeme.data.net.SafetySessionDto
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.HideFromRecents
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.Note
+import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailTopBar
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.semantics.heading
@@ -216,7 +218,8 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
         item {
             if (onBack == null) Gap()
             Text("Safety", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-            Body("Share with friends you choose, for a time you choose. Wake Me is not an emergency service: in an emergency, call your local emergency number.")
+            // The one thing to know before anything else, said once.
+            Note("Wake Me is not an emergency service. In an emergency, call your local emergency number.", icon = WMIcon.Warning)
             if (s.offline) StatusPill("You're offline. Showing what was last loaded.", Tone.Warning)
         }
         sharing?.let { a ->
@@ -242,8 +245,8 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
             // A header sits closer to its own buttons than to what came before it.
             androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
                 SectionTitle("Start")
-                PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty())
-                SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty())
+                PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty(), icon = WMIcon.CheckCircle)
+                SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty(), icon = WMIcon.Pin)
                 if (s.friends.isEmpty() && !s.loading) Body("Add a friend first. Only friends you pick can see a session.")
             }
         }
@@ -251,7 +254,7 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
         item {
             // SOS stays still and unmistakable; its explanation sits right under it.
             androidx.compose.foundation.layout.Column(Modifier.padding(top = WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                DangerButton("Send SOS to friends", onClick = { composing = "sos" })
+                DangerButton("Send SOS to friends", onClick = { composing = "sos" }, icon = WMIcon.Shield)
                 Body("Alerts the friends you pick, and shares your location for 2 hours if you allow it.")
             }
             Gap(WakeMeTokens.spaceXl)
@@ -289,10 +292,10 @@ private fun MySession(m: SafetySessionDto, onCheckIn: () -> Unit, onEnd: (Contex
             if (m.checkedInAt != null) StatusPill("Checked in at ${timeText(m.checkedInAt)}", Tone.Success)
             else {
                 Body("If you don't check in by ${timeText(m.checkinDueAt)}, they'll get a notice that you haven't checked in yet. That's all: nobody else is contacted.")
-                PrimaryButton("I'm OK — check in now", onClick = onCheckIn)
+                PrimaryButton("I'm OK — check in now", onClick = onCheckIn, icon = WMIcon.CheckCircle)
             }
         }
-        DangerButton("Stop now", onClick = { onEnd(context) })
+        DangerButton("Stop now", onClick = { onEnd(context) }, icon = WMIcon.Stop)
     }
 }
 
@@ -326,7 +329,7 @@ private fun ViewerSession(v: SafetySessionDto, loc: LatestLocationDto?, highligh
             // A viewer's list holds only themselves; their acknowledgement is shown back to them.
             val seen = v.viewers.firstOrNull()?.acknowledgedAt
             if (seen != null) StatusPill("${v.owner.displayName} knows you've seen this (${timeText(seen)})", Tone.Success)
-            else PrimaryButton("I've seen this", onClick = onAck)
+            else PrimaryButton("I've seen this", onClick = onAck, icon = WMIcon.Eye)
         }
     }
 }
@@ -363,7 +366,7 @@ private fun StartSheet(
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                         friends.take(10).forEach { f ->
-                            FilterChip(selected = f.friendshipId in selected, onClick = { selected = if (f.friendshipId in selected) selected - f.friendshipId else selected + f.friendshipId }, label = { Text(f.user.displayName) })
+                            ChoiceChip(f.user.displayName, selected = f.friendshipId in selected, onClick = { selected = if (f.friendshipId in selected) selected - f.friendshipId else selected + f.friendshipId })
                         }
                     }
                 }
@@ -382,7 +385,7 @@ private fun StartSheet(
                     item {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                             listOf(30 to "30 min", 60 to "1 hour", 120 to "2 hours", 240 to "4 hours", 480 to "8 hours").forEach { (m, label) ->
-                                FilterChip(selected = minutes == m, onClick = { minutes = m; if (checkin > m) checkin = m }, label = { Text(label) })
+                                ChoiceChip(label, selected = minutes == m, onClick = { minutes = m; if (checkin > m) checkin = m })
                             }
                         }
                     }
@@ -392,7 +395,7 @@ private fun StartSheet(
                     item {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                             listOf(15, 30, 60, 120, 240).filter { it <= minutes }.forEach { m ->
-                                FilterChip(selected = checkin == m, onClick = { checkin = m }, label = { Text(if (m < 60) "$m min" else "${m / 60} h") })
+                                ChoiceChip(if (m < 60) "$m min" else "${m / 60} h", selected = checkin == m, onClick = { checkin = m })
                             }
                         }
                     }
@@ -441,7 +444,9 @@ private fun StartSheet(
  * Android 17's system-rendered location button (doc 06): a tap grants precise location for this
  * session only. On Android 16 and earlier the library shows a look-alike that opens the usual
  * permission prompt. Hosted as a View: the Compose artifact would pull alpha Material3 (see
- * libs.versions.toml). Not yet exercised on an emulator or phone.
+ * libs.versions.toml). Full width: at wrap_content the library sizes the button from its own local
+ * copy of the label, and Android 17's system rendering didn't fit it ("Share precise locatio" in
+ * runs 65, 76 and 80). Exercised on the Android 16 and 17 emulators, not yet on a phone.
  */
 @Composable
 internal fun SystemLocationButton(onResult: (Boolean) -> Unit) {
@@ -463,5 +468,6 @@ internal fun SystemLocationButton(onResult: (Boolean) -> Unit) {
                 })
             }
         },
+        modifier = Modifier.fillMaxWidth(),
     )
 }

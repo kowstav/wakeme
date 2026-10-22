@@ -17,7 +17,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.wakeme.designsystem.BentoRow
+import app.wakeme.designsystem.BentoTile
 import app.wakeme.designsystem.ChoiceChip
+import app.wakeme.designsystem.DisplayText
+import app.wakeme.designsystem.HeroCard
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.PillButton
+import app.wakeme.designsystem.QuickAction
+import app.wakeme.designsystem.RoundIconButton
+import app.wakeme.designsystem.WMIcon
+import app.wakeme.designsystem.WMIconView
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.DeliveryTrailView
 import app.wakeme.designsystem.DuckMark
@@ -37,9 +49,10 @@ import app.wakeme.ui.grants.TimeDisplay
 import com.android.tools.screenshot.PreviewTest
 
 /**
- * The Daybreak design system (docs/design/system.md) on one sheet: the duck, avatars, buttons,
- * chips, status pills, the delivery trail in every evidence state, day toggles and the time
- * display. Rendered in light, dark, increased contrast and at 2× font size by the CI previews job.
+ * The Bloom design system (docs/design/system.md) on one sheet: the display headline, the duck,
+ * avatars in their petal families, the icon set, quick actions, bento tiles, the hero, buttons
+ * with icons, chips, status pills, the delivery trail in every evidence state, day toggles and the
+ * time hero. Rendered in light, dark, increased contrast and at 2× font size by the CI previews job.
  */
 @Composable
 private fun Sheet() {
@@ -48,12 +61,48 @@ private fun Sheet() {
         Modifier.fillMaxSize().background(c.surface).verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
         verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
     ) {
+        DisplayText("Alert your friends. Wake each other up.")
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
             DuckMark(size = 64.dp)
             DuckMark(size = 64.dp, beakOpen = 0.8f)
             FriendAvatar("Maya", "u-maya")
             FriendAvatar("Sam", "u-sam")
             FriendAvatar("Alex", "u-alex")
+            FriendAvatar("Priya", "u-priya")
+        }
+        // Every icon in the set, so a broken path shows up in review.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+            WMIcon.entries.forEach { WMIconView(it) }
+        }
+        val p = WM.palette
+        Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+            listOf(p.lime, p.orchid, p.sky, p.apricot, p.gold, p.aqua, p.periwinkle, p.forest).forEachIndexed { i, f -> IconChip(WMIcon.entries[i], f) }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            QuickAction(WMIcon.Message, "Messages", onClick = {}, family = p.sky, modifier = Modifier.weight(1f))
+            QuickAction(WMIcon.CheckCircle, "Check in", onClick = {}, family = p.aqua, modifier = Modifier.weight(1f))
+            QuickAction(WMIcon.Pin, "Location", onClick = {}, family = p.periwinkle, enabled = false, modifier = Modifier.weight(1f))
+            QuickAction(WMIcon.CalendarPlus, "Suggest", onClick = {}, family = p.apricot, modifier = Modifier.weight(1f))
+            QuickAction(WMIcon.Shield, "Safety", onClick = {}, family = p.orchid, modifier = Modifier.weight(1f))
+        }
+        HeroCard {
+            Text("Next alarm on this phone", style = MaterialTheme.typography.labelLarge, color = c.onHeroSecondary)
+            Text("07:00", style = MaterialTheme.typography.displayMedium, color = c.onHero)
+            Text("Tomorrow · Work days", style = MaterialTheme.typography.titleMedium, color = c.onHeroSecondary)
+        }
+        BentoRow {
+            BentoTile("Invite a friend", WMIcon.PersonPlus, p.lime, onClick = {}, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "Send a private link")
+            BentoTile("Join with a code", WMIcon.Ticket, p.sky, onClick = {}, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "From a friend's invite")
+        }
+        BentoRow {
+            BentoTile("Safety check-ins and location", WMIcon.Shield, p.orchid, onClick = {}, modifier = Modifier.weight(1f).fillMaxHeight())
+            BentoTile("Focus", WMIcon.Focus, p.aqua, onClick = {}, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "Time with chosen apps paused")
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RoundIconButton(WMIcon.Back, "Back", onClick = {})
+            RoundIconButton(WMIcon.More, "More", onClick = {})
+            PillButton("Play preview", onClick = {}, icon = WMIcon.Speaker)
+            PillButton("Invite", onClick = {}, icon = WMIcon.PersonPlus, primary = true)
         }
         WMCard {
             Text("Quack", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
@@ -61,9 +110,9 @@ private fun Sheet() {
                 ChoiceChip("Classic quack", selected = true, onClick = {})
                 ChoiceChip("Double quack", selected = false, onClick = {})
             }
-            SecondaryButton("Preview on my phone", onClick = {})
-            PrimaryButton("Send quack", onClick = {})
-            PrimaryButton("Send wake alarm", onClick = {}, enabled = false)
+            SecondaryButton("Change permissions", onClick = {}, icon = WMIcon.Sliders)
+            PrimaryButton("Send quack", onClick = {}, icon = WMIcon.Send)
+            PrimaryButton("Send wake alarm", onClick = {}, enabled = false, icon = WMIcon.Wake)
         }
         WMCard {
             Text("Last request", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
@@ -86,27 +135,27 @@ private fun Sheet() {
             StatusPill("Paused", Tone.Neutral)
         }
         EmptyState("Invite someone you trust", "Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
-        QuietButton("Remove friend", onClick = {})
-        DangerButton("Block and report", onClick = {})
+        QuietButton("New circle", onClick = {}, icon = WMIcon.Plus)
+        DangerButton("End this routine", onClick = {}, icon = WMIcon.Trash)
     }
 }
 
 @PreviewTest
-@Preview(name = "Light", widthDp = 411, heightDp = 1800)
+@Preview(name = "Light", widthDp = 411, heightDp = 2600)
 @Composable
-fun DaybreakLight() = WakeMeTheme(dark = false) { Sheet() }
+fun BloomLight() = WakeMeTheme(dark = false) { Sheet() }
 
 @PreviewTest
-@Preview(name = "Dark", widthDp = 411, heightDp = 1800, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Dark", widthDp = 411, heightDp = 2600, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun DaybreakDark() = WakeMeTheme(dark = true) { Sheet() }
+fun BloomDark() = WakeMeTheme(dark = true) { Sheet() }
 
 @PreviewTest
-@Preview(name = "Increased contrast", widthDp = 411, heightDp = 1800)
+@Preview(name = "Increased contrast", widthDp = 411, heightDp = 2600)
 @Composable
-fun DaybreakHighContrast() = WakeMeTheme(dark = false, highContrast = true) { Sheet() }
+fun BloomHighContrast() = WakeMeTheme(dark = false, highContrast = true) { Sheet() }
 
 @PreviewTest
-@Preview(name = "Large text", widthDp = 411, heightDp = 2600, fontScale = 2f)
+@Preview(name = "Large text", widthDp = 411, heightDp = 3800, fontScale = 2f)
 @Composable
-fun DaybreakLargeText() = WakeMeTheme(dark = false) { Sheet() }
+fun BloomLargeText() = WakeMeTheme(dark = false) { Sheet() }

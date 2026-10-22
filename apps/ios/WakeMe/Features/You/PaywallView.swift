@@ -53,7 +53,8 @@ struct PaywallView: View {
                                 }
                                 .padding(WMSpacing.sm)
                                 .frame(minHeight: WMSize.minTouchTarget)
-                                .overlay(RoundedRectangle(cornerRadius: WMRadius.md).stroke(selected == o.id ? WMColor.accent : WMColor.border))
+                                .background(selected == o.id ? WMColor.accentContainer : WMColor.surfaceNeutral, in: RoundedRectangle(cornerRadius: WMRadius.md))
+                                .overlay(RoundedRectangle(cornerRadius: WMRadius.md).stroke(selected == o.id ? WMColor.accentText : Color.clear, lineWidth: 2))
                             }
                             .buttonStyle(.plain)
                             .accessibilityAddTraits(selected == o.id ? .isSelected : [])

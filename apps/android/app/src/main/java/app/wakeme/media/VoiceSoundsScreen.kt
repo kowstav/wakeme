@@ -1,5 +1,6 @@
 package app.wakeme.media
 
+import app.wakeme.designsystem.WMIcon
 import android.Manifest
 import android.content.Context
 import android.content.ContextWrapper
@@ -195,9 +196,9 @@ fun VoiceSoundsScreen(onBack: (() -> Unit)? = null, vm: VoiceSoundsViewModel = h
         Body("Record up to 30 seconds while this screen is open. Preview before uploading. Recordings are private, checked before use, and friends decide whether to approve an offer.")
         if (s.recording) {
             StatusPill("Microphone is recording · stops at 30 seconds", Tone.Warning)
-            PrimaryButton("Stop recording", onClick = vm::stopRecording)
+            PrimaryButton("Stop recording", onClick = vm::stopRecording, icon = WMIcon.Stop)
         } else {
-            SecondaryButton("Record a voice sound", enabled = !s.busy, onClick = {
+            SecondaryButton("Record a voice sound", enabled = !s.busy, icon = WMIcon.Mic, onClick = {
                 val activity = context.activity()
                 when {
                     ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED -> vm.startRecording()
@@ -211,22 +212,22 @@ fun VoiceSoundsScreen(onBack: (() -> Unit)? = null, vm: VoiceSoundsViewModel = h
         if (s.hasDraft) {
             WMCard {
                 Body("Your recording · ${(s.durationMs + 999) / 1000} seconds · only on this screen until you upload")
-                SecondaryButton("Preview recording", onClick = { vm.previewDraft() }, enabled = !s.busy)
+                SecondaryButton("Preview recording", onClick = { vm.previewDraft() }, enabled = !s.busy, icon = WMIcon.Speaker)
                 SettingRow("I recorded this or have the right to use it", "Only upload voices and sounds you have permission to share.", rights) { rights = it }
                 PrimaryButton(if (s.busy) "Uploading…" else "Upload for checking", enabled = rights && !s.busy, onClick = { vm.upload(rights) })
                 QuietButton("Discard recording", enabled = !s.busy, onClick = vm::discard)
             }
         }
-        if (s.playing) SecondaryButton("Stop preview", onClick = vm::stopPreview)
+        if (s.playing) SecondaryButton("Stop preview", onClick = vm::stopPreview, icon = WMIcon.Stop)
         s.message?.let { Body(it) }
-        SecondaryButton("Refresh sounds", enabled = !s.busy && !s.recording, onClick = { vm.refresh() })
+        SecondaryButton("Refresh sounds", enabled = !s.busy && !s.recording, onClick = { vm.refresh() }, icon = WMIcon.Repeat)
         SectionTitle("Your uploads")
         if (s.own.isEmpty()) Body("No recordings uploaded yet.")
         for (sound in s.own) WMCard {
             Body("Voice recording ${sound.id.take(6)} · ${when (sound.state) { "clean" -> "Ready"; "rejected" -> "Couldn't be approved"; else -> "Checking · not usable yet" }}")
             if (sound.state == "clean") {
-                SecondaryButton("Preview sound", enabled = !s.busy, onClick = { vm.preview(sound) })
-                SecondaryButton("Offer to a friend", enabled = !s.busy, onClick = { offering = sound })
+                SecondaryButton("Preview sound", enabled = !s.busy, onClick = { vm.preview(sound) }, icon = WMIcon.Speaker)
+                SecondaryButton("Offer to a friend", enabled = !s.busy, onClick = { offering = sound }, icon = WMIcon.Send)
             }
             QuietButton("Delete sound", enabled = !s.busy, onClick = { deleting = sound })
         }
@@ -234,8 +235,8 @@ fun VoiceSoundsScreen(onBack: (() -> Unit)? = null, vm: VoiceSoundsViewModel = h
         if (s.offers.isEmpty()) Body("No sound offers. Being friends never approves a sound automatically.")
         for (offered in s.offers) WMCard {
             Body("From ${offered.offeredBy.displayName} · ${if (offered.state == "approved") "Approved for your library" else "Waiting for your approval"}")
-            SecondaryButton("Preview offered sound", enabled = !s.busy, onClick = { vm.preview(offered.media) })
-            if (offered.state != "approved") PrimaryButton("Approve sound", enabled = !s.busy, onClick = { vm.decide(offered.media, true) })
+            SecondaryButton("Preview offered sound", enabled = !s.busy, onClick = { vm.preview(offered.media) }, icon = WMIcon.Speaker)
+            if (offered.state != "approved") PrimaryButton("Approve sound", enabled = !s.busy, onClick = { vm.decide(offered.media, true) }, icon = WMIcon.Check)
             QuietButton(if (offered.state == "approved") "Remove approval" else "Decline sound", enabled = !s.busy, onClick = { vm.decide(offered.media, false) })
             Body("Approval adds it to your sound choices. It doesn't give anyone permission to ring your phone.")
         }

@@ -76,11 +76,11 @@ struct DuckFigure: View {
             duck.translateBy(x: 32, y: 46)
             duck.rotate(by: .degrees(-7 * frame.hop))
             duck.translateBy(x: -32, y: CGFloat(-46 - 5 * frame.hop))
-            let feathers = GraphicsContext.Shading.color(WMColor.accent)
+            let feathers = GraphicsContext.Shading.color(WMIllustration.duckBody)
             duck.fill(DuckPaths.tail, with: feathers)
             duck.fill(Path(ellipseIn: CGRect(x: 9, y: 28, width: 42, height: 28)), with: feathers)
             duck.fill(Path(ellipseIn: CGRect(x: 30, y: 10, width: 24, height: 24)), with: feathers)
-            duck.fill(DuckPaths.wing, with: .color(WMColor.accentPressed))
+            duck.fill(DuckPaths.wing, with: .color(WMIllustration.duckWing))
             // The lower beak hinges at the corner of the mouth and swings down as it opens.
             let open = CGFloat(min(max(frame.beak, 0), 1))
             let hinge = CGAffineTransform(translationX: 51, y: 24.5)

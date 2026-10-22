@@ -19,57 +19,68 @@ struct FocusView: View {
 
     var body: some View {
         List {
-            Section {
-                Text("Choose apps to keep closed during a focus session. Your choice stays on this phone; friends never see which apps.")
-                    .foregroundStyle(WMColor.textSecondary)
-            }
-            if !focus.authorized {
-                Section {
-                    Text("Focus uses Screen Time on your own phone to keep the apps you choose closed. It isn't parental supervision, and you can turn it off in Settings.")
-                        .foregroundStyle(WMColor.textPrimary)
-                    PrimaryButton(title: "Allow Screen Time access") { Task { await focus.requestAuthorization() } }
-                }
-            }
-            if let r = focus.request {
-                Section {
-                    Text("\(r.friendName) asks you to focus for \(r.minutes) min").font(.headline).foregroundStyle(WMColor.textPrimary)
-                    Text("You choose. Nothing changes unless you start it, and you can end it anytime.").foregroundStyle(WMColor.textSecondary)
-                    PrimaryButton(title: "Start focus") { Task { await accept(r) } }
-                        .disabled(!focus.authorized || !focus.hasSelection)
-                    Button("Not now") { focus.offer(nil) }.frame(minHeight: WMSize.minTouchTarget)
-                }
-            }
-            switch focus.state(now: now) ?? .finished(reason: "none") {
-            case let .active(remaining):
-                Section {
-                    Text(activeTitle(remaining)).font(.headline).foregroundStyle(WMColor.textPrimary)
-                    if let s = focus.session, s.breaksTaken < focusMaxBreaks {
-                        SecondaryButton(title: "Take a \(focusBreakMinutes)-minute break") { earningBreak = true }
+            Group {
+                // Explanations sit under the control they explain (section footers), not in cards
+                // of their own ahead of everything.
+                if !focus.authorized {
+                    Section {
+                        PrimaryButton(title: "Allow Screen Time access") { Task { await focus.requestAuthorization() } }
+                    } footer: {
+                        Text("Screen Time keeps the apps you choose closed on your own phone. It isn't parental supervision, and you can turn it off in Settings.")
                     }
-                    Button("End focus", role: .destructive) { focus.end() }.frame(minHeight: WMSize.minTouchTarget)
                 }
-            case let .onBreak(breakLeft, sessionLeft):
-                Section {
-                    Text(activeTitle(sessionLeft)).font(.headline).foregroundStyle(WMColor.textPrimary)
-                    StatusPill(text: "On a break for \(Self.minutes(breakLeft)) min", tone: .info)
-                    Button("End focus", role: .destructive) { focus.end() }.frame(minHeight: WMSize.minTouchTarget)
-                }
-            default:
-                Section("Start a focus session") {
-                    Picker("Length", selection: $minutes) {
-                        ForEach([15, 25, 45, 60], id: \.self) { Text("\($0) min").tag($0) }
+                if let r = focus.request {
+                    Section {
+                        Text("\(r.friendName) asks you to focus for \(r.minutes) min").font(.headline).foregroundStyle(WMColor.textPrimary)
+                        Text("You choose. Nothing changes unless you start it, and you can end it anytime.").foregroundStyle(WMColor.textSecondary)
+                        PrimaryButton(title: "Start focus") { Task { await accept(r) } }
+                            .disabled(!focus.authorized || !focus.hasSelection)
+                        Button("Not now") { focus.offer(nil) }.frame(minHeight: WMSize.minTouchTarget)
                     }
-                    .pickerStyle(.segmented)
-                    PrimaryButton(title: "Start focus") { focus.start(minutes: minutes) }
-                        .disabled(!focus.authorized || !focus.hasSelection)
-                    if !focus.hasSelection { Text("Choose at least one app below.").foregroundStyle(WMColor.textSecondary) }
+                }
+                switch focus.state(now: now) ?? .finished(reason: "none") {
+                case let .active(remaining):
+                    Section {
+                        Text(activeTitle(remaining)).font(.headline).foregroundStyle(WMColor.textPrimary)
+                        if let s = focus.session, s.breaksTaken < focusMaxBreaks {
+                            SecondaryButton(title: "Take a \(focusBreakMinutes)-minute break") { earningBreak = true }
+                        }
+                        Button("End focus", role: .destructive) { focus.end() }.frame(minHeight: WMSize.minTouchTarget)
+                    }
+                case let .onBreak(breakLeft, sessionLeft):
+                    Section {
+                        Text(activeTitle(sessionLeft)).font(.headline).foregroundStyle(WMColor.textPrimary)
+                        StatusPill(text: "On a break for \(Self.minutes(breakLeft)) min", tone: .info)
+                        Button("End focus", role: .destructive) { focus.end() }.frame(minHeight: WMSize.minTouchTarget)
+                    }
+                default:
+                    Section {
+                        Picker("Length", selection: $minutes) {
+                            ForEach([15, 25, 45, 60], id: \.self) { Text("\($0) min").tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        PrimaryButton(title: "Start focus", icon: .focus) { focus.start(minutes: minutes) }
+                            .disabled(!focus.authorized || !focus.hasSelection)
+                    } header: {
+                        Text("Start a focus session")
+                    } footer: {
+                        if !focus.hasSelection { Text("Choose at least one app below.") }
+                    }
+                }
+                Section {
+                    Button { picking = true } label: {
+                        Label { Text(focus.hasSelection ? "Change apps (\(focus.selection.applicationTokens.count + focus.selection.categoryTokens.count) chosen)" : "Choose apps") }
+                            icon: { IconChip(icon: .block, family: WMPalette.aqua, size: 32) }
+                    }
+                        .frame(minHeight: WMSize.minTouchTarget)
+                        .disabled(!focus.authorized)
+                } header: {
+                    Text("Apps to keep closed")
+                } footer: {
+                    Text("Your choice stays on this phone. Friends never see which apps.")
                 }
             }
-            Section("Apps to keep closed") {
-                Button(focus.hasSelection ? "Change apps (\(focus.selection.applicationTokens.count + focus.selection.categoryTokens.count) chosen)" : "Choose apps") { picking = true }
-                    .frame(minHeight: WMSize.minTouchTarget)
-                    .disabled(!focus.authorized)
-            }
+            .cardRows()
         }
         .scrollContentBackground(.hidden)
         .background(WMColor.surface)
