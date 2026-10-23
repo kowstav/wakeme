@@ -68,8 +68,8 @@ class QuickActionsWidgetTest {
             onView(isRoot()).inRoot(withDecorView(sameInstance(activity.activity.window.decorView)))
                 .perform(waitAndTapWidgetAction(FRIEND_ACTION))
             var opened: MainActivity? = null
-            // A cold start mid-suite on the Android 16 emulator took over 10 s (android-device #94);
-            // the same tap opens the app in 3-5 s when run on its own.
+            // Room for one cold start on a slow emulator. A launch that never came at all
+            // (android-device #94, #102) was a tap lost to a widget reset; see WidgetKeepAlive.
             val launchDeadline = android.os.SystemClock.elapsedRealtime() + 30_000
             while (opened == null && android.os.SystemClock.elapsedRealtime() < launchDeadline) {
                 instrumentation.runOnMainSync {

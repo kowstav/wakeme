@@ -1,6 +1,27 @@
 # Wake Me — progress
 
-Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+Last updated: 2026-10-24. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+
+## Widget taps lost to a WorkManager package change (2026-10-24, Claude)
+
+- **Failure:** in android-device #102 (PR #8, `bd724b5`), the Android 17 widget test failed in its own process. It tapped "Choose a friend to quack", and nothing opened in 30 s. The same commit passed every job in #101.
+- **Cause, from the downloaded logcat** (`android-emulator-evidence-api37`):
+  - 19:19:46.534: WorkManager saw that the app had been force-stopped.
+  - 19:19:46.630: Glance scheduled its session job.
+  - 19:19:46.766: WorkManager switched on its `RescheduleReceiver`, a component state change.
+  - 19:19:47.769: `PACKAGE_CHANGED` arrived.
+  - 19:19:47.811: the test tapped.
+  - 19:19:47.817–.842: the widget service re-registered the provider and told the host the widget had changed, which reset it on screen.
+  - After the tap no activity start was logged at all, blocked or otherwise, so the tap never reached the widget's action.
+- **The same reset explains #94** (nothing opened) **and #96** (the app opened with no route). During a reset the host's default view opens the app with its launcher intent, which is the `ACTION_MAIN` start in the Android 16 logcat analysed above.
+- **Who it affects:**
+  - Signed-in phones keep the periodic sync job pending, so the receiver stays on.
+  - Anyone without an account has no pending job, so the receiver can switch on and off around each widget update.
+- **Fix:**
+  - `WidgetKeepAlive` queues one job, due in ten years and doing nothing, once storage is unlocked. WorkManager then never switches the receiver off.
+  - The widget test is unchanged and still strict: one real pointer tap, the exact `friends` destination, no retries.
+  - It runs in the shared instrumentation run again, as well as in its three isolated runs. The earlier exclusion rested on a wrong diagnosis, test leftovers.
+- **Tests run:** none locally (no Android SDK here). The PR's CI is the check.
 
 ## Final CI and Swift test review (2026-10-23, Codex)
 

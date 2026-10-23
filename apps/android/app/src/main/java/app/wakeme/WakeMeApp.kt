@@ -20,6 +20,7 @@ import app.wakeme.push.Channels
 import app.wakeme.readiness.Readiness
 import app.wakeme.sync.DeviceRegistrar
 import app.wakeme.sync.SyncWorker
+import app.wakeme.widget.WidgetKeepAlive
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import dagger.Lazy
@@ -60,6 +61,7 @@ class WakeMeApp : Application(), Configuration.Provider {
     private fun startUnlocked() {
         if (unlockedStarted) return
         unlockedStarted = true
+        WidgetKeepAlive.ensure(this)
         registrar.get().initFirebase()
         AlarmEntryPoints.scope.launchCatching {
             AlarmEntryPoints.scheduler(this@WakeMeApp).reconcileBootCancellations()
