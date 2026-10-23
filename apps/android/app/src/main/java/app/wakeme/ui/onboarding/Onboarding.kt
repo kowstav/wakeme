@@ -4,7 +4,26 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import app.wakeme.designsystem.rememberEntrance
+import app.wakeme.push.Channels
+import app.wakeme.ui.AnimalSounds
+import app.wakeme.ui.FriendHuddle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,15 +51,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.credentials.GetCredentialRequest
 import app.wakeme.R
 import app.wakeme.config.AppConfig
 import app.wakeme.data.net.InvitePreviewDto
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DisplayText
+import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.PillButton
+import app.wakeme.designsystem.WMIcon
+import androidx.compose.ui.text.style.TextAlign
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SecondaryButton
+import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
@@ -52,10 +80,11 @@ import java.security.MessageDigest
 import java.util.UUID
 
 /** Preview plays only on this phone, at media volume. It is never a remote command. */
-fun playQuackPreview(context: Context) {
+fun playSoundPreview(context: Context, soundId: String = AnimalSounds.DEFAULT_ID) {
+    val res = Channels.quackSounds[soundId] ?: R.raw.quack_classic
     val mp = MediaPlayer()
     mp.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-    mp.setDataSource(context, Uri.parse("android.resource://${context.packageName}/${R.raw.quack_classic}"))
+    mp.setDataSource(context, Uri.parse("android.resource://${context.packageName}/$res"))
     mp.setOnCompletionListener { it.release() }
     mp.prepare()
     mp.start()
@@ -70,25 +99,66 @@ private fun Page(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
 
+/**
+ * Doc 03 §5 step 1, laid out like the reference apps' welcome: a picture of the idea (a huddle of
+ * friends, each a cartoon animal), a condensed capital headline, and the two ways in pinned where a
+ * thumb reaches them, lime first. Each face plays its own call on this phone when tapped, and
+ * "Play preview" plays the quack, the default: the sounds explain themselves, so nothing else is
+ * said. The blocks arrive with a short stagger the first time; with Remove animations on,
+ * everything is simply there.
+ */
 @Composable
 fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
     val context = LocalContext.current
-    Page {
-        Gap(WakeMeTokens.spaceXl)
-        Text("🦆", style = MaterialTheme.typography.displayLarge)
-        Heading(stringResource(R.string.headline))
-        Body(stringResource(R.string.tagline))
-        WMCard {
-            Text("Hear what a quack sounds like", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-            Body("This preview plays only on your phone.")
-            SecondaryButton("Play preview", onClick = { playQuackPreview(context) })
+    // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
+    Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+        val surface = WM.colors.surface
+        BoxWithConstraints(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                // Text scrolling under the pinned actions fades out instead of being cut mid-line.
+                .drawWithContent {
+                    drawContent()
+                    val fade = WakeMeTokens.spaceLg.toPx()
+                    drawRect(Brush.verticalGradient(listOf(surface.copy(alpha = 0f), surface), startY = size.height - fade, endY = size.height), topLeft = Offset(0f, size.height - fade), size = Size(size.width, fade))
+                },
+        ) {
+        // Centred in the space above the actions; at large text sizes it simply scrolls.
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceLg),
+            verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceLg, Alignment.CenterVertically),
+        ) {
+            Entrance(0) { FriendHuddle() }
+            Entrance(1) {
+                DisplayText(stringResource(R.string.headline), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            }
+            Entrance(2) {
+                // The preview plays only on this phone; so does tapping a face above.
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PillButton("Play preview", onClick = { playSoundPreview(context) }, icon = WMIcon.Speaker) }
+            }
         }
-        Body("You decide what each friend can do. Nobody can ring your phone unless you allow it.")
-        PrimaryButton("I have an invite", onClick = onInvite)
-        SecondaryButton("Set up my own wake-up", onClick = onSelf)
+        }
+        Entrance(4) {
+            Column(Modifier.padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
+                PrimaryButton("I have an invite", onClick = onInvite, icon = WMIcon.Ticket)
+                SecondaryButton("Set up my own wake-up", onClick = onSelf, icon = WMIcon.Alarm)
+            }
+        }
     }
+}
+
+@Composable
+private fun Entrance(index: Int, content: @Composable () -> Unit) {
+    val rise = with(LocalDensity.current) { 12.dp.toPx() }
+    val p = rememberEntrance(index)
+    Box(Modifier.graphicsLayer { val v = p.value; alpha = v; translationY = (1f - v) * rise }) { content() }
 }
 
 @Composable
@@ -100,34 +170,47 @@ fun SignInScreen(app: AppViewModel) {
     var sent by remember { mutableStateOf(false) }
     Page {
         Heading("Save your connection")
-        Body("Sign in to keep your friends and settings. We never ask for your phone number or contacts.")
         if (AppConfig.googleServerClientId.isNotBlank()) {
             PrimaryButton("Continue with Google", onClick = {
                 scope.launch {
                     val rawNonce = UUID.randomUUID().toString()
                     val hashed = MessageDigest.getInstance("SHA-256").digest(rawNonce.toByteArray()).joinToString("") { "%02x".format(it) }
                     val option = GetGoogleIdOption.Builder().setServerClientId(AppConfig.googleServerClientId).setFilterByAuthorizedAccounts(false).setNonce(hashed).build()
-                    runCatching {
+                    try {
                         val result = CredentialManager.create(context).getCredential(context, GetCredentialRequest.Builder().addCredentialOption(option).build())
                         val cred = result.credential
                         if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                             app.googleSignIn(GoogleIdTokenCredential.createFrom(cred.data).idToken, rawNonce)
+                        } else {
+                            app.showError("That sign-in option isn't supported. Use the email code instead.")
                         }
+                    } catch (e: GetCredentialCancellationException) {
+                        // The person closed the sheet; nothing to say.
+                    } catch (e: NoCredentialException) {
+                        app.showError("There's no Google account on this phone. Use the email code below instead.")
+                    } catch (e: GetCredentialException) {
+                        app.showError("Google sign-in didn't work. Try again, or use the email code below.")
                     }
                 }
             })
         }
-        WMCard {
-            Text("Email me a code", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+        if (!AppConfig.supabaseConfigured) {
+            Body("Email sign-in isn't configured for this build.")
+        } else WMCard {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                IconChip(WMIcon.Lock, WM.palette.sky)
+                Text("Email me a code", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+            }
             OutlinedTextField(email, { email = it.trim() }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
             if (!sent) {
-                SecondaryButton("Send code", onClick = { app.requestCode(email) { sent = true } }, enabled = email.contains("@"))
+                SecondaryButton("Send code", onClick = { app.requestCode(email) { sent = true } }, enabled = email.contains("@"), icon = WMIcon.Send)
             } else {
                 OutlinedTextField(code, { code = it.filter(Char::isDigit).take(8) }, label = { Text("Code from the email") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))
                 PrimaryButton("Sign in", onClick = { app.verifyCode(email, code) }, enabled = code.length >= 6)
             }
         }
         if (app.devAuth) QuietButton("Use a local test account (debug build)", onClick = app::devSignIn)
+        QuietButton("Back", onClick = { app.backToGuest() })
     }
 }
 
@@ -138,11 +221,20 @@ fun ProfileScreen(onCreate: (name: String, adult: Boolean) -> Unit) {
     Page {
         Heading("What should friends call you?")
         OutlinedTextField(name, { name = it.take(40) }, label = { Text("Display name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = adult, onCheckedChange = { adult = it })
+        // The whole row is one 48 dp target and the box sits on the content edge (Material's
+        // checkbox alone added a 14 dp inset and a 20 dp target).
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = WakeMeTokens.minTouchTarget)
+                .toggleable(value = adult, role = Role.Checkbox, onValueChange = { adult = it }),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm),
+        ) {
+            Checkbox(checked = adult, onCheckedChange = null)
             Body("I'm 18 or older", color = WM.colors.textPrimary)
         }
-        Body("Your time zone is used for quiet hours and wake windows. You can change it later.")
+        Supporting("Time zone: ${java.util.TimeZone.getDefault().id}")
         PrimaryButton("Continue", onClick = { onCreate(name, adult) }, enabled = name.isNotBlank() && adult)
     }
 }
@@ -160,12 +252,8 @@ fun InviteScreen(preview: InvitePreviewDto?, onAccept: () -> Unit, onDecline: ()
         }
         val who = preview.inviter.displayName
         Heading(if (preview.kind == "circle") "$who invited you to ${preview.circle?.name ?: "a circle"}" else "$who wants to quack you.")
-        Body("Connect so you can get each other's attention, with rules you choose.")
-        WMCard {
-            Text("Hear what a quack sounds like", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-            SecondaryButton("Play preview", onClick = { playQuackPreview(context) })
-        }
-        Body("Accepting doesn't give $who any permissions. Next you'll choose exactly what they can do, if anything.")
+        PillButton("Play preview", onClick = { playSoundPreview(context) }, icon = WMIcon.Speaker)
+        if (preview.kind != "circle") Body("Next, you choose what they can do.")
         if (preview.ownInvite) {
             Body("This is your own invite. Share it with a friend.")
             SecondaryButton("Back", onClick = onDecline)
@@ -173,7 +261,7 @@ fun InviteScreen(preview: InvitePreviewDto?, onAccept: () -> Unit, onDecline: ()
             Body("You're already connected.")
             PrimaryButton("Continue", onClick = onDecline)
         } else {
-            PrimaryButton("Accept invitation", onClick = onAccept)
+            PrimaryButton("Accept invitation", onClick = onAccept, icon = WMIcon.Check)
             SecondaryButton("Not now", onClick = onDecline)
         }
     }

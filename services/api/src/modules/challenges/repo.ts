@@ -1,5 +1,6 @@
+import type { KeyObject } from 'node:crypto';
 import type { ChallengeDefinition } from '@wakeme/challenges';
-import { deriveFacts } from '@wakeme/challenges';
+import { deriveFacts, resignEnvelope } from '@wakeme/challenges';
 import type { ChallengeRef } from '@wakeme/policy';
 import type { Queryable } from '../../db/db.ts';
 
@@ -76,4 +77,35 @@ export async function canDownloadRevision(q: Queryable, revisionId: string, user
     [revisionId, userId],
   );
   return r.rows[0]?.ok === true;
+}
+
+/**
+ * After a signing-key rotation, re-signs every published revision that another
+ * key signed. Payload and digest stay byte-identical (the content trigger
+ * allows only signature and key ID to change). Idempotent; a row whose stored
+ * digest does not match its payload is left alone and reported.
+ */
+export async function resignPublishedRevisions(q: Queryable, key: KeyObject, keyId: string, batch = 200): Promise<{ resigned: number; mismatched: string[] }> {
+  const mismatched: string[] = [];
+  let resigned = 0;
+  for (;;) {
+    const r = await q.query<{ id: string; payload: string; digest: string; signature: string; key_id: string }>(
+      `select id, payload, digest, signature, key_id from challenge_revisions
+        where state = 'published' and key_id is distinct from $1 and not (id = any($2::uuid[]))
+        order by id limit $3`,
+      [keyId, mismatched, batch],
+    );
+    if (r.rows.length === 0) return { resigned, mismatched };
+    for (const row of r.rows) {
+      let env;
+      try {
+        env = resignEnvelope({ payload: row.payload, digest: row.digest, signature: row.signature, keyId: row.key_id, alg: 'ES256' }, key, keyId);
+      } catch {
+        mismatched.push(row.id);
+        continue;
+      }
+      await q.query('update challenge_revisions set signature = $2, key_id = $3 where id = $1', [row.id, env.signature, env.keyId]);
+      resigned++;
+    }
+  }
 }

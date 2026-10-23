@@ -78,6 +78,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     reauthSecondsForHighImpactGrants: 86_400,
     adminUserIds: [],
     challengeSigning: { keyId: 'test-1', privateKeyPem: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() },
+    challengeVerifyKeys: [],
     locationKey: { keyId: 'l-test', keyBase64: Buffer.alloc(32, 7).toString('base64') },
     inviteLinkBase: 'https://wakeme.app/i/',
     apns: null,

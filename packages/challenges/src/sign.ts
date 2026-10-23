@@ -67,6 +67,18 @@ export function signEnvelope(body: unknown, key: KeyObject, keyId: string): Sign
   return { payload: bytes.toString('base64'), signature: signature.toString('base64'), keyId, digest: sha256Hex(bytes), alg: 'ES256' };
 }
 
+/**
+ * Signs the same payload bytes under another key after a signing-key rotation.
+ * Payload and digest are unchanged, so devices that installed the revision
+ * earlier hold identical content. Refuses a payload that fails its own digest.
+ */
+export function resignEnvelope(env: SignedEnvelope, key: KeyObject, keyId: string): SignedEnvelope {
+  const bytes = Buffer.from(env.payload, 'base64');
+  if (sha256Hex(bytes) !== env.digest) throw new Error('digest mismatch');
+  const signature = sign('sha256', bytes, { key, dsaEncoding: 'der' });
+  return { ...env, signature: signature.toString('base64'), keyId };
+}
+
 export function verifyEnvelope(env: SignedEnvelope, publicKey: KeyObject): unknown {
   const bytes = Buffer.from(env.payload, 'base64');
   if (sha256Hex(bytes) !== env.digest) throw new Error('digest mismatch');

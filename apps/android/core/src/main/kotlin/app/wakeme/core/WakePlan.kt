@@ -1,7 +1,14 @@
 package app.wakeme.core
 
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+
+/** Wake-ups set up before signing in live only on this phone, under ids with this prefix. They
+ * never produce server receipts and move to the account when the person signs in. */
+const val LOCAL_PLAN_PREFIX = "local-"
+
+fun isLocalPlan(planId: String): Boolean = planId.startsWith(LOCAL_PLAN_PREFIX)
 
 /**
  * An installed routine version as the phone keeps it: everything needed to
@@ -25,23 +32,43 @@ data class InstalledRoutine(
 
 enum class AlarmRole { MAIN, FOLLOW_UP }
 
+/**
+ * ADR 0007: only the primary phone installs and rings routines. With no primary
+ * recorded yet, the registering phone counts as primary so a lone phone never
+ * skips its alarms. Same rule as iOS `installsRoutines`.
+ */
+fun installsRoutines(primaryDeviceId: String?, thisDeviceId: String?): Boolean =
+    primaryDeviceId == null || (thisDeviceId != null && primaryDeviceId == thisDeviceId)
+
 data class ScheduledAlarm(val planId: String, val version: Int, val occurrenceKey: String, val role: AlarmRole, val fireAt: Instant) {
     /** Stable PendingIntent request code so re-scheduling replaces instead of duplicating. */
     val requestCode: Int get() = (planId + occurrenceKey + role.name).hashCode()
 }
 
+/** Routines are armed this far ahead (ADR 0011); the app tops the window up whenever it runs. */
+const val ARM_WINDOW_DAYS = 8L
+
+/** At most this many occurrences of one routine are armed at once. */
+const val ARM_MAX_OCCURRENCES = 8
+
 /**
- * Computes the alarms to install: the next occurrence and, if the owner
- * accepted it, one follow-up. Completing the challenge cancels the follow-up
- * locally; stopping the main alarm with the system control does not.
+ * Computes the alarms to install: every occurrence in the next [ARM_WINDOW_DAYS] days (at
+ * most [ARM_MAX_OCCURRENCES], and always the next one even when it is further away), each
+ * with one follow-up if the owner accepted it. Arming ahead keeps a routine ringing when
+ * the app doesn't run between occurrences. Completing the challenge cancels that
+ * occurrence's follow-up locally; stopping the main alarm with the system control does not.
  */
 fun scheduleFor(routine: InstalledRoutine, now: Instant, deviceZone: ZoneId): List<ScheduledAlarm> {
     if (routine.paused) return emptyList()
     val zone = if (routine.timeZonePolicy == "device") deviceZone else ZoneId.of(routine.timeZone)
-    val next = nextOccurrences(routine.localTime, zone, routine.recurrence, now, 1).firstOrNull() ?: return emptyList()
-    val main = ScheduledAlarm(routine.planId, routine.version, next.localDate, AlarmRole.MAIN, next.instant)
-    val delay = routine.followUpDelaySeconds ?: return listOf(main)
-    return listOf(main, ScheduledAlarm(routine.planId, routine.version, next.localDate, AlarmRole.FOLLOW_UP, next.instant.plusSeconds(delay.toLong())))
+    val until = now.plus(Duration.ofDays(ARM_WINDOW_DAYS))
+    val occurrences = nextOccurrences(routine.localTime, zone, routine.recurrence, now, ARM_MAX_OCCURRENCES)
+        .filterIndexed { i, o -> i == 0 || !o.instant.isAfter(until) }
+    return occurrences.flatMap { o ->
+        val main = ScheduledAlarm(routine.planId, routine.version, o.localDate, AlarmRole.MAIN, o.instant)
+        val delay = routine.followUpDelaySeconds ?: return@flatMap listOf(main)
+        listOf(main, ScheduledAlarm(routine.planId, routine.version, o.localDate, AlarmRole.FOLLOW_UP, o.instant.plusSeconds(delay.toLong())))
+    }
 }
 
 /** States of one wake session on the phone. Transitions are monotonic. */

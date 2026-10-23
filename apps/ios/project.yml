@@ -1,0 +1,175 @@
+# XcodeGen spec: `xcodegen generate` writes WakeMe.xcodeproj (not committed).
+name: WakeMe
+options:
+  bundleIdPrefix: app.wakeme
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+packages:
+  WakeMeCore:
+    path: WakeMeCore
+  # StoreKit through RevenueCat (doc 02 §2), as on Android. Pinned; reviewed 2026-10-20
+  # (release 5.92.0, 2026-09-30, official SPM mirror of RevenueCat/purchases-ios, MIT).
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios-spm
+    exactVersion: 5.92.0
+targets:
+  WakeMe:
+    type: application
+    platform: iOS
+    sources:
+      - path: WakeMe
+    dependencies:
+      - package: WakeMeCore
+        product: WakeMeCore
+      - package: WakeMeCore
+        product: WakeMeAPI
+      - package: RevenueCat
+        product: RevenueCat
+      # Linked explicitly so Xcode extracts App Intents metadata (the alarm's challenge and stop
+      # intents); with only `import AppIntents` the build skipped it.
+      - sdk: AppIntents.framework
+      # Focus (ADR 0014): ends the shield on time, explains it, and opens Wake Me from it.
+      - target: WakeMeFocusMonitor
+      - target: WakeMeShieldConfig
+      - target: WakeMeShieldAction
+    # APNs needs this in a signed build (development here; distribution signing sets production).
+    # Family Controls (individual authorization) and the App Group the focus extensions share need
+    # the owner's team; distribution needs Apple's Family Controls approval.
+    entitlements:
+      path: WakeMe/WakeMe.entitlements
+      properties:
+        aps-environment: development
+        com.apple.developer.applesignin: [Default]
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups: [group.app.wakeme.ios]
+    info:
+      path: WakeMe/Info.plist
+      properties:
+        CFBundleDisplayName: Wake Me
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSSupportsLiveActivities: true
+        NSAlarmKitUsageDescription: Wake Me schedules the wake-ups you set or accept, so they ring even in silent mode or Focus.
+        # fetch: background app refresh tops up armed routines and catches up on changes (SyncEngine).
+        # location: a safety share the person started keeps sending while the app is in the
+        # background, with iOS's location indicator showing; it ends with the session (LocationSharer).
+        UIBackgroundModes: [fetch, location, remote-notification]
+        NSLocationWhenInUseUsageDescription: Wake Me shares your location only when you start a check-in, location share or SOS, only with the friends you pick, and only until it ends or you stop it.
+        BGTaskSchedulerPermittedIdentifiers: [app.wakeme.ios.sync]
+        ITSAppUsesNonExemptEncryption: false
+        # Non-secret configuration, set per build (e.g. xcodebuild WAKEME_API_BASE_URL=https://api.example).
+        WakeMeAPIBaseURL: $(WAKEME_API_BASE_URL)
+        WakeMeSupabaseURL: $(WAKEME_SUPABASE_URL)
+        WakeMeSupabaseAnonKey: $(WAKEME_SUPABASE_ANON_KEY)
+        WakeMeRevenueCatKey: $(WAKEME_REVENUECAT_IOS_KEY)
+        # Plain HTTP only to the local dev backend; production uses HTTPS with platform trust.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_PREVIEWS: YES
+        # Icons.xcassets holds the Bloom UI icons only; there is no app icon set yet (a store gate),
+        # so the asset compiler must not look for XcodeGen's default "AppIcon".
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        WAKEME_API_BASE_URL: "http://127.0.0.1:8787"
+        WAKEME_SUPABASE_URL: ""
+        WAKEME_SUPABASE_ANON_KEY: ""
+        WAKEME_REVENUECAT_IOS_KEY: ""
+  WakeMeFocusMonitor:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WakeMeFocusMonitor
+    entitlements:
+      path: WakeMeFocusMonitor/WakeMeFocusMonitor.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups: [group.app.wakeme.ios]
+    info:
+      path: WakeMeFocusMonitor/Info.plist
+      properties:
+        CFBundleDisplayName: Wake Me focus
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.deviceactivity.monitor-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).FocusMonitorExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.focus-monitor
+        SWIFT_VERSION: "5.0"
+  WakeMeShieldConfig:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WakeMeShieldConfig
+    entitlements:
+      path: WakeMeShieldConfig/WakeMeShieldConfig.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups: [group.app.wakeme.ios]
+    info:
+      path: WakeMeShieldConfig/Info.plist
+      properties:
+        CFBundleDisplayName: Wake Me shield
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.ManagedSettingsUI.shield-configuration-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShieldConfigurationExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.shield-config
+        SWIFT_VERSION: "5.0"
+  WakeMeShieldAction:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WakeMeShieldAction
+    entitlements:
+      path: WakeMeShieldAction/WakeMeShieldAction.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+    info:
+      path: WakeMeShieldAction/Info.plist
+      properties:
+        CFBundleDisplayName: Wake Me shield action
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.ManagedSettings.shield-action-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShieldActionExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.shield-action
+        SWIFT_VERSION: "5.0"
+  WakeMeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: WakeMeUITests
+    dependencies:
+      - target: WakeMe
+    info:
+      path: WakeMeUITests/Info.plist
+      properties:
+        # The journey test talks to the local dev backend (http://127.0.0.1:8787).
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.wakeme.ios.uitests
+schemes:
+  WakeMe:
+    build:
+      targets:
+        WakeMe: all
+        WakeMeUITests: [test]
+    test:
+      targets:
+        - WakeMeUITests

@@ -22,6 +22,7 @@ interface AlarmDeps {
     fun receipts(): ReceiptQueue
     fun readiness(): Readiness
     fun sessions(): WakeSessions
+    fun arming(): ArmingWindow
 }
 
 /** Access to singletons from broadcast receivers and services that Hilt doesn't construct. */
@@ -33,6 +34,7 @@ object AlarmEntryPoints {
     fun receipts(context: Context) = deps(context).receipts()
     fun readiness(context: Context) = deps(context).readiness()
     fun sessions(context: Context) = deps(context).sessions()
+    fun arming(context: Context) = deps(context).arming()
 }
 
 fun CoroutineScope.launchCatching(block: suspend () -> Unit) = launch {

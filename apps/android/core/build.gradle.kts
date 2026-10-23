@@ -16,6 +16,6 @@ dependencies {
 }
 
 tasks.test {
-    systemProperty("wakeme.fixtures", rootProject.projectDir.resolve("../../packages/policy-fixtures/fixtures").canonicalPath)
+    systemProperty("wakeme.fixtures", projectDir.resolve("../../../packages/policy-fixtures/fixtures").canonicalPath)
     testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
 }

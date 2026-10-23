@@ -1,9 +1,10 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPublicKey } from 'node:crypto';
-import { verifyEnvelope } from '@wakeme/challenges';
+import { createPublicKey, generateKeyPairSync } from 'node:crypto';
+import { loadSigningKey, verifyEnvelope } from '@wakeme/challenges';
 import { createHarness, idem, WAKE_LIMITS, type Harness } from './support/harness.ts';
 import { assembleDraft } from '../src/ai/assemble.ts';
+import { resignPublishedRevisions } from '../src/modules/challenges/repo.ts';
 
 let h: Harness;
 before(async () => {
@@ -27,6 +28,22 @@ const quiz = {
 };
 
 describe('manual challenges', () => {
+  it('publishes retired verification keys after a signing-key rotation, current key first', async () => {
+    const { generateKeyPairSync } = await import('node:crypto');
+    const { publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+    const retired = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+    const cfgObj = h.deps.config as { challengeVerifyKeys: { keyId: string; spki: string }[] };
+    cfgObj.challengeVerifyKeys = [{ keyId: 'old-1', spki: retired }, { keyId: h.deps.config.challengeSigning.keyId, spki: retired }];
+    try {
+      const cfg = await h.req('GET', '/v1/config');
+      const ids = cfg.body.challengeSigningKeys.map((k: { keyId: string }) => k.keyId);
+      assert.deepEqual(ids, [h.deps.config.challengeSigning.keyId, 'old-1'], 'current first; the current id is never shadowed by a retired entry');
+      assert.equal(cfg.body.challengeSigningKeys[1].spki, retired);
+    } finally {
+      cfgObj.challengeVerifyKeys = [];
+    }
+  });
+
   it('requires a preview before publishing, then freezes a signed revision', async () => {
     const maya = await h.createUser('Maya');
     const c = await h.req('POST', '/v1/challenges', { user: maya, body: { body: quiz } });
@@ -49,6 +66,31 @@ describe('manual challenges', () => {
     await assert.rejects(h.db.query(`update challenge_revisions set body = '{}'::jsonb where id = $1`, [revId]), /immutable/);
     const tampered = { ...env.body, payload: Buffer.from(JSON.stringify({ ...payload, definition: { ...payload.definition, title: 'x' } })).toString('base64') };
     assert.throws(() => verifyEnvelope(tampered, key));
+  });
+
+  it('re-signs published revisions under a new key without changing their content', async () => {
+    const maya = await h.createUser('Maya');
+    const c = await h.req('POST', '/v1/challenges', { user: maya, body: { body: quiz } });
+    await h.req('POST', `/v1/challenges/${c.body.id}/revisions/1/previewed`, { user: maya });
+    const revId = (await h.req('POST', `/v1/challenges/${c.body.id}/publish`, { user: maya, body: { revision: 1 } })).body.revisions[0].id;
+    const before = (await h.req('GET', `/v1/challenge-revisions/${revId}`, { user: maya })).body;
+
+    const next = loadSigningKey(generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({ type: 'pkcs8', format: 'pem' }).toString());
+    const current = h.deps.config.challengeSigning.keyId;
+    try {
+      const r = await resignPublishedRevisions(h.db, next, 'rotated-2');
+      assert.ok(r.resigned >= 1);
+      assert.deepEqual(r.mismatched, []);
+      assert.equal((await resignPublishedRevisions(h.db, next, 'rotated-2')).resigned, 0, 'a re-run is a no-op');
+      const after = (await h.req('GET', `/v1/challenge-revisions/${revId}`, { user: maya })).body;
+      assert.equal(after.keyId, 'rotated-2');
+      assert.equal(after.payload, before.payload, 'content is byte-identical');
+      assert.equal(after.digest, before.digest);
+      assert.equal((verifyEnvelope(after, next) as { revisionId: string }).revisionId, revId);
+      await assert.rejects(h.db.query(`update challenge_revisions set signature = 'x', payload = 'eA==' where id = $1`, [revId]), /immutable/, 'content stays immutable');
+    } finally {
+      await resignPublishedRevisions(h.db, h.deps.challengeKey, current); // later tests verify with the harness key
+    }
   });
 
   it('rejects unsafe or incorrect content with explanations', async () => {

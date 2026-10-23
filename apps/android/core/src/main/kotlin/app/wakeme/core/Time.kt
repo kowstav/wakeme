@@ -31,6 +31,22 @@ fun isWithinWindow(instant: Instant, zone: ZoneId, window: LocalWindow): Boolean
 
 fun isWithinAnyWindow(instant: Instant, zone: ZoneId, windows: List<LocalWindow>): Boolean = windows.any { isWithinWindow(instant, zone, it) }
 
+/**
+ * Whether a wall-clock time on an ISO weekday falls inside one of the windows: the same rule
+ * as [isWithinWindow], without a zone, for a time that will ring in someone else's zone (a
+ * wake-up suggested for a friend, whose zone stays private). Same as iOS.
+ */
+fun isWithinAnyWindow(localTime: String, weekday: Int, windows: List<LocalWindow>): Boolean {
+    val now = minuteOfDay(localTime)
+    val previousDay = if (weekday == 1) 7 else weekday - 1
+    return windows.any { w ->
+        val start = minuteOfDay(w.start)
+        val end = minuteOfDay(w.end)
+        if (start < end) weekday in w.days && now >= start && now < end
+        else (weekday in w.days && now >= start) || (previousDay in w.days && now < end)
+    }
+}
+
 fun isQuietTime(instant: Instant, zone: ZoneId, quiet: QuietHours): Boolean =
     quiet.enabled && isWithinWindow(instant, zone, LocalWindow((1..7).toList(), quiet.start, quiet.end))
 

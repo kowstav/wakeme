@@ -6,6 +6,7 @@ import { planDto } from '../alarms/routes.ts';
 import { commandDto, type CommandRow } from '../commands/routes.ts';
 import type { PlanRow } from '../alarms/service.ts';
 import { meDto } from '../identity/routes.ts';
+import { feedPosition } from './repo.ts';
 
 function encodeCursor(seq: number): string {
   return Buffer.from(`s:${seq}`, 'utf8').toString('base64url');
@@ -42,16 +43,14 @@ export const syncRoutes: RouteDef[] = [
     query: Obj({ cursor: Type.Optional(Type.String({ maxLength: 64 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200 })) }),
     response: Type.Object({ changes: Type.Array(Change), cursor: Type.String(), hasMore: Type.Boolean(), bootstrap: Type.Boolean(), resetRequired: Nullable(Type.Boolean()) }),
     handler: async ({ query, user, deps, now }) => {
-      if (!query.cursor) {
-        const head = await deps.db.query<{ seq: number | string | null }>('select max(seq) as seq from sync_events where user_id = $1', [user.id]);
-        return { changes: [], cursor: encodeCursor(Number(head.rows[0]?.seq ?? 0)), hasMore: false, bootstrap: true, resetRequired: null };
-      }
+      const { head, floor } = await feedPosition(deps.db, user.id);
+      if (!query.cursor) return { changes: [], cursor: encodeCursor(head), hasMore: false, bootstrap: true, resetRequired: null };
       const after = decodeCursor(query.cursor);
-      const floor = await deps.db.query<{ floor_seq: number | string }>('select floor_seq from sync_floor where user_id = $1', [user.id]);
-      if (floor.rows[0] && after < Number(floor.rows[0].floor_seq)) {
-        // Events older than retention were purged: the app must re-fetch lists, then continue from head.
-        const head = await deps.db.query<{ seq: number | string | null }>('select max(seq) as seq from sync_events where user_id = $1', [user.id]);
-        return { changes: [], cursor: encodeCursor(Number(head.rows[0]?.seq ?? floor.rows[0].floor_seq)), hasMore: false, bootstrap: true, resetRequired: true };
+      // Below the floor: events were purged by retention, or the database was restored.
+      // Past the head: the cursor came from state the server no longer has (a restore).
+      // Either way the app re-fetches its lists, then continues from the head.
+      if ((floor !== null && after < floor) || after > head) {
+        return { changes: [], cursor: encodeCursor(head), hasMore: false, bootstrap: true, resetRequired: true };
       }
       const limit = query.limit ?? 100;
       const r = await deps.db.query<{ seq: number | string; entity: string; entity_id: string; op: string }>(

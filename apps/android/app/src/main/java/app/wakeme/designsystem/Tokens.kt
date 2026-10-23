@@ -3,68 +3,238 @@ package app.wakeme.designsystem
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Immutable
 data class WakeMeColors(
     val surface: Color,
     val surfaceRaised: Color,
+    val surfaceNeutral: Color,
     val surfaceSunken: Color,
+    val surfacePressed: Color,
+    val surfaceOverlay: Color,
     val border: Color,
+    val outline: Color,
     val textPrimary: Color,
     val textSecondary: Color,
     val accent: Color,
+    val accentPressed: Color,
     val textOnAccent: Color,
+    val accentContainer: Color,
+    val onAccentContainer: Color,
     val accentText: Color,
+    val brandInk: Color,
+    val heroFill: Color,
+    val onHero: Color,
+    val onHeroSecondary: Color,
     val info: Color,
+    val infoContainer: Color,
     val success: Color,
+    val successContainer: Color,
     val warning: Color,
+    val warningContainer: Color,
     val danger: Color,
+    val dangerContainer: Color,
     val dangerFill: Color,
     val textOnDanger: Color,
+    val focus: Color,
     val alarmBackground: Color,
     val alarmText: Color,
 )
 
+/**
+ * A petal family: [fill] for tiles, chips and avatars, [ink] for text and icons on it (≥ 4.5:1 in
+ * both themes). Families mark things of the same kind; they never carry status.
+ */
+@Immutable
+data class WakeMeFamily(val fill: Color, val ink: Color)
+
+@Immutable
+data class WakeMePalette(
+    val lime: WakeMeFamily,
+    val orchid: WakeMeFamily,
+    val sky: WakeMeFamily,
+    val apricot: WakeMeFamily,
+    val gold: WakeMeFamily,
+    val aqua: WakeMeFamily,
+    val periwinkle: WakeMeFamily,
+    val forest: WakeMeFamily,
+) {
+    /** Friend avatars, in the same order as iOS, so a friend has one colour on both. */
+    val avatars: List<WakeMeFamily> get() = listOf(lime, orchid, sky, apricot, gold, aqua, periwinkle)
+}
+
 object WakeMeTokens {
     val Light = WakeMeColors(
-        surface = Color(0xFFFBF8F1),
+        surface = Color(0xFFFFFFFF),
         surfaceRaised = Color(0xFFFFFFFF),
-        surfaceSunken = Color(0xFFF3EEE3),
-        border = Color(0xFFE2DCCF),
-        textPrimary = Color(0xFF1B1A17),
-        textSecondary = Color(0xFF5C5850),
-        accent = Color(0xFFF2B705),
-        textOnAccent = Color(0xFF1B1A17),
-        accentText = Color(0xFF835C00),
-        info = Color(0xFF2F5D9E),
-        success = Color(0xFF2B7449),
-        warning = Color(0xFF8F5400),
-        danger = Color(0xFFB3261E),
-        dangerFill = Color(0xFFB3261E),
+        surfaceNeutral = Color(0xFFEBEDEA),
+        surfaceSunken = Color(0xFFF2F4F0),
+        surfacePressed = Color(0xFFDDE0DA),
+        surfaceOverlay = Color(0xFFFFFFFF),
+        border = Color(0xFFE3E5E0),
+        outline = Color(0xFF767876),
+        textPrimary = Color(0xFF0E0F0C),
+        textSecondary = Color(0xFF454745),
+        accent = Color(0xFF9FE870),
+        accentPressed = Color(0xFF8ED45E),
+        textOnAccent = Color(0xFF163300),
+        accentContainer = Color(0xFFE2F6D5),
+        onAccentContainer = Color(0xFF163300),
+        accentText = Color(0xFF163300),
+        brandInk = Color(0xFF163300),
+        heroFill = Color(0xFF163300),
+        onHero = Color(0xFF9FE870),
+        onHeroSecondary = Color(0xFFCDF2B4),
+        info = Color(0xFF2A5E98),
+        infoContainer = Color(0xFFDEEFF3),
+        success = Color(0xFF2F5711),
+        successContainer = Color(0xFFE2F6D5),
+        warning = Color(0xFF8A4100),
+        warningContainer = Color(0xFFFDE7D2),
+        danger = Color(0xFFA8200D),
+        dangerContainer = Color(0xFFFFE6E1),
+        dangerFill = Color(0xFFA8200D),
         textOnDanger = Color(0xFFFFFFFF),
-        alarmBackground = Color(0xFF121417),
-        alarmText = Color(0xFFF3EFE6),
+        focus = Color(0xFF2A5E98),
+        alarmBackground = Color(0xFF163300),
+        alarmText = Color(0xFFF2F5EE),
     )
     val Dark = WakeMeColors(
-        surface = Color(0xFF121417),
-        surfaceRaised = Color(0xFF1C1F24),
-        surfaceSunken = Color(0xFF0C0E10),
-        border = Color(0xFF2C3036),
-        textPrimary = Color(0xFFF3EFE6),
-        textSecondary = Color(0xFFB3ADA2),
-        accent = Color(0xFFF5C518),
-        textOnAccent = Color(0xFF1B1A17),
-        accentText = Color(0xFFF5C518),
-        info = Color(0xFF8DB4F0),
-        success = Color(0xFF6FCF97),
-        warning = Color(0xFFF2B05E),
-        danger = Color(0xFFFF8A80),
-        dangerFill = Color(0xFFB3261E),
+        surface = Color(0xFF0E110B),
+        surfaceRaised = Color(0xFF181C15),
+        surfaceNeutral = Color(0xFF1E221B),
+        surfaceSunken = Color(0xFF080A06),
+        surfacePressed = Color(0xFF2B3027),
+        surfaceOverlay = Color(0xFF22261F),
+        border = Color(0xFF2C3128),
+        outline = Color(0xFF858C80),
+        textPrimary = Color(0xFFF2F5EE),
+        textSecondary = Color(0xFFB5BBAE),
+        accent = Color(0xFF9FE870),
+        accentPressed = Color(0xFF8ED45E),
+        textOnAccent = Color(0xFF163300),
+        accentContainer = Color(0xFF203F05),
+        onAccentContainer = Color(0xFFCDF2B4),
+        accentText = Color(0xFF9FE870),
+        brandInk = Color(0xFF9FE870),
+        heroFill = Color(0xFF163300),
+        onHero = Color(0xFF9FE870),
+        onHeroSecondary = Color(0xFFCDF2B4),
+        info = Color(0xFF95D3E2),
+        infoContainer = Color(0xFF1E3A41),
+        success = Color(0xFF9FE870),
+        successContainer = Color(0xFF203F05),
+        warning = Color(0xFFFAAF5F),
+        warningContainer = Color(0xFF4E2D02),
+        danger = Color(0xFFFF8A7A),
+        dangerContainer = Color(0xFF4A1A14),
+        dangerFill = Color(0xFFA8200D),
         textOnDanger = Color(0xFFFFFFFF),
-        alarmBackground = Color(0xFF0C0E10),
-        alarmText = Color(0xFFF3EFE6),
+        focus = Color(0xFF95D3E2),
+        alarmBackground = Color(0xFF0B1A00),
+        alarmText = Color(0xFFF2F5EE),
     )
+    /** Android 14+ contrast level at medium or high. */
+    val LightHighContrast = WakeMeColors(
+        surface = Color(0xFFFFFFFF),
+        surfaceRaised = Color(0xFFFFFFFF),
+        surfaceNeutral = Color(0xFFEBEDEA),
+        surfaceSunken = Color(0xFFF2F4F0),
+        surfacePressed = Color(0xFFDDE0DA),
+        surfaceOverlay = Color(0xFFFFFFFF),
+        border = Color(0xFFE3E5E0),
+        outline = Color(0xFF545653),
+        textPrimary = Color(0xFF0E0F0C),
+        textSecondary = Color(0xFF2E302D),
+        accent = Color(0xFF9FE870),
+        accentPressed = Color(0xFF8ED45E),
+        textOnAccent = Color(0xFF163300),
+        accentContainer = Color(0xFFE2F6D5),
+        onAccentContainer = Color(0xFF163300),
+        accentText = Color(0xFF0B1A00),
+        brandInk = Color(0xFF163300),
+        heroFill = Color(0xFF163300),
+        onHero = Color(0xFF9FE870),
+        onHeroSecondary = Color(0xFFCDF2B4),
+        info = Color(0xFF2A5E98),
+        infoContainer = Color(0xFFDEEFF3),
+        success = Color(0xFF2F5711),
+        successContainer = Color(0xFFE2F6D5),
+        warning = Color(0xFF8A4100),
+        warningContainer = Color(0xFFFDE7D2),
+        danger = Color(0xFFA8200D),
+        dangerContainer = Color(0xFFFFE6E1),
+        dangerFill = Color(0xFFA8200D),
+        textOnDanger = Color(0xFFFFFFFF),
+        focus = Color(0xFF2A5E98),
+        alarmBackground = Color(0xFF163300),
+        alarmText = Color(0xFFF2F5EE),
+    )
+    val DarkHighContrast = WakeMeColors(
+        surface = Color(0xFF0E110B),
+        surfaceRaised = Color(0xFF181C15),
+        surfaceNeutral = Color(0xFF1E221B),
+        surfaceSunken = Color(0xFF080A06),
+        surfacePressed = Color(0xFF2B3027),
+        surfaceOverlay = Color(0xFF22261F),
+        border = Color(0xFF2C3128),
+        outline = Color(0xFFA9B0A3),
+        textPrimary = Color(0xFFF2F5EE),
+        textSecondary = Color(0xFFD7DCD1),
+        accent = Color(0xFF9FE870),
+        accentPressed = Color(0xFF8ED45E),
+        textOnAccent = Color(0xFF163300),
+        accentContainer = Color(0xFF203F05),
+        onAccentContainer = Color(0xFFCDF2B4),
+        accentText = Color(0xFFC4F5A3),
+        brandInk = Color(0xFF9FE870),
+        heroFill = Color(0xFF163300),
+        onHero = Color(0xFF9FE870),
+        onHeroSecondary = Color(0xFFCDF2B4),
+        info = Color(0xFF95D3E2),
+        infoContainer = Color(0xFF1E3A41),
+        success = Color(0xFF9FE870),
+        successContainer = Color(0xFF203F05),
+        warning = Color(0xFFFAAF5F),
+        warningContainer = Color(0xFF4E2D02),
+        danger = Color(0xFFFF8A7A),
+        dangerContainer = Color(0xFF4A1A14),
+        dangerFill = Color(0xFFA8200D),
+        textOnDanger = Color(0xFFFFFFFF),
+        focus = Color(0xFF95D3E2),
+        alarmBackground = Color(0xFF0B1A00),
+        alarmText = Color(0xFFF2F5EE),
+    )
+    val PaletteLight = WakeMePalette(
+        lime = WakeMeFamily(fill = Color(0xFF9FE870), ink = Color(0xFF163300)),
+        orchid = WakeMeFamily(fill = Color(0xFFDE82C3), ink = Color(0xFF510841)),
+        sky = WakeMeFamily(fill = Color(0xFF95D3E2), ink = Color(0xFF02343E)),
+        apricot = WakeMeFamily(fill = Color(0xFFFAAF5F), ink = Color(0xFF6C1C0F)),
+        gold = WakeMeFamily(fill = Color(0xFFF8C53D), ink = Color(0xFF683305)),
+        aqua = WakeMeFamily(fill = Color(0xFFA4F2ED), ink = Color(0xFF045B49)),
+        periwinkle = WakeMeFamily(fill = Color(0xFF9386E4), ink = Color(0xFF251454)),
+        forest = WakeMeFamily(fill = Color(0xFF163300), ink = Color(0xFF9FE870)),
+    )
+    val PaletteDark = WakeMePalette(
+        lime = WakeMeFamily(fill = Color(0xFF203F05), ink = Color(0xFF9FE870)),
+        orchid = WakeMeFamily(fill = Color(0xFF4E2442), ink = Color(0xFFDE82C3)),
+        sky = WakeMeFamily(fill = Color(0xFF1E3A41), ink = Color(0xFF95D3E2)),
+        apricot = WakeMeFamily(fill = Color(0xFF4E2D02), ink = Color(0xFFFAAF5F)),
+        gold = WakeMeFamily(fill = Color(0xFF443300), ink = Color(0xFFF8C53D)),
+        aqua = WakeMeFamily(fill = Color(0xFF173C3A), ink = Color(0xFFA4F2ED)),
+        periwinkle = WakeMeFamily(fill = Color(0xFF282249), ink = Color(0xFF9386E4)),
+        forest = WakeMeFamily(fill = Color(0xFF163300), ink = Color(0xFF9FE870)),
+    )
+    val illustrationDuckBody = Color(0xFFF8C53D)
+    val illustrationDuckWing = Color(0xFFD7961A)
+    val illustrationDuckBeak = Color(0xFFED7737)
+    val illustrationDuckBeakShade = Color(0xFFD03E20)
+    val illustrationDuckEye = Color(0xFF163300)
+    val illustrationDuckEyeHighlight = Color(0xFFFFFFFF)
     val spaceXxs = 4.dp
     val spaceXs = 8.dp
     val spaceSm = 12.dp
@@ -72,13 +242,103 @@ object WakeMeTokens {
     val spaceLg = 24.dp
     val spaceXl = 32.dp
     val spaceXxl = 48.dp
-    val radiusSm = 8.dp
-    val radiusMd = 12.dp
-    val radiusLg = 20.dp
+    val radiusSm = 12.dp
+    val radiusMd = 16.dp
+    val radiusLg = 24.dp
+    val radiusXl = 32.dp
     val radiusPill = 999.dp
     val minTouchTarget = 48.dp
     val alarmControl = 72.dp
-    const val motionQuickMs = 150
-    const val motionStandardMs = 250
+    val controlHeight = 56.dp
+    const val opacityDisabled = 0.38f
+    const val opacityPressedOverlay = 0.1f
+    const val opacityScrim = 0.45f
+    val elevationOverlay = 6.dp
+    const val motionQuickMs = 120
+    const val motionStandardMs = 220
+    const val motionEmphasizedMs = 320
+    const val motionExitMs = 180
+    const val motionReducedCrossfadeMs = 150
     const val motionQuackMs = 600
+    const val motionCelebrateMs = 900
+    const val springPressDamping = 0.9f
+    const val springPressStiffness = 987.0f
+    const val springSnappyDamping = 0.86f
+    const val springSnappyStiffness = 438.6f
+    const val springSmoothDamping = 1f
+    const val springSmoothStiffness = 195.0f
+    const val springPlayfulDamping = 0.55f
+    const val springPlayfulStiffness = 246.7f
+    const val pressScale = 0.97f
+    val screenMargin = 16.dp
+    val layoutReadableWidth = 640.dp
+    val layoutCardPadding = 16.dp
+    val layoutHeroPadding = 20.dp
+    val layoutCardGap = 12.dp
+    val layoutTitleGap = 4.dp
+    val layoutFieldLabelGap = 8.dp
+    val layoutControlGap = 12.dp
+    val layoutSectionGap = 24.dp
+    val layoutSectionTopExtra = 8.dp
+    val buttonHeight = 56.dp
+    val alarmButtonHeight = 72.dp
+    val buttonPaddingX = 24.dp
+    val compactControlHeight = 40.dp
+    val chipHeight = 36.dp
+    val iconButtonVisual = 44.dp
+    val iconChip = 40.dp
+    val actionCircle = 56.dp
+    val iconSize = 24.dp
+    val iconSizeSmall = 20.dp
+    val iconSizeLarge = 28.dp
+    val avatarRow = 44.dp
+    val avatarHeader = 72.dp
+    val tileMinHeight = 116.dp
+    val statusPillPaddingX = 12.dp
+    val statusPillPaddingY = 6.dp
+    val dayToggleMax = 44.dp
+    const val staggerMs = 40
+    const val staggerMaxItems = 5
+}
+
+/** Semantic type roles (sp, so they follow font scale). Figures are tabular in every role. */
+object WakeMeType {
+    /** Hero headline on welcome and celebration screens, in capitals */
+    val display = TextStyle(fontSize = 44.sp, lineHeight = 42.sp, fontWeight = FontWeight.W800, letterSpacing = -0.44.sp, fontFeatureSettings = "tnum", fontFamily = CondensedFontFamily)
+    /** Alarm clock face */
+    val alarmTime = TextStyle(fontSize = 80.sp, lineHeight = 84.sp, fontWeight = FontWeight.W700, letterSpacing = -1.60.sp, fontFeatureSettings = "tnum")
+    /** Routine time on heroes, detail and editor */
+    val timeDisplay = TextStyle(fontSize = 60.sp, lineHeight = 64.sp, fontWeight = FontWeight.W700, letterSpacing = -1.20.sp, fontFeatureSettings = "tnum")
+    /** Routine time on cards and lists */
+    val timeInline = TextStyle(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.W700, letterSpacing = -0.34.sp, fontFeatureSettings = "tnum")
+    /** Large headings on full-screen states */
+    val hero = TextStyle(fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.W700, letterSpacing = -0.48.sp, fontFeatureSettings = "tnum")
+    /** Top of a screen */
+    val screenTitle = TextStyle(fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.W700, letterSpacing = -0.60.sp, fontFeatureSettings = "tnum")
+    /** Alarm label, challenge title, question */
+    val prominent = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.W700, letterSpacing = -0.24.sp, fontFeatureSettings = "tnum")
+    /** Header between groups (outside cards); large alarm button labels */
+    val section = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.W700, letterSpacing = -0.22.sp, fontFeatureSettings = "tnum")
+    /** Card and list-row titles, button labels */
+    val cardTitle = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.W600, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum")
+    /** Bento tile titles */
+    val tileTitle = TextStyle(fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.W700, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum")
+    /** Label above a group of form controls; small section headers */
+    val fieldLabel = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W600, letterSpacing = 0.10.sp, fontFeatureSettings = "tnum")
+    /** Paragraphs and sentences */
+    val body = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.W400, letterSpacing = 0.14.sp, fontFeatureSettings = "tnum")
+    /** Secondary line under a title, metadata */
+    val supporting = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W400, letterSpacing = 0.10.sp, fontFeatureSettings = "tnum")
+    /** Status pills, chips */
+    val label = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W600, letterSpacing = 0.10.sp, fontFeatureSettings = "tnum")
+    /** The short word under a quick-action circle */
+    val actionLabel = TextStyle(fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.W600, letterSpacing = 0.13.sp, fontFeatureSettings = "tnum")
+    /** Trail step labels, footnotes; the floor for anything people must read */
+    val caption = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.W500, letterSpacing = 0.24.sp, fontFeatureSettings = "tnum")
+    /** display grows with font scale up to 1.3× and no further, so it can't overflow. */
+    const val displayMaxScale = 1.3f
+    /** alarmTime grows with font scale up to 1.3× and no further, so it can't overflow. */
+    const val alarmTimeMaxScale = 1.3f
+    /** timeDisplay grows with font scale up to 1.5× and no further, so it can't overflow. */
+    const val timeDisplayMaxScale = 1.5f
 }

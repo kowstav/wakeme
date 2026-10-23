@@ -11,6 +11,7 @@ import {
   loadSigningKey,
   normalizeAnswer,
   recipientPreview,
+  resignEnvelope,
   scanText,
   signEnvelope,
   validateChallenge,
@@ -145,6 +146,18 @@ describe('signing', () => {
     tampered.definition.steps[0].correctIndex = 1;
     const bad = { ...env, payload: Buffer.from(canonicalJson(tampered)).toString('base64') };
     assert.throws(() => verifyEnvelope(bad, key));
+  });
+
+  it('re-signs the same bytes under a new key and refuses a payload that fails its digest', () => {
+    const env = signEnvelope({ revision: 1, definition: quiz() }, key, 'k1');
+    const next = loadSigningKey(generateKeyPairSync('ec', { namedCurve: 'P-256' }).privateKey.export({ type: 'pkcs8', format: 'pem' }).toString());
+    const moved = resignEnvelope(env, next, 'k2');
+    assert.equal(moved.payload, env.payload);
+    assert.equal(moved.digest, env.digest);
+    assert.equal(moved.keyId, 'k2');
+    assert.deepEqual(verifyEnvelope(moved, next), { revision: 1, definition: quiz() });
+    assert.throws(() => verifyEnvelope(moved, key), /bad signature/);
+    assert.throws(() => resignEnvelope({ ...env, digest: '0'.repeat(64) }, next, 'k2'), /digest mismatch/);
   });
 
   it('canonicalizes key order', () => {

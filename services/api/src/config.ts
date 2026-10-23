@@ -1,3 +1,4 @@
+import { createPublicKey } from 'node:crypto';
 // Runtime configuration. Secrets come only from the environment (populated by
 // the platform's secret manager); nothing secret is committed, logged or sent
 // to clients. Every process validates its configuration before starting.
@@ -51,6 +52,8 @@ export interface Config {
   reauthSecondsForHighImpactGrants: number;
   adminUserIds: string[];
   challengeSigning: { keyId: string; privateKeyPem: string };
+  /** Retired challenge-signing public keys still published for verification (key rotation). */
+  challengeVerifyKeys: { keyId: string; spki: string }[];
   locationKey: { keyId: string; keyBase64: string };
   inviteLinkBase: string;
   apns: ApnsConfig | null;
@@ -83,6 +86,26 @@ function int(env: NodeJS.ProcessEnv, key: string, fallback: number, min: number,
   return n;
 }
 
+/** "keyId=base64SPKI,keyId2=base64SPKI": retired EC P-256 verification keys. */
+function verifyKeys(raw: string | undefined): { keyId: string; spki: string }[] {
+  if (!raw) return [];
+  return raw.split(',').map((entry) => {
+    // Split on the first "=" only: base64 padding also uses "=".
+    const at = entry.indexOf('=');
+    const keyId = at > 0 ? entry.slice(0, at).trim() : '';
+    const spki = at > 0 ? entry.slice(at + 1).trim() : '';
+    let ok = false;
+    try {
+      const k = createPublicKey({ key: Buffer.from(spki, 'base64'), format: 'der', type: 'spki' });
+      ok = k.asymmetricKeyType === 'ec' && k.asymmetricKeyDetails?.namedCurve === 'prime256v1';
+    } catch {
+      ok = false;
+    }
+    if (!keyId || !ok) throw new ConfigError('CHALLENGE_VERIFY_KEYS must be keyId=base64 EC P-256 SPKI pairs');
+    return { keyId, spki };
+  });
+}
+
 /** PEM values in env vars often have literal "\n"; normalise them. */
 function pem(value: string): string {
   return value.includes('\\n') ? value.replace(/\\n/g, '\n') : value;
@@ -113,6 +136,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     reauthSecondsForHighImpactGrants: int(env, 'REAUTH_SECONDS_HIGH_IMPACT_GRANTS', 86_400, 60, 30 * 86_400),
     adminUserIds: (opt(env, 'ADMIN_USER_IDS') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     challengeSigning: { keyId: opt(env, 'CHALLENGE_SIGNING_KEY_ID') ?? 'c1', privateKeyPem: pem(req(env, 'CHALLENGE_SIGNING_KEY')) },
+    challengeVerifyKeys: verifyKeys(opt(env, 'CHALLENGE_VERIFY_KEYS')),
     locationKey: { keyId: opt(env, 'LOCATION_ENCRYPTION_KEY_ID') ?? 'l1', keyBase64: locationKey },
     inviteLinkBase: opt(env, 'INVITE_LINK_BASE') ?? 'https://wakeme.app/i/',
     apns: apnsKey

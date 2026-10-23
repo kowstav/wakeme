@@ -2,6 +2,7 @@ package app.wakeme.data.auth
 
 import app.wakeme.config.AppConfig
 import app.wakeme.data.net.await
+import app.wakeme.data.net.bodyText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -100,7 +101,7 @@ class SessionManager @Inject constructor(private val http: OkHttpClient, private
         val res = http.newCall(req).await()
         res.use {
             if (!it.isSuccessful) return false
-            val t = json.decodeFromString(DevToken.serializer(), it.body.string())
+            val t = json.decodeFromString(DevToken.serializer(), it.bodyText())
             access = t.accessToken
             accessExpiresAt = System.currentTimeMillis() + t.expiresIn * 1000
             store.put("subject", t.subject)
@@ -109,12 +110,13 @@ class SessionManager @Inject constructor(private val http: OkHttpClient, private
         }
     }
 
+    /** Signs out this phone only (`scope=local`); the person's other phones stay signed in. */
     suspend fun signOut() {
         val token = access
         if (token != null && AppConfig.supabaseConfigured) {
             runCatching {
                 http.newCall(
-                    Request.Builder().url(AppConfig.supabaseUrl + "/auth/v1/logout").header("apikey", AppConfig.supabaseAnonKey)
+                    Request.Builder().url(AppConfig.supabaseUrl + "/auth/v1/logout?scope=local").header("apikey", AppConfig.supabaseAnonKey)
                         .header("authorization", "Bearer $token").post(ByteArray(0).toRequestBody(null)).build(),
                 ).await().close()
             }
@@ -152,7 +154,7 @@ class SessionManager @Inject constructor(private val http: OkHttpClient, private
             throw AuthException("You're offline. Try again when you're connected.")
         }
         res.use {
-            val text = it.body.string()
+            val text = it.bodyText()
             if (!it.isSuccessful) throw AuthException(if (it.code == 400 || it.code == 403) "That code didn't work. Check it and try again." else "Sign-in failed. Try again.")
             return text
         }

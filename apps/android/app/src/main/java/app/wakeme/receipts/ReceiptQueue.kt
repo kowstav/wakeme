@@ -1,6 +1,8 @@
 package app.wakeme.receipts
 
 import android.content.Context
+import android.os.UserManager
+import app.wakeme.core.isLocalPlan
 import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -16,6 +18,7 @@ import app.wakeme.data.net.ApiClient
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.OkDto
 import app.wakeme.data.net.WakeMeApiJson
+import app.wakeme.sync.SyncEngine
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -57,15 +60,40 @@ sealed class Receipt {
  */
 @Singleton
 class ReceiptQueue @Inject constructor(@ApplicationContext private val context: Context) {
+    private val pending by lazy { context.createDeviceProtectedStorageContext().getSharedPreferences("boot_receipts", Context.MODE_PRIVATE) }
+
     fun enqueue(receipt: Receipt) {
+        // Wake-ups set up before signing in exist only on this phone: nothing to report.
+        val planId = when (receipt) { is Receipt.Occurrence -> receipt.planId; is Receipt.Installation -> receipt.planId; else -> null }
+        if (planId != null && isLocalPlan(planId)) return
+        synchronized(lock) {
+            if (!context.getSystemService(UserManager::class.java).isUserUnlocked) {
+                // IDs/outcomes only. WorkManager and account credentials are unavailable until unlock.
+                pending.edit().putString(receipt.key, WakeMeApiJson.encodeToString(Receipt.serializer(), receipt)).commit()
+            } else schedule(receipt)
+        }
+    }
+
+    fun flushAfterUnlock() = synchronized(lock) {
+        if (!context.getSystemService(UserManager::class.java).isUserUnlocked) return@synchronized
+        for ((key, raw) in pending.all) {
+            val receipt = (raw as? String)?.let { runCatching { WakeMeApiJson.decodeFromString(Receipt.serializer(), it) }.getOrNull() }
+            if (receipt != null) schedule(receipt).result.get() // retain the boot copy until WorkManager commits it
+            pending.edit().remove(key).commit()
+        }
+    }
+
+    private fun schedule(receipt: Receipt): androidx.work.Operation {
         val req = OneTimeWorkRequestBuilder<ReceiptWorker>()
             .setInputData(workDataOf("receipt" to WakeMeApiJson.encodeToString(Receipt.serializer(), receipt)))
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
             .build()
-        WorkManager.getInstance(context).enqueueUniqueWork("receipt:${receipt.key}", ExistingWorkPolicy.KEEP, req)
+        return WorkManager.getInstance(context).enqueueUniqueWork("receipt:${receipt.key}", ExistingWorkPolicy.KEEP, req)
     }
+
+    companion object { private val lock = Any() }
 }
 
 @HiltWorker
@@ -73,6 +101,7 @@ class ReceiptWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val api: ApiClient,
+    private val sync: SyncEngine,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val raw = inputData.getString("receipt") ?: return Result.failure()
@@ -102,7 +131,10 @@ class ReceiptWorker @AssistedInject constructor(
                     },
                     JsonElement.serializer(),
                     signed = true,
-                )
+                ).also {
+                    // The server's readiness line changed: screens showing routines reload it.
+                    sync.notifyChanged("alarm_plan")
+                }
             }
             Result.success()
         } catch (e: ApiException) {

@@ -14,7 +14,9 @@ google-services.json
 GoogleService-Info.plist
 
 # Android
+.local-tools/
 apps/android/.gradle/
+apps/android/.kotlin/
 apps/android/build/
 apps/android/**/build/
 apps/android/local.properties
@@ -35,3 +37,14 @@ Thumbs.db
 
 # Local dev backend data
 services/api/.devdata/
+apps/android/tools/core-only/.gradle/
+apps/android/tools/core-only/build/
+apps/ios/WakeMe/Info.plist
+apps/ios/WakeMe/WakeMe.entitlements
+apps/ios/WakeMeFocusMonitor/Info.plist
+apps/ios/WakeMeFocusMonitor/*.entitlements
+apps/ios/WakeMeShieldConfig/Info.plist
+apps/ios/WakeMeShieldConfig/*.entitlements
+apps/ios/WakeMeShieldAction/Info.plist
+apps/ios/WakeMeShieldAction/*.entitlements
+apps/ios/WakeMeUITests/Info.plist

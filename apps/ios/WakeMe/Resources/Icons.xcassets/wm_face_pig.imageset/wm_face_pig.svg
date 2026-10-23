@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><title>Pig</title>
+<circle cx="32" cy="32" r="32" fill="#7FB8F5"/>
+<path d="M15 18L27 15.5L20.5 29Z" fill="#F7A1B8" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+<path d="M49 18L37 15.5L43.5 29Z" fill="#F7A1B8" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+<ellipse cx="32" cy="34" rx="18" ry="16" fill="#F9B9CB" stroke="#2B2118" stroke-width="2"/>
+<circle cx="19.5" cy="38.5" r="2.6" fill="#F48FAE"/>
+<circle cx="44.5" cy="38.5" r="2.6" fill="#F48FAE"/>
+<circle cx="24.5" cy="30" r="2.4" fill="#2B2118"/>
+<circle cx="39.5" cy="30" r="2.4" fill="#2B2118"/>
+<path d="M21.5 25.5Q24.5 23.5 27.5 25.5M36.5 23.5Q39.5 20.5 42.5 23.5" fill="none" stroke="#2B2118" stroke-width="1.6" stroke-linecap="round"/>
+<ellipse cx="32" cy="39" rx="8.5" ry="6" fill="#F48FAE" stroke="#2B2118" stroke-width="2"/>
+<ellipse cx="29" cy="39" rx="1.6" ry="2.4" fill="#8C3D52"/>
+<ellipse cx="35" cy="39" rx="1.6" ry="2.4" fill="#8C3D52"/>
+<path d="M27 47Q32 50.5 37 47" fill="none" stroke="#2B2118" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

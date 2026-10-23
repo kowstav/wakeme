@@ -3,9 +3,13 @@ package app.wakeme.data
 import app.wakeme.data.net.ApiClient
 import app.wakeme.data.net.ChallengeDto
 import app.wakeme.data.net.ChallengesDto
+import app.wakeme.data.net.CircleDetailDto
+import app.wakeme.data.net.CircleDto
+import app.wakeme.data.net.CirclesDto
 import app.wakeme.data.net.CommandDto
 import app.wakeme.data.net.CommandsDto
 import app.wakeme.data.net.ConversationsDto
+import app.wakeme.data.net.DevicesDto
 import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.FriendsDto
 import app.wakeme.data.net.GenerationDto
@@ -50,10 +54,21 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     suspend fun cancelDeletion() = api.post("/v1/account/deletion/cancel", null, MeDto.serializer())
     suspend fun exportAccount() = api.get("/v1/account/export", JsonObject.serializer())
 
+    suspend fun devices() = api.get("/v1/devices", DevicesDto.serializer()).devices
+
     // ------------------------------------------------------------- friends
     suspend fun friends() = api.get("/v1/friends", FriendsDto.serializer()).friends
     suspend fun friend(friendshipId: String) = api.get("/v1/friendships/$friendshipId", FriendDto.serializer())
     suspend fun createInvite() = api.post("/v1/invites", buildJsonObject { put("kind", "friend") }, InviteCreatedDto.serializer())
+
+    // ---------------------------------------------------------- circles (membership grants nothing)
+    suspend fun circles() = api.get("/v1/circles", CirclesDto.serializer()).circles
+    suspend fun createCircle(name: String) = api.post("/v1/circles", buildJsonObject { put("name", name) }, CircleDto.serializer())
+    suspend fun circle(id: String) = api.get("/v1/circles/$id", CircleDetailDto.serializer())
+    suspend fun renameCircle(id: String, name: String) = api.patch("/v1/circles/$id", buildJsonObject { put("name", name) }, CircleDto.serializer())
+    suspend fun leaveCircle(id: String) = api.post("/v1/circles/$id/leave", null, OkDto.serializer())
+    suspend fun removeCircleMember(id: String, userId: String) = api.delete("/v1/circles/$id/members/$userId", OkDto.serializer())
+    suspend fun createCircleInvite(circleId: String) = api.post("/v1/invites", buildJsonObject { put("kind", "circle"); put("circleId", circleId) }, InviteCreatedDto.serializer())
     suspend fun previewInvite(token: String?, code: String?) = api.post("/v1/invites/preview", inviteRef(token, code), InvitePreviewDto.serializer())
     suspend fun redeemInvite(token: String?, code: String?) = api.post("/v1/invites/redeem", inviteRef(token, code), RedeemDto.serializer())
     private fun inviteRef(token: String?, code: String?) = buildJsonObject { token?.let { put("token", it) }; code?.let { put("code", it) } }
@@ -113,7 +128,9 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     suspend fun templates() = api.get("/v1/challenges/templates", TemplatesDto.serializer()).templates
     suspend fun challenges() = api.get("/v1/challenges", ChallengesDto.serializer()).challenges
     suspend fun challenge(id: String) = api.get("/v1/challenges/$id", ChallengeDto.serializer())
-    suspend fun createChallenge(body: JsonElement) = api.post("/v1/challenges", buildJsonObject { put("body", body) }, ChallengeDto.serializer())
+    suspend fun createChallenge(body: JsonElement, circleId: String? = null) = api.post("/v1/challenges", buildJsonObject { put("body", body); circleId?.let { put("circleId", it) } }, ChallengeDto.serializer())
+    /** An edit is a new draft revision; published revisions never change. */
+    suspend fun reviseChallenge(id: String, body: JsonElement) = api.post("/v1/challenges/$id/revisions", buildJsonObject { put("body", body) }, ChallengeDto.serializer())
     suspend fun fromTemplate(templateId: String, difficulty: String) = api.post("/v1/challenges/from-template", buildJsonObject { put("templateId", templateId); put("difficulty", difficulty) }, ChallengeDto.serializer())
     suspend fun markPreviewed(id: String, revision: Int) = api.post("/v1/challenges/$id/revisions/$revision/previewed", null, OkDto.serializer())
     suspend fun publish(id: String, revision: Int) = api.post("/v1/challenges/$id/publish", buildJsonObject { put("revision", revision) }, ChallengeDto.serializer())
@@ -133,8 +150,11 @@ class WakeMeApi @Inject constructor(private val api: ApiClient) {
     // ------------------------------------------------------------ messages
     suspend fun conversations() = api.get("/v1/conversations", ConversationsDto.serializer()).conversations
     suspend fun messages(conversationId: String) = api.get("/v1/conversations/$conversationId/messages", MessagesDto.serializer()).messages
-    suspend fun sendMessage(conversationId: String, text: String) =
-        api.post("/v1/conversations/$conversationId/messages", buildJsonObject { put("body", text); put("clientId", "c_" + UUID.randomUUID().toString().replace("-", "")) }, MessageDto.serializer(), idempotent = true)
+    suspend fun sendMessage(conversationId: String, text: String, clientId: String = "c_" + UUID.randomUUID().toString().replace("-", "")) =
+        api.post("/v1/conversations/$conversationId/messages", buildJsonObject { put("body", text); put("clientId", clientId) }, MessageDto.serializer(), idempotent = true)
+    /** One of the server's REACTIONS; replaces this user's previous reaction. */
+    suspend fun react(messageId: String, emoji: String) = api.post("/v1/messages/$messageId/reactions", buildJsonObject { put("emoji", emoji) }, JsonObject.serializer())
+    suspend fun unreact(messageId: String) = api.delete("/v1/messages/$messageId/reactions", JsonObject.serializer())
     suspend fun markRead(conversationId: String) = api.post("/v1/conversations/$conversationId/read", null, OkDto.serializer())
     suspend fun report(kind: String, id: String, reason: String, note: String?) =
         api.post("/v1/reports", buildJsonObject { put("targetKind", kind); put("targetId", id); put("reason", reason); note?.let { put("note", it) } }, JsonObject.serializer())
