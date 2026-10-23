@@ -209,6 +209,21 @@ jobs:
         run: |
           # Compose/Espresso input changes UiAutomation flags and suppresses accessibility services.
           # Run the actual service/shield assertions without that shared automation connection.
+          # Re-establish this journey's user-granted precondition after the component/widget
+          # processes. Run 98's Android 16 dump had empty Enabled/Bound/Binding/Crashed sets
+          # before Focus, so its initial setting from APK install no longer applied.
+          adb shell settings put secure enabled_accessibility_services "$APP_ID/app.wakeme.focus.FocusShieldService"
+          adb shell settings put secure accessibility_enabled 1
+          # Wait for the settings observer to acknowledge the service, not just the settings write.
+          for check in $(seq 1 40); do
+            if adb shell dumpsys accessibility | grep -E "Enabled services:" | grep -q "FocusShieldService"; then break; fi
+            sleep 0.25
+          done
+          adb shell dumpsys accessibility | grep -E "Enabled services:" | grep -q "FocusShieldService" || {
+            echo "::error::Focus service was not enabled for the isolated journey"
+            adb shell dumpsys accessibility
+            exit 1
+          }
           # The system's accessibility state before and after, for a binding failure (Android 16 runs 55-60).
           adb shell dumpsys accessibility > "$RUNNER_TEMP/evidence/accessibility-before-focus.txt" || true
           adb shell am instrument -w -r -e class app.wakeme.FocusShieldTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/focus.txt"
