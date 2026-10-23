@@ -190,7 +190,10 @@ jobs:
         run: |
           adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard || true
           adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null || true
-          adb shell am instrument -w -r -e notClass app.wakeme.JourneyTest,app.wakeme.FocusShieldTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
+          # The journey, focus and widget tests each run in their own instrumentation process in the
+          # steps below. The widget test shared this process before, and the app's activity left by
+          # earlier tests got in the way of its one tap (android-device #94 and #96).
+          adb shell am instrument -w -r -e notClass app.wakeme.JourneyTest,app.wakeme.FocusShieldTest,app.wakeme.QuickActionsWidgetTest "$APP_ID.test/androidx.test.runner.AndroidJUnitRunner" | tee "$RUNNER_TEMP/evidence/instrumentation.txt"
           grep -q "^OK (" "$RUNNER_TEMP/evidence/instrumentation.txt"
       - name: Widget stability (three independent host and pointer-tap runs)
         if: always() && steps.boot.outcome == 'success'

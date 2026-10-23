@@ -45,6 +45,11 @@ Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verifi
   - **Passed:** ci #33 and android-device #95, including both emulator journeys and the widget test.
   - **Failed (ios #51):** `testSelfSetupJourney` waited 15 s for "Hear Alex's quacks?" after Save, while the editor still read "Saving…". The iOS code was the same as ios #50, where this step passed, so it was slow rather than broken.
   - **Fix:** the test now waits 45 s. If it still fails, the message says whether the grant was still saving.
+- **CI on `4e5b276`:**
+  - **Passed:** ios #52 (every UI test), ci #34, the Compose previews and the Android 17 emulator.
+  - **Failed (android-device #96, Android 16):** `QuickActionsWidgetTest` in the shared instrumentation run found a resumed `MainActivity` with no route (`expected:<friends> but was:<null>`). `MainActivity` calls `setIntent` in `onNewIntent`, so the widget's tap didn't open that one.
+  - **Pattern:** with the same app code, this test passed in the shared run in #93 and #95 and failed in #94 and #96, two different ways. Its dedicated step (three fresh instrumentation processes, one tap each) passed every time.
+  - **Fix:** the shared run now leaves it out, as it already does for the journey and focus tests, which also have their own processes. A wrong or missing route now names each resumed activity and its route.
 
 ## Bloom polish from the first native renders (2026-10-22, Claude)
 

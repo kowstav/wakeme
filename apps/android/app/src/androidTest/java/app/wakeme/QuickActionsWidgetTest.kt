@@ -77,14 +77,15 @@ class QuickActionsWidgetTest {
                 }
                 if (opened == null) Thread.sleep(200)
             }
-            if (opened == null) {
+            if (opened?.intent?.getStringExtra(MainActivity.EXTRA_ROUTE) != "friends") {
+                // Name what was resumed and with which route, so the CI log alone explains it.
                 var resumed = emptyList<String>()
                 instrumentation.runOnMainSync {
-                    resumed = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).map { it.javaClass.simpleName }
+                    resumed = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                        .map { "${it.javaClass.simpleName}(route=${it.intent?.getStringExtra(MainActivity.EXTRA_ROUTE)})" }
                 }
-                throw AssertionError("widget opens the app; resumed after 30 s: $resumed")
+                throw AssertionError("widget opens the app on friends; resumed after the tap: $resumed")
             }
-            assertEquals("friends", requireNotNull(opened).intent.getStringExtra(MainActivity.EXTRA_ROUTE))
         } finally {
             automation.dropShellPermissionIdentity()
             host.stopListening(); host.deleteHost()
