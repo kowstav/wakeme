@@ -18,7 +18,15 @@ Last updated: 2026-10-22. Status words: **specified**, **implemented**, **verifi
   - Every string the UI tests look up keeps its text.
 - **Tests actually run** (Windows 11, Node 24.19.0): `generate.ts --check` (contrast passes). It reports the generated files as stale only because this checkout converts them to CRLF line endings; they are unchanged from HEAD. Also a reference check of every icon and palette name used, an import review of the changed Kotlin files, and a scan of the iOS and Android test strings against the new copy.
 - **Not run:** any compile, lint or test of these edits (no Android SDK or macOS here). Nothing in this pass is verified until CI renders it. No physical device.
-- **Next:** run CI, fix what fails, and compare the new renders against the review's findings.
+- **Verified at `67c041f` (simulator/emulators):** [ci 28](https://github.com/kowstav/wakeme/actions/runs/39760415277), [ios 45](https://github.com/kowstav/wakeme/actions/runs/39760415283) and [android-device 89](https://github.com/kowstav/wakeme/actions/runs/39760415253) passed every job. Android 17's journey skipped on attempt 1 because the dev backend timed out before any app UI; it passed on attempt 2.
+- **Side-by-side check of the renders (2026-10-23):** the intended changes show on both platforms. Four problems were found and fixed (not yet rendered):
+  - the iOS readiness bar still showed its title;
+  - the Android invite code overlapped the line above it;
+  - disabled primary buttons were invisible on cards;
+  - Android's empty-state text sat under the duck instead of beside it.
+
+  Listed in the review.
+- **Next:** commit and run CI on these four fixes, then check them in the renders.
 
 ## Design pass: Bloom, vibrant colour, icons and bento layouts (2026-10-21, Claude)
 

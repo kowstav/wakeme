@@ -198,7 +198,7 @@ struct InviteSheet: View {
                 Text("Share your invite").font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
                 // The code is the fallback when the link doesn't open the app: big, selectable, on its own card.
                 WMCard {
-                    Text("Or they type this code").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                    Text("They can also type this code").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
                     Text(invite.code).font(.system(.title, design: .monospaced).bold()).foregroundStyle(WMColor.textPrimary).textSelection(.enabled)
                         .accessibilityIdentifier("inviteCode")
                 }

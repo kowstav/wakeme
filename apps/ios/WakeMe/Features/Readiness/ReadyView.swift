@@ -20,7 +20,7 @@ struct ReadyView: View {
                 // Step 1: alarm access. Once allowed it shrinks to its status, inside step 2's card.
                 if authorization != .authorized {
                     WMCard {
-                        stepHeader(icon: .alarm, family: WMPalette.lime, title: "Allow alarms")
+                        stepHeader(icon: .alarm, family: WMPalette.lime, title: "Alarm access")
                         switch authorization {
                         case .denied:
                             StatusPill(text: "Alarms are turned off for Wake Me", tone: .danger, icon: toneIcon(.danger))
@@ -66,11 +66,10 @@ struct ReadyView: View {
             .frame(maxWidth: .infinity)
         }
         .background(WMColor.surface)
-        // The heading above is the screen's one visible title; the bar keeps the name for VoiceOver
-        // and the back button without showing it a second time.
-        .navigationTitle("Make this phone ready")
+        // The heading above is the screen's one visible title, so the bar shows none (an empty
+        // principal item did not hide it on iOS 26: ios run 45). The heading is a header for VoiceOver.
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .principal) { EmptyView() } }
     }
 
     private func stepHeader(icon: WMIcon, family: WMFamily, title: String) -> some View {

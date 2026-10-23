@@ -139,7 +139,8 @@ fun PrimaryButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = if (pressed) c.accentPressed else c.accent,
             contentColor = c.textOnAccent,
-            disabledContainerColor = c.surfaceNeutral,
+            // On a card the card's own grey would hide the button's shape: use the quiet fill there.
+            disabledContainerColor = quietFill(),
             disabledContentColor = c.textPrimary.copy(alpha = WakeMeTokens.opacityDisabled),
         ),
         contentPadding = PaddingValues(horizontal = WakeMeTokens.buttonPaddingX, vertical = WakeMeTokens.spaceSm),
@@ -787,11 +788,14 @@ fun DetailScreen(onBack: (() -> Unit)?, modifier: Modifier = Modifier, title: St
 @Composable
 fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {
     WMCard(modifier) {
+        // The words sit beside the duck, title over body, as on iOS.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
             DuckMark(size = 56.dp)
-            Text(title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+                Supporting(body)
+            }
         }
-        Body(body)
         action?.invoke()
     }
 }

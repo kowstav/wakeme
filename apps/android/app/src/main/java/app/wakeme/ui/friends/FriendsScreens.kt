@@ -53,6 +53,7 @@ import app.wakeme.data.net.FriendDto
 import app.wakeme.designsystem.AdaptiveList
 import app.wakeme.designsystem.BentoRow
 import app.wakeme.designsystem.BentoTile
+import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -260,8 +261,12 @@ internal fun InviteDialogBody(code: String, note: String) {
     Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
         Text(
             buildAnnotatedString {
-                append("Or they type this code\n")
-                withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 28.sp, color = WM.colors.textPrimary)) { append(code) }
+                append("They can also type this code")
+                // Its own paragraph with a line height for 28 sp: inside the 14 sp style's lines
+                // the code overlapped the words above it (android-device run 89).
+                withStyle(ParagraphStyle(lineHeight = 36.sp)) {
+                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 28.sp, color = WM.colors.textPrimary)) { append(code) }
+                }
             },
             style = MaterialTheme.typography.bodyMedium,
             color = WM.colors.textSecondary,

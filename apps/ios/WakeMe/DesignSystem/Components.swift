@@ -84,6 +84,8 @@ struct PrimaryButton: View {
     var icon: WMIcon? = nil
     let action: () -> Void
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.wmOnCard) private var onCard
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         Button(action: action) {
@@ -93,7 +95,9 @@ struct PrimaryButton: View {
                 .padding(.vertical, WMSpacing.xs)
                 .frame(maxWidth: .infinity, minHeight: WMLayout.buttonHeight)
         }
-        .buttonStyle(WMPressStyle(fill: isEnabled ? WMColor.accent : WMColor.surfaceNeutral, pressedFill: WMColor.accentPressed))
+        // Disabled on a card, the card's grey would hide the button's shape (Focus, ios run 45):
+        // the quiet fill keeps it visible there.
+        .buttonStyle(WMPressStyle(fill: isEnabled ? WMColor.accent : quietFill(onCard: onCard, scheme: scheme), pressedFill: WMColor.accentPressed))
     }
 }
 
