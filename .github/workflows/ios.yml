@@ -77,6 +77,11 @@ jobs:
           DEVICE=$(xcrun simctl list devices available | grep -E "iPhone 1[6-9]|iPhone 2[0-9]" | grep -v Plus | head -1 | sed -E 's/^ *([^()]+) \(.*/\1/' | xargs)
           echo "Using $DEVICE"
           echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
+          # Prepare the OS before XCTest's first app launch. In run 55, Xcode timed out
+          # launching the first test while the later setup and welcome tests both passed.
+          # Keep a real app launch in every test; this only waits for simulator boot readiness.
+          xcrun simctl boot "$DEVICE" 2>/dev/null || true
+          xcrun simctl bootstatus "$DEVICE" -b
           # No APNs in CI: relay the pushes the dev backend records into the Simulator.
           python3 "$GITHUB_WORKSPACE/scripts/ci/relay_sim_pushes.py" http://127.0.0.1:8787 app.wakeme.ios "$RUNNER_TEMP/push-relay.log" &
           RELAY=$!
