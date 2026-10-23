@@ -27,7 +27,7 @@ struct ConversationView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: WMSpacing.xs) {
                         if loaded && messages.isEmpty {
-                            Text("No messages yet. Say hi, or send a quack from their profile.").foregroundStyle(WMColor.textSecondary)
+                            Text("No messages yet.").foregroundStyle(WMColor.textSecondary)
                         }
                         ForEach(messages) { m in
                             bubble(m).id(m.id)

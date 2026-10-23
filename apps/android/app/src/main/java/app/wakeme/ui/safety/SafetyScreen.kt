@@ -218,8 +218,6 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
         item {
             if (onBack == null) Gap()
             Text("Safety", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-            // The one thing to know before anything else, said once.
-            Note("Wake Me is not an emergency service. In an emergency, call your local emergency number.", icon = WMIcon.Warning)
             if (s.offline) StatusPill("You're offline. Showing what was last loaded.", Tone.Warning)
         }
         sharing?.let { a ->
@@ -247,7 +245,7 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
                 SectionTitle("Start")
                 PrimaryButton("Check in with friends later", onClick = { composing = "checkin" }, enabled = !s.busy && s.friends.isNotEmpty(), icon = WMIcon.CheckCircle)
                 SecondaryButton("Share my location for a while", onClick = { composing = "share" }, enabled = !s.busy && s.friends.isNotEmpty(), icon = WMIcon.Pin)
-                if (s.friends.isEmpty() && !s.loading) Body("Add a friend first. Only friends you pick can see a session.")
+                if (s.friends.isEmpty() && !s.loading) Body("Add a friend first.")
             }
         }
 
@@ -255,7 +253,7 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
             // SOS stays still and unmistakable; its explanation sits right under it.
             androidx.compose.foundation.layout.Column(Modifier.padding(top = WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                 DangerButton("Send SOS to friends", onClick = { composing = "sos" }, icon = WMIcon.Shield)
-                Body("Alerts the friends you pick, and shares your location for 2 hours if you allow it.")
+                Note("Not an emergency service. In an emergency, call your local emergency number.")
             }
             Gap(WakeMeTokens.spaceXl)
         }
@@ -284,14 +282,14 @@ private fun MySession(m: SafetySessionDto, onCheckIn: () -> Unit, onEnd: (Contex
         if (m.viewers.any { it.revoked }) Body("No longer visible to ${m.viewers.filter { it.revoked }.joinToString(", ") { it.displayName }}.")
         StatusPill(if (m.shareLocation) "Location: enabled · position may be unavailable" else "Location: not shared", if (m.shareLocation) Tone.Info else Tone.Neutral)
         if (m.purpose == "sos") {
-            if (m.shareLocation) Body("On this phone, SOS sends one position if available, with its capture time and accuracy. Ongoing location sharing is a separate choice.")
+            if (m.shareLocation) Body("Sends one position, with when and how accurately it was taken.")
             val acked = m.viewers.filter { it.acknowledgedAt != null }
             StatusPill(if (acked.isEmpty()) "Sent · nobody has confirmed seeing it yet" else "Seen by ${acked.joinToString(", ") { it.displayName }}", if (acked.isEmpty()) Tone.Warning else Tone.Success)
         }
         if (m.purpose == "checkin") {
             if (m.checkedInAt != null) StatusPill("Checked in at ${timeText(m.checkedInAt)}", Tone.Success)
             else {
-                Body("If you don't check in by ${timeText(m.checkinDueAt)}, they'll get a notice that you haven't checked in yet. That's all: nobody else is contacted.")
+                Body("Check in by ${timeText(m.checkinDueAt)}.")
                 PrimaryButton("I'm OK — check in now", onClick = onCheckIn, icon = WMIcon.CheckCircle)
             }
         }
@@ -405,7 +403,7 @@ private fun StartSheet(
                 // Doc 06: "share my location now" for an SOS uses the session-scoped system button, separate
                 // from timed shares. Without it the SOS still goes, with no location.
                 if (kind == "sos" && shareLocation && !hasLocationPermission(context) && !buttonGranted) {
-                    item { Body("Tap to include where you are. Without it, friends get the SOS with no location.") }
+                    item { Body("Without it, friends get the SOS with no location.") }
                     item { SystemLocationButton(onResult = { granted -> buttonGranted = granted; permissionDenied = !granted }) }
                 }
                 if (buttonGranted) item { StatusPill("Location allowed. A position is included only if one is available.", Tone.Info) }

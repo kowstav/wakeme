@@ -41,6 +41,14 @@ import app.wakeme.core.WakeSessionState
 import app.wakeme.challenge.ChallengeRunner
 import app.wakeme.designsystem.AlarmTimeStyle
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DisplayText
+import app.wakeme.designsystem.Gap
+import app.wakeme.ui.AnimalSounds
+import app.wakeme.ui.FaceImage
+import app.wakeme.ui.onboarding.playSoundPreview
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.Readable
 import app.wakeme.designsystem.SecondaryButton
@@ -77,9 +85,15 @@ class AlarmActivity : ComponentActivity() {
                 val a = active
                 if (completed && (a == null || completedKey == a.identity)) {
                     Readable {
-                        Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-                            Text("You're up", style = MaterialTheme.typography.headlineLarge, color = WM.colors.alarmText)
-                            Body("Your wake session has ended.", color = WM.colors.alarmText)
+                        // Finishing is the morning's best moment, so it gets an ending of its own
+                        // (peak-end rule): a happy face that calls once, and the words in display type.
+                        val cheer = remember { AnimalSounds.all.random() }
+                        LaunchedEffect(cheer) { playSoundPreview(this@AlarmActivity, cheer.id) }
+                        Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Gap(WakeMeTokens.spaceXl)
+                            FaceImage(cheer, 140.dp)
+                            DisplayText("You're up.", color = WM.colors.alarmText, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                            Gap(WakeMeTokens.spaceLg)
                             if (thanksRoute != null) SecondaryButton("Thank your wake buddy", icon = WMIcon.Heart, onClick = {
                                 startActivity(Intent(this@AlarmActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, thanksRoute))
                                 finish()
@@ -173,13 +187,13 @@ fun AlarmScreen(
                 Text(clockText ?: now.format(formatter), style = AlarmTimeStyle, color = c.alarmText, maxLines = 1)
                 if (wake.label.isNotBlank()) Text(wake.label, style = MaterialTheme.typography.headlineSmall, color = c.alarmText)
                 wake.helperName?.let { Text(stringResource(R.string.alarm_from_friend, it), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal), color = c.alarmText) }
-                if (wake.usedFallbackSound) Body("The voice recording wasn't available. Using the built-in Gentle rise sound.", color = c.alarmText)
+                if (wake.usedFallbackSound) Body("Recording unavailable. Playing Gentle rise.", color = c.alarmText)
                 when {
-                    wake.playbackFailure == "audio_focus_denied" -> Body("Sound is paused because another call or audio is active. Vibration continues.", color = c.alarmText)
-                    wake.ringing && wake.routeType == "bluetooth" -> Body("Playing through Bluetooth audio. Your phone may be quieter than expected.", color = c.alarmText)
+                    wake.playbackFailure == "audio_focus_denied" -> Body("Sound paused by a call. Vibration continues.", color = c.alarmText)
+                    wake.ringing && wake.routeType == "bluetooth" -> Body("Playing through Bluetooth.", color = c.alarmText)
                     wake.ringing && wake.routeType == "wired" -> Body("Playing through connected headphones.", color = c.alarmText)
                 }
-                if (wake.state == WakeSessionState.FOLLOW_UP_PENDING) Body("A follow-up alarm will ring unless you finish the challenge.", color = c.alarmText)
+                if (wake.state == WakeSessionState.FOLLOW_UP_PENDING) Body("A follow-up rings unless you finish.", color = c.alarmText)
                 when {
                     wake.challengeRevisionId == null -> PrimaryButton(stringResource(R.string.alarm_im_up), onClick = onImUp, height = WakeMeTokens.alarmControl)
                     challenge != null -> PrimaryButton(stringResource(R.string.alarm_start_challenge), onClick = { running = true }, height = WakeMeTokens.alarmControl)

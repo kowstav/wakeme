@@ -46,6 +46,27 @@ fun statusText(context: Context, displayStatus: String): String = context.getStr
 )
 
 /** Why an action isn't available, in words that don't blame or reveal private settings. */
+/**
+ * What someone typed or pasted to join, read generously (Postel's law): a 9-character code in any
+ * case, with or without spaces and dashes, or a whole invite link (its token is used). Same rules
+ * as iOS `InviteInput`.
+ */
+data class InviteInput(val token: String?, val code: String?) {
+    companion object {
+        fun parse(raw: String): InviteInput? {
+            val text = raw.trim()
+            val at = text.indexOf("/i/")
+            if (at >= 0) {
+                val token = text.substring(at + 3).takeWhile { it !in "?#/ " }
+                return if (token.isEmpty()) null else InviteInput(token, null)
+            }
+            val chars = text.uppercase().filter { it.isLetterOrDigit() }
+            if (chars.length != 9) return null
+            return InviteInput(null, chars.substring(0, 3) + "-" + chars.substring(3, 6) + "-" + chars.substring(6))
+        }
+    }
+}
+
 fun reasonText(name: String, reason: String?): String = when (reason) {
     "capability_not_granted" -> "$name hasn't turned this on for you."
     "grant_paused" -> "$name has paused requests from you."
@@ -112,8 +133,9 @@ class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: Syn
         runCatching { api.createInvite() }.onSuccess { _state.value = _state.value.copy(invite = it) }.onFailure { _state.value = _state.value.copy(message = it.message) }
     }
 
-    fun redeemCode(code: String) = viewModelScope.launch {
-        runCatching { api.redeemInvite(null, code) }.onSuccess { load() }.onFailure { _state.value = _state.value.copy(message = it.message) }
+    fun redeemCode(raw: String) = viewModelScope.launch {
+        val input = InviteInput.parse(raw) ?: run { _state.value = _state.value.copy(message = "That code didn't work."); return@launch }
+        runCatching { api.redeemInvite(input.token, input.code) }.onSuccess { load() }.onFailure { _state.value = _state.value.copy(message = it.message) }
     }
 
     fun dismissMessage() {

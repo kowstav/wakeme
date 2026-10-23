@@ -303,7 +303,7 @@ final class LaunchTests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap() // back; the keyboard covered the tab bar
 
         app.tabBars.buttons["Challenges"].tap()
-        try must(app.staticTexts["No challenges yet. Make one, or start from a template."].waitForExistence(timeout: 15), "the Challenges tab lists what can be practised")
+        try must(app.buttons["Create a challenge"].waitForExistence(timeout: 15), "the Challenges tab leads with creating one")
         shot(app, "22-challenges")
 
         // Doc 03: write a one-question quiz; every draft is tried before it can be published.

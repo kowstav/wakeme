@@ -2,6 +2,18 @@ package app.wakeme.ui.grants
 
 import android.app.TimePickerDialog
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import app.wakeme.ui.AnimalSoundGrid
+import app.wakeme.ui.AnimalSounds
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import app.wakeme.designsystem.CardTitle
 import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.FieldGroup
 import app.wakeme.designsystem.HeroCard
@@ -68,13 +79,10 @@ import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.PresetDto
 import app.wakeme.data.net.OfflineException
-import app.wakeme.designsystem.Body
-import app.wakeme.designsystem.Note
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
-import app.wakeme.designsystem.SectionTitle
 import app.wakeme.designsystem.SettingRow
 import app.wakeme.designsystem.Stepper
 import app.wakeme.designsystem.WM
@@ -99,7 +107,7 @@ private val CHALLENGE_TYPES = listOf("multiple_choice", "short_answer", "math", 
 
 data class Draft(
     val caps: Set<String> = emptySet(),
-    val nudge: NudgeLimits = NudgeLimits(3, listOf(LocalWindow(ALL_DAYS, "08:00", "22:00")), listOf("bundled:quack.classic", "bundled:quack.double"), false),
+    val nudge: NudgeLimits = NudgeLimits(3, listOf(LocalWindow(ALL_DAYS, "08:00", "22:00")), AnimalSounds.ids, false),
     val alarm: AlarmLimits = AlarmLimits(120, 1, listOf(LocalWindow(listOf(1, 2, 3, 4, 5), "06:00", "10:00")), listOf("bundled:rise.gentle", "bundled:bell.bright"), FollowUp(true, 300)),
     val challenge: ChallengeLimits = ChallengeLimits(listOf("multiple_choice", "short_answer", "math", "memory_order", "chess"), 90, "medium"),
     val checkin: CheckinLimits = CheckinLimits(2),
@@ -196,17 +204,10 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
     val d = s.draft
     DetailScreen(onBack = onDone) {
         Text("What can $name do?", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        // What this screen means, in one sentence; the controls follow at once.
-        Note("Only you set or change what $name can do here, and it works one way: you get nothing on $name's phone.", icon = WMIcon.Lock)
         f.iAllowThem?.let { g ->
             val day = DateTimeFormatter.ofPattern("d MMM yyyy").withZone(ZoneId.systemDefault())
             fun fmt(iso: String?) = iso?.let { runCatching { day.format(Instant.parse(it)) }.getOrNull() }
-            StatusPill(
-                (if (g.paused) "Paused" else "Active") + " · version ${g.version} · until ${fmt(g.validUntil) ?: "—"}",
-                if (g.paused) Tone.Warning else Tone.Info,
-            )
-            Body((fmt(g.lastUsedAt)?.let { "Last used $it." } ?: "$name hasn't used these yet.") +
-                " Saved to your account and kept on this phone, so a change or removal applies here even when you're offline.")
+            StatusPill(if (g.paused) "Paused" else "Active until ${fmt(g.validUntil) ?: "—"}", if (g.paused) Tone.Warning else Tone.Info)
         }
         FieldGroup("Start from") {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
@@ -216,49 +217,53 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
             }
         }
 
+        // Choices first, as switches and faces; the detail behind each permission opens on demand
+        // (presets fill it in), so the screen reads as a few decisions, not a form.
         WMCard {
-            SettingRow("Send short sounds", "A quack or chime, a few times an hour at most.", Capability.NUDGE in d.caps, icon = WMIcon.Quack, family = WM.palette.gold) { vm.toggle(Capability.NUDGE, it) }
+            SettingRow("Quacks", null, Capability.NUDGE in d.caps, icon = WMIcon.Speaker, family = WM.palette.gold) { vm.toggle(Capability.NUDGE, it) }
             if (Capability.NUDGE in d.caps) {
-                Stepper("Up to ${d.nudge.maxPerHour} per hour", d.nudge.maxPerHour, 1, 12) { v -> vm.edit { it.copy(nudge = it.nudge.copy(maxPerHour = v)) } }
-                WindowEditor(d.nudge.windows.first()) { w -> vm.edit { it.copy(nudge = it.nudge.copy(windows = listOf(w))) } }
-                SoundPicker(d.nudge.sounds, emptyList()) { list -> vm.edit { it.copy(nudge = it.nudge.copy(sounds = list)) } }
-                SettingRow("Allow during my quiet hours", "Off means quacks wait for daytime. Turn on only if you want them at night too.", d.nudge.overridesQuietHours) { on -> vm.edit { it.copy(nudge = it.nudge.copy(overridesQuietHours = on)) } }
-            }
-        }
-
-        WMCard {
-            CardTitle("Help wake me")
-            SettingRow("Set wake-up routines for me", "You'll see and accept every routine before it's active.", Capability.ALARM_SCHEDULE in d.caps, icon = WMIcon.CalendarPlus, family = WM.palette.sky) { vm.toggle(Capability.ALARM_SCHEDULE, it) }
-            SettingRow("Wake me now", "Ring this phone during your wake hours, if you're not up.", Capability.ALARM_REQUEST in d.caps, icon = WMIcon.Wake, family = WM.palette.apricot) { vm.toggle(Capability.ALARM_REQUEST, it) }
-            if (Capability.ALARM_REQUEST in d.caps || Capability.ALARM_SCHEDULE in d.caps) {
-                Body("Wake hours are your explicit OK to be woken, even during quiet hours.")
-                WindowEditor(d.alarm.windows.first()) { w -> vm.edit { it.copy(alarm = it.alarm.copy(windows = listOf(w))) } }
-                Choice("Ring for at most", listOf(30, 60, 120, 300), d.alarm.maxAlarmSeconds, { "${it}s" }) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxAlarmSeconds = v)) } }
-                Stepper("Up to ${d.alarm.maxPerDay} wake-up${if (d.alarm.maxPerDay > 1) "s" else ""} a day", d.alarm.maxPerDay, 1, 3) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxPerDay = v)) } }
-                SoundPicker(d.alarm.sounds, customSounds) { list -> vm.edit { it.copy(alarm = it.alarm.copy(sounds = list)) } }
-                Body("Approved voice recordings are available for wake alarms. Quacks use the built-in notification sounds.")
-                SettingRow("Allow one follow-up alarm", "A second alarm a few minutes later unless you finish the challenge.", d.alarm.followUp.allowed) { on -> vm.edit { it.copy(alarm = it.alarm.copy(followUp = it.alarm.followUp.copy(allowed = on))) } }
-            }
-        }
-
-        WMCard {
-            SettingRow("Assign challenges", "Quizzes and puzzles to finish your wake-up. New versions always need your OK.", Capability.CHALLENGE_ASSIGN in d.caps, icon = WMIcon.Trophy, family = WM.palette.orchid) { vm.toggle(Capability.CHALLENGE_ASSIGN, it) }
-            if (Capability.CHALLENGE_ASSIGN in d.caps) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                    CHALLENGE_TYPES.forEach { t ->
-                        val on = t in d.challenge.types
-                        ChoiceChip(t.replace('_', ' '), selected = on, onClick = { vm.edit { it.copy(challenge = it.challenge.copy(types = if (on) (it.challenge.types - t).ifEmpty { listOf("math") } else it.challenge.types + t)) } })
-                    }
+                AnimalSoundGrid(d.nudge.sounds.filter { it in AnimalSounds.ids }.ifEmpty { listOf(AnimalSounds.DEFAULT_ID) }) { list -> vm.edit { it.copy(nudge = it.nudge.copy(sounds = list)) } }
+                Disclosure("Hours and limits") {
+                    Stepper("Up to ${d.nudge.maxPerHour} per hour", d.nudge.maxPerHour, 1, 12) { v -> vm.edit { it.copy(nudge = it.nudge.copy(maxPerHour = v)) } }
+                    WindowEditor(d.nudge.windows.first()) { w -> vm.edit { it.copy(nudge = it.nudge.copy(windows = listOf(w))) } }
+                    SettingRow("Allow during my quiet hours", null, d.nudge.overridesQuietHours) { on -> vm.edit { it.copy(nudge = it.nudge.copy(overridesQuietHours = on)) } }
                 }
-                Choice("At most", listOf(30, 60, 90, 180), d.challenge.maxDurationSeconds, { "${it}s" }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDurationSeconds = v)) } }
-                Choice("Hardest", listOf("easy", "medium", "hard"), d.challenge.maxDifficulty, { it }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDifficulty = v)) } }
             }
         }
 
         WMCard {
-            CardTitle("Check in on me")
-            SettingRow("Ask me to check in", "A request you can answer with “I'm OK”.", Capability.CHECKIN in d.caps, icon = WMIcon.CheckCircle, family = WM.palette.aqua) { vm.toggle(Capability.CHECKIN, it) }
-            SettingRow("Ask where I am", "They can ask. Nothing is shared unless you choose to share, each time.", Capability.LOCATION in d.caps, icon = WMIcon.Pin, family = WM.palette.periwinkle) { vm.toggle(Capability.LOCATION, it) }
+            SettingRow("Set wake-up routines for me", null, Capability.ALARM_SCHEDULE in d.caps, icon = WMIcon.CalendarPlus, family = WM.palette.sky) { vm.toggle(Capability.ALARM_SCHEDULE, it) }
+            SettingRow("Wake me now", null, Capability.ALARM_REQUEST in d.caps, icon = WMIcon.Wake, family = WM.palette.apricot) { vm.toggle(Capability.ALARM_REQUEST, it) }
+            if (Capability.ALARM_REQUEST in d.caps || Capability.ALARM_SCHEDULE in d.caps) {
+                Disclosure("Hours and limits") {
+                    WindowEditor(d.alarm.windows.first()) { w -> vm.edit { it.copy(alarm = it.alarm.copy(windows = listOf(w))) } }
+                    Choice("Ring for at most", listOf(30, 60, 120, 300), d.alarm.maxAlarmSeconds, { "${it}s" }) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxAlarmSeconds = v)) } }
+                    Stepper("Up to ${d.alarm.maxPerDay} wake-up${if (d.alarm.maxPerDay > 1) "s" else ""} a day", d.alarm.maxPerDay, 1, 3) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxPerDay = v)) } }
+                    SoundPicker(d.alarm.sounds, customSounds) { list -> vm.edit { it.copy(alarm = it.alarm.copy(sounds = list)) } }
+                    SettingRow("Allow one follow-up alarm", null, d.alarm.followUp.allowed) { on -> vm.edit { it.copy(alarm = it.alarm.copy(followUp = it.alarm.followUp.copy(allowed = on))) } }
+                }
+            }
+        }
+
+        WMCard {
+            SettingRow("Assign challenges", null, Capability.CHALLENGE_ASSIGN in d.caps, icon = WMIcon.Trophy, family = WM.palette.orchid) { vm.toggle(Capability.CHALLENGE_ASSIGN, it) }
+            if (Capability.CHALLENGE_ASSIGN in d.caps) {
+                Disclosure("Limits") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                        CHALLENGE_TYPES.forEach { t ->
+                            val on = t in d.challenge.types
+                            ChoiceChip(t.replace('_', ' '), selected = on, onClick = { vm.edit { it.copy(challenge = it.challenge.copy(types = if (on) (it.challenge.types - t).ifEmpty { listOf("math") } else it.challenge.types + t)) } })
+                        }
+                    }
+                    Choice("At most", listOf(30, 60, 90, 180), d.challenge.maxDurationSeconds, { "${it}s" }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDurationSeconds = v)) } }
+                    Choice("Hardest", listOf("easy", "medium", "hard"), d.challenge.maxDifficulty, { it }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDifficulty = v)) } }
+                }
+            }
+        }
+
+        WMCard {
+            SettingRow("Ask me to check in", null, Capability.CHECKIN in d.caps, icon = WMIcon.CheckCircle, family = WM.palette.aqua) { vm.toggle(Capability.CHECKIN, it) }
+            SettingRow("Ask where I am", null, Capability.LOCATION in d.caps, icon = WMIcon.Pin, family = WM.palette.periwinkle) { vm.toggle(Capability.LOCATION, it) }
         }
 
         Choice("Keep these permissions for", listOf(30L, 90L, 180L), d.validDays, { "$it days" }) { v -> vm.edit { it.copy(validDays = v) } }
@@ -267,6 +272,29 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
         Gap(WakeMeTokens.spaceXl)
     }
     s.error?.let { AlertDialog(onDismissRequest = vm::clearError, confirmButton = { TextButton(onClick = vm::clearError) { Text("OK") } }, text = { Text(it) }) }
+}
+
+/**
+ * Detail that most people never change, behind one row (progressive disclosure): the label and a
+ * chevron that turns; the controls slide open under it. Open state survives rotation.
+ */
+@Composable
+private fun Disclosure(label: String, content: @Composable () -> Unit) {
+    var open by rememberSaveable(label) { mutableStateOf(false) }
+    val turn by animateFloatAsState(if (open) 90f else 0f, WMMotion.standard(), label = "chevron")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(onClickLabel = if (open) "Hide $label" else "Show $label") { open = !open },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+        WMIconView(WMIcon.ChevronRight, Modifier.graphicsLayer { rotationZ = turn }, tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
+    }
+    AnimatedVisibility(open, enter = expandVertically(WMMotion.standard()) + fadeIn(WMMotion.standard()), exit = shrinkVertically(WMMotion.quick()) + fadeOut(WMMotion.quick())) {
+        Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) { content() }
+    }
 }
 
 @Composable

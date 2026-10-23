@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><title>Donkey</title>
+<circle cx="32" cy="32" r="32" fill="#F8C53D"/>
+<path d="M24 21C18 13 16 6 20 5C24 5 28 13 28.5 20Z" fill="#9A9A9A" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+<path d="M40 21C46 13 48 6 44 5C40 5 36 13 35.5 20Z" fill="#9A9A9A" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+<path d="M23.5 17C20.5 12 19.5 8.5 21 8.5C23 8.5 25.5 13 26 17Z" fill="#F2B8C6"/>
+<path d="M40.5 17C43.5 12 44.5 8.5 43 8.5C41 8.5 38.5 13 38 17Z" fill="#F2B8C6"/>
+<ellipse cx="32" cy="33" rx="14" ry="15" fill="#9A9A9A" stroke="#2B2118" stroke-width="2"/>
+<path d="M27.5 19Q29.5 13 31.5 19Q33.5 13 35.5 19" fill="#555555" stroke="#2B2118" stroke-width="1.5" stroke-linejoin="round"/>
+<circle cx="26" cy="30" r="4" fill="#FFFFFF" stroke="#2B2118" stroke-width="1.5"/>
+<circle cx="38" cy="30" r="4" fill="#FFFFFF" stroke="#2B2118" stroke-width="1.5"/>
+<circle cx="26.5" cy="31.5" r="2" fill="#2B2118"/>
+<circle cx="37.5" cy="31.5" r="2" fill="#2B2118"/>
+<path d="M22 30A4 4 0 0 1 30 30Z" fill="#7E7E7E" stroke="#2B2118" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M34 30A4 4 0 0 1 42 30Z" fill="#7E7E7E" stroke="#2B2118" stroke-width="1.5" stroke-linejoin="round"/>
+<ellipse cx="32" cy="44" rx="12" ry="9" fill="#D9D2C5" stroke="#2B2118" stroke-width="2"/>
+<ellipse cx="28" cy="42.5" rx="1.5" ry="2" fill="#2B2118"/>
+<ellipse cx="36" cy="42.5" rx="1.5" ry="2" fill="#2B2118"/>
+<path d="M29 49H35V53.5H29Z" fill="#FFFFFF" stroke="#2B2118" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M32 49V53.5" fill="none" stroke="#2B2118" stroke-width="1.2"/>
+</svg>

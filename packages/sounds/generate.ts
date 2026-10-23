@@ -68,6 +68,57 @@ function tone(out: Float32Array, startSec: number, f: number, len: number, gain:
   }
 }
 
+/** A small fixed-seed generator, so breath noise (and the files' hashes) are reproducible. */
+let seed = 0x2f6b9d1;
+function noise(): number {
+  seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+  return (seed / 0x7fffffff) * 2 - 1;
+}
+
+interface Call {
+  /** Fundamental (Hz) at u = 0..1 through the call; `t` is seconds, for vibrato. */
+  f0: (u: number, t: number) => number;
+  /** Resonances [centre Hz, width Hz, strength] at u, the vowel the animal "says". */
+  formants: (u: number) => [number, number, number][];
+  gain?: number;
+  /** 0..1 depth of a rattle (the "r" of a ribbit, a donkey's bray) at `roughHz`. */
+  rough?: number;
+  roughHz?: number;
+  /** 0..1 breath noise. */
+  breath?: number;
+  attack?: number;
+  release?: number;
+}
+
+/** A voiced animal call: harmonics of a gliding fundamental, shaped by moving formants. */
+function call(out: Float32Array, startSec: number, len: number, c: Call): void {
+  const n = Math.round(len * RATE);
+  const start = Math.round(startSec * RATE);
+  const attack = c.attack ?? 0.015;
+  const release = c.release ?? 0.06;
+  let phase = 0;
+  for (let i = 0; i < n && start + i < out.length; i++) {
+    const t = i / RATE;
+    const u = t / len;
+    const f0 = c.f0(u, t);
+    phase += (2 * Math.PI * f0) / RATE;
+    const formants = c.formants(u);
+    let s = 0;
+    for (let k = 1; k <= 40; k++) {
+      const f = k * f0;
+      if (f > RATE / 2.2) break;
+      let amp = 0.06 / k;
+      for (const [centre, width, strength] of formants) amp += strength * gauss(f, centre, width);
+      s += amp * Math.sin(k * phase);
+    }
+    const am = 1 - (c.rough ?? 0) * 0.5 * (1 + Math.sin(2 * Math.PI * (c.roughHz ?? 30) * t));
+    const env = Math.min(1, t / attack) * Math.min(1, Math.max(0, len - t) / release);
+    out[start + i]! += (c.gain ?? 1) * env * (0.1 * s * am + (c.breath ?? 0) * 0.3 * noise());
+  }
+}
+
+const sine = (u: number) => Math.sin(Math.PI * u);
+
 function normalize(s: Float32Array, peak = 0.89): Float32Array {
   let max = 0;
   for (const v of s) max = Math.max(max, Math.abs(v));
@@ -114,6 +165,87 @@ const sounds: Record<string, () => Float32Array> = {
     const s = buffer(20);
     for (let k = 0; k < 20; k++) for (let b = 0; b < 4; b++) tone(s, k + b * 0.14, 880, 0.08, 1);
     return normalize(s, 0.8);
+  },
+  // Animal calls for quacks (the duck's quack stays the default). Cartoon voices, short and loud
+  // enough to notice, under 2 s each.
+  'frog.ribbit': () => {
+    const s = buffer(1);
+    for (const at of [0.02, 0.5]) {
+      call(s, at, 0.16, { f0: (u) => 130 - 20 * u, formants: () => [[420, 150, 1], [1100, 300, 0.4]], rough: 0.9, roughHz: 34 });
+      call(s, at + 0.17, 0.09, { f0: (u) => 270 - 70 * u, formants: () => [[620, 200, 1], [1800, 400, 0.5]], rough: 0.3, roughHz: 20, release: 0.03 });
+    }
+    return normalize(s);
+  },
+  'monkey.hoot': () => {
+    const s = buffer(1.25);
+    for (const at of [0.02, 0.3]) call(s, at, 0.22, { f0: (u) => 420 + 220 * u, formants: () => [[360, 130, 1], [900, 250, 0.3]] });
+    for (const at of [0.6, 0.92]) call(s, at, 0.27, { f0: (u) => 760 + 180 * sine(u), formants: () => [[820, 220, 1], [1300, 300, 0.7]], rough: 0.2, roughHz: 18 });
+    return normalize(s);
+  },
+  'donkey.heehaw': () => {
+    const s = buffer(1.9);
+    for (const at of [0.02, 0.95]) {
+      call(s, at, 0.34, { f0: (u) => 950 - 160 * u, formants: () => [[350, 150, 0.6], [2400, 450, 1]], breath: 0.15 });
+      call(s, at + 0.38, 0.46, { f0: (u) => 210 - 50 * u, formants: () => [[700, 200, 1], [1150, 260, 0.8]], rough: 0.7, roughHz: 28, breath: 0.08 });
+    }
+    return normalize(s);
+  },
+  'cat.meow': () => {
+    const s = buffer(0.8);
+    call(s, 0.02, 0.72, {
+      f0: (u) => 520 + 260 * sine(Math.min(1, u * 1.3)) - 80 * u,
+      formants: (u) => [[300 + 450 * sine(u), 140, 1], [1600 + 600 * sine(u) - 600 * u, 320, 0.45]],
+      attack: 0.04,
+      release: 0.12,
+    });
+    return normalize(s);
+  },
+  'dog.woof': () => {
+    const s = buffer(0.62);
+    for (const at of [0.02, 0.32]) call(s, at, 0.17, { f0: (u) => 300 - 120 * u, formants: () => [[560, 200, 1], [1300, 300, 0.6]], rough: 0.3, roughHz: 50, breath: 0.25, attack: 0.005 });
+    return normalize(s);
+  },
+  'cow.moo': () => {
+    const s = buffer(1.4);
+    call(s, 0.02, 1.3, {
+      f0: (u) => 120 + 25 * sine(u) - 15 * u,
+      formants: (u) => [[300 + 300 * sine(u * 0.8), 150, 1], [800, 250, 0.4]],
+      breath: 0.05,
+      attack: 0.15,
+      release: 0.3,
+    });
+    return normalize(s);
+  },
+  'pig.oink': () => {
+    const s = buffer(0.62);
+    for (const at of [0.02, 0.32]) call(s, at, 0.2, { f0: (u) => 240 - 60 * u, formants: () => [[300, 150, 1], [1100, 300, 0.5]], rough: 0.8, roughHz: 45, breath: 0.1 });
+    return normalize(s);
+  },
+  'sheep.baa': () => {
+    const s = buffer(0.95);
+    call(s, 0.02, 0.85, {
+      f0: (u, t) => 320 - 40 * u + 30 * Math.sin(2 * Math.PI * 7 * t),
+      formants: () => [[760, 200, 1], [1250, 300, 0.7]],
+      rough: 0.6,
+      roughHz: 9,
+      attack: 0.03,
+      release: 0.15,
+    });
+    return normalize(s);
+  },
+  'owl.hoot': () => {
+    const s = buffer(1.55);
+    for (const [at, len] of [[0.02, 0.3], [0.45, 0.3], [0.95, 0.5]] as const) {
+      call(s, at, len, { f0: (u) => 380 - 30 * u, formants: () => [[380, 80, 1]], breath: 0.03, attack: 0.05, release: 0.15 });
+    }
+    return normalize(s);
+  },
+  'rooster.crow': () => {
+    const s = buffer(1.45);
+    const voice = (u: number): [number, number, number][] => [[650 + 100 * u, 200, 1], [1500, 300, 0.8]];
+    for (const [at, f] of [[0.02, 520], [0.2, 620], [0.38, 700]] as const) call(s, at, 0.15, { f0: () => f, formants: voice, rough: 0.35, roughHz: 30 });
+    call(s, 0.6, 0.78, { f0: (u) => 780 + 80 * sine(u) - 150 * u, formants: voice, rough: 0.35, roughHz: 30, release: 0.2 });
+    return normalize(s);
   },
 };
 

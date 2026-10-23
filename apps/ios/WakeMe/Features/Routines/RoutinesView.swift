@@ -53,7 +53,7 @@ struct RoutinesView: View {
                 }
                 Section("On this phone") {
                     let active = mine.filter { $0.accepted != nil && !["cancelled", "declined"].contains($0.state) }
-                    if active.isEmpty { EmptyState(title: "No alarms yet", message: "Set one for yourself, or let a friend suggest one. Nothing rings until this phone confirms it.") }
+                    if active.isEmpty { EmptyState(title: "No alarms yet") }
                     ForEach(active) { p in
                         PlanRow(plan: p, mine: true, onAccept: nil, onDecline: nil)
                             .swipeActions {

@@ -1,6 +1,31 @@
 # Wake Me — progress
 
-Last updated: 2026-10-22. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+
+## Owner review and UX laws pass (2026-10-23, Claude)
+
+- **What changed** (decisions and the law-by-law map: [docs/design/ux-laws-2026-10-23.md](docs/design/ux-laws-2026-10-23.md)):
+  - **Owner's PDF review:**
+    - The friend header follows the Contacts layout: centred face, name and action columns, with action circles at 50 % colour.
+    - Ten cartoon animal-face avatars (`packages/design-tokens/faces`) are generated into both apps as `WMFace`; a friend gets a face from a stable hash.
+    - `Note` is now text-only and almost every explanation is gone.
+    - Ten synthesised animal calls are added (`packages/sounds`, policy `ANIMAL_SOUNDS`, the "Gentle nudges" preset, app sound maps, Android channels). They are chosen by tapping a face, which plays the call; quack stays the default.
+    - The welcome hero is a huddle of friends' faces, and the duck is de-emphasised.
+  - **The 20 laws:**
+    - Progressive disclosure in the permission editors.
+    - A generous join input that takes any code shape or a pasted link (`InviteInput`, with Android unit tests).
+    - `StepProgress` on readiness.
+    - A "You're up." finish after a wake-up.
+    - One lime button per screen.
+    - Android loading text replaced by an indicator.
+    - The iOS UI test now waits for "Create a challenge" instead of the removed sentence.
+- **Tests actually run** (Windows 11, Node 24.19.0):
+  - `npm run generate:tokens` (57 icons, 11 faces; contrast passes) and `npm run generate:sounds` (16 sounds; the existing six unchanged byte for byte).
+  - Policy tests 119/119, and API tests 104 passed with 1 skipped (it needs a PostgreSQL server).
+  - Faces rendered and reviewed in a browser at 88, 56 and 36 px.
+  - Name, import and test-string reviews of the changed Swift and Kotlin.
+- **Not run:** any iOS or Android compile, lint, unit, UI or preview job (no Android SDK or macOS here). Nobody has listened to the synthesised calls. No physical device.
+- **Next:** run CI and fix what it finds; review the renders against the map; the owner should listen to the animal calls and approve them.
 
 ## Bloom polish from the first native renders (2026-10-22, Claude)
 

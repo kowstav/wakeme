@@ -17,8 +17,6 @@ struct SignInView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
                 Text("Sign in").font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
-                Text("Sign in to keep your friends and settings. We never ask for your phone number or contacts.")
-                    .foregroundStyle(WMColor.textSecondary)
                 if AppConfig.supabaseConfigured {
                     // Doc 02 §9: Apple, then email; never a phone number.
                     SignInWithAppleButton(.continue) { request in
@@ -85,8 +83,7 @@ struct ProfileView: View {
                     .onChange(of: name) { _, v in if v.count > 40 { name = String(v.prefix(40)) } }
                     .accessibilityIdentifier("displayName")
                 Toggle("I'm 18 or older", isOn: $adult).foregroundStyle(WMColor.textPrimary)
-                Text("Your time zone (\(TimeZone.current.identifier)) is used for quiet hours and wake windows. You can change it later.")
-                    .foregroundStyle(WMColor.textSecondary)
+                LabeledContent("Time zone", value: TimeZone.current.identifier).foregroundStyle(WMColor.textPrimary)
                 PrimaryButton(title: "Continue") { Task { await app.createProfile(name: name, adult: adult) } }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || !adult)
             }

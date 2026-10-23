@@ -35,11 +35,6 @@ struct CirclesSection: View {
             .accessibilityLabel("New circle")
         } header: {
             Text("Circles")
-        } footer: {
-            // Explained once, under the group, until there is a circle to show instead.
-            if circles.isEmpty {
-                Text("A private group, like your flat or team, with its own chat.")
-            }
         }
         .task { await load() }
         .alert("New circle", isPresented: $naming) {
@@ -114,8 +109,6 @@ struct CircleView: View {
                         }
                     } header: {
                         Text("Members")
-                    } footer: {
-                        Text("Being in a circle never lets anyone do anything on your phone.")
                     }
                     Section {
                         Button("Leave circle", role: .destructive) { confirmLeave = true }
@@ -152,7 +145,7 @@ struct CircleView: View {
         switch m.role {
         case "owner": return "Owner"
         case "admin": return "Admin"
-        default: return m.user.id == app.me?.id ? "Member" : m.isFriend ? "Friend" : "Not your friend: no permissions either way"
+        default: return m.user.id == app.me?.id ? "Member" : m.isFriend ? "Friend" : "Not a friend"
         }
     }
 

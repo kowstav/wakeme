@@ -31,7 +31,10 @@ struct ChallengeRunnerView: View {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
                 Text(definition.title).font(.title2.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                 Text("Step \(run.stepNumber) of \(definition.steps.count)").foregroundStyle(WMColor.textSecondary)
-                StepProgress(done: run.finished ? definition.steps.count : run.index, total: definition.steps.count)
+                if definition.steps.count > 1 {
+                    StepProgress(total: definition.steps.count, done: run.finished ? definition.steps.count : run.index)
+                        .accessibilityHidden(true) // "Step 2 of 3" above is what VoiceOver reads
+                }
                 if checkIn {
                     CheckInStep(prompt: definition.fallback.prompt) {
                         run.completeWithFallback()
@@ -70,8 +73,6 @@ struct ChallengeRunnerView: View {
                         .frame(minHeight: WMSize.minTouchTarget)
                 }
                 SecondaryButton(title: escapeLabel, action: onEscape)
-                Text("This always works. Stopping is never locked behind the challenge.")
-                    .font(.footnote).foregroundStyle(WMColor.textSecondary)
             }
             .padding(.horizontal, WMSpacing.lg).padding(.vertical, WMSpacing.sm)
             .frame(maxWidth: 640).frame(maxWidth: .infinity)
@@ -80,24 +81,6 @@ struct ChallengeRunnerView: View {
         }
         .sensoryFeedback(WMHaptic.wrongAnswer, trigger: wrongTick)
         .sensoryFeedback(WMHaptic.selection, trigger: rightTick)
-    }
-}
-
-/// One segment per step; finished steps fill with success. Visual only: "Step 2 of 3" is read.
-private struct StepProgress: View {
-    let done: Int
-    let total: Int
-
-    var body: some View {
-        if total > 1 {
-            HStack(spacing: WMSpacing.xxs) {
-                ForEach(0..<total, id: \.self) { i in
-                    Capsule().fill(i < done ? WMColor.success : WMColor.border).frame(height: 6)
-                }
-            }
-            .animation(WMMotion.standard, value: done)
-            .accessibilityHidden(true)
-        }
     }
 }
 

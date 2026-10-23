@@ -193,7 +193,7 @@ fun VoiceSoundsScreen(onBack: (() -> Unit)? = null, vm: VoiceSoundsViewModel = h
     LaunchedEffect(s.hasDraft) { rights = false }
     DetailScreen(onBack = onBack) {
         Text("Voice sounds", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
-        Body("Record up to 30 seconds while this screen is open. Preview before uploading. Recordings are private, checked before use, and friends decide whether to approve an offer.")
+        Body("Up to 30 seconds.")
         if (s.recording) {
             StatusPill("Microphone is recording · stops at 30 seconds", Tone.Warning)
             PrimaryButton("Stop recording", onClick = vm::stopRecording, icon = WMIcon.Stop)
@@ -208,7 +208,7 @@ fun VoiceSoundsScreen(onBack: (() -> Unit)? = null, vm: VoiceSoundsViewModel = h
                 }
             })
         }
-        if (denied) Body("Microphone access wasn't granted. You can keep using built-in sounds or allow the microphone in app settings.")
+        if (denied) Body("Microphone access is off.")
         if (s.hasDraft) {
             WMCard {
                 Body("Your recording · ${(s.durationMs + 999) / 1000} seconds · only on this screen until you upload")
@@ -232,20 +232,18 @@ fun VoiceSoundsScreen(onBack: (() -> Unit)? = null, vm: VoiceSoundsViewModel = h
             QuietButton("Delete sound", enabled = !s.busy, onClick = { deleting = sound })
         }
         SectionTitle("From friends")
-        if (s.offers.isEmpty()) Body("No sound offers. Being friends never approves a sound automatically.")
+        if (s.offers.isEmpty()) Body("No sound offers.")
         for (offered in s.offers) WMCard {
             Body("From ${offered.offeredBy.displayName} · ${if (offered.state == "approved") "Approved for your library" else "Waiting for your approval"}")
             SecondaryButton("Preview offered sound", enabled = !s.busy, onClick = { vm.preview(offered.media) }, icon = WMIcon.Speaker)
             if (offered.state != "approved") PrimaryButton("Approve sound", enabled = !s.busy, onClick = { vm.decide(offered.media, true) }, icon = WMIcon.Check)
             QuietButton(if (offered.state == "approved") "Remove approval" else "Decline sound", enabled = !s.busy, onClick = { vm.decide(offered.media, false) })
-            Body("Approval adds it to your sound choices. It doesn't give anyone permission to ring your phone.")
         }
         Gap()
     }
     if (rationale) AlertDialog(onDismissRequest = { rationale = false }, title = { Text("Allow microphone access?") }, text = { Text("Wake Me records only when you choose Record, for up to 30 seconds. Leaving this screen stops recording. Nothing uploads until you choose Upload.") }, confirmButton = { TextButton(onClick = { rationale = false; permission.launch(Manifest.permission.RECORD_AUDIO) }) { Text("Continue") } }, dismissButton = { TextButton(onClick = { rationale = false }) { Text("Not now") } })
     offering?.let { sound -> AlertDialog(onDismissRequest = { offering = null }, title = { Text("Offer this sound") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            Body("Your friend can preview it, then approve or decline. This sends an offer; it doesn't play the sound on their phone.")
             for (friend in s.friends) TextButton(onClick = { offering = null; vm.offer(sound, friend) }) { Text(friend.user.displayName) }
             if (s.friends.isEmpty()) Body("Invite a friend first.")
         }

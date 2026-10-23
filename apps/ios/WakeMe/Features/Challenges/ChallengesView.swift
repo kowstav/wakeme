@@ -38,16 +38,9 @@ struct ChallengesView: View {
         let ready = challenges.filter { $0.publishedRevisionId != nil }
         let drafts = challenges.filter { $0.publishedRevision == nil && $0.creatorId == app.me?.id }
         List {
-            // The screen's action leads as a button, not a link inside a paragraph; the one line of
-            // explanation sits under it.
-            VStack(alignment: .leading, spacing: WMSpacing.sm) {
-                PrimaryButton(title: "Create a challenge", icon: .plus) { creating = true }
-                Note(loaded && ready.isEmpty && drafts.isEmpty
-                     ? "No challenges yet. Make one, or start from a template."
-                     : "Your group's own jokes and goals. They work offline and always have a way out.",
-                     icon: .trophy)
-            }
-            .bentoRow()
+            // The screen's action leads as a button; the templates below show what a challenge is.
+            PrimaryButton(title: "Create a challenge", icon: .plus) { creating = true }
+                .bentoRow()
             Group {
                 if !ready.isEmpty {
                     Section("Try one") {
@@ -236,13 +229,11 @@ private struct TryOutView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: WMSpacing.md) {
                     Text(tryOut.definition.title).font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
-                    StatusPill(text: completed ? "You finished it." : "You stopped before the end. Friends always have the same way out.", tone: completed ? .success : .neutral)
+                    StatusPill(text: completed ? "You finished it." : "You stopped before the end.", tone: completed ? .success : .neutral, icon: completed ? toneIcon(.success) : nil)
                     if let notes = tryOut.notes {
                         Text("About this draft: \(notes)").foregroundStyle(WMColor.textPrimary)
                     }
                     if tryOut.draft {
-                        Text("Publishing freezes this version. Friends who accept it get exactly this; later edits become a new version they must accept.")
-                            .foregroundStyle(WMColor.textSecondary)
                         PrimaryButton(title: "Publish") { onFinish(true) }
                         SecondaryButton(title: "Keep as draft") { onFinish(false) }
                     } else {
@@ -319,8 +310,7 @@ struct ChallengeCreatorView: View {
                 Group {
                     if let editing {
                         Section {
-                            Text("Your changes become version \(editing.nextRevision). You try it before publishing, and friends keep the version they accepted until they accept the new one.")
-                                .foregroundStyle(WMColor.textSecondary)
+                            StatusPill(text: "Version \(editing.nextRevision)", tone: .neutral, icon: .edit)
                         }
                     } else {
                         Section {
@@ -396,7 +386,7 @@ struct ChallengeCreatorView: View {
                 Button("See Plus") { showPlus = true }
                 Button("Write a quiz myself", role: .cancel) { mode = .quiz }
             } message: {
-                Text("Plus adds monthly AI credits. Writing a quiz yourself is always free, and saved challenges never use credits.")
+                Text("Plus adds monthly AI credits. Writing a quiz yourself is free.")
             }
             .sheet(isPresented: $showPlus) { PaywallView() }
         }

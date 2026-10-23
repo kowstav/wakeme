@@ -36,7 +36,7 @@ WCAG in light, dark and both increased-contrast modes, see `contrast-report.md`.
 | One primary action per screen; 44 pt / 48 dp minimum targets | Sleepy and one-handed use |
 | Native navigation: tab bar on iPhone; bottom bar on Android phones, rail on tablets | Platform-native, adaptive (doc 06) |
 | Dialogs on the raised surface, not Material's default tint | Run 19 review |
-| One signature motion (the original duck's quack) with a Reduce Motion still; tokenised springs; nothing animated in alarm, SOS or escape controls | Doc 03 §2; system.md §5 |
+| One signature motion (a friend's face hops as its call plays; the duck's quack where a quack is shown) with a Reduce Motion still; tokenised springs; nothing animated in alarm, SOS or escape controls | Doc 03 §2; system.md §5; owner review 2026-10-23 |
 | Delivery shown as words plus a trail that only advances on reported evidence | Literal status (shared `delivery-trail.json`) |
 
 ## 3. Components (same names on both platforms)
@@ -44,8 +44,9 @@ WCAG in light, dark and both increased-contrast modes, see `contrast-report.md`.
 `PrimaryButton` (lime pill, optional icon), `SecondaryButton` (neutral pill; visibly disabled at 38–45 % when
 unavailable), `QuietButton`, `DangerButton` (destructive/SOS only, never animated), `WMCard` (flat),
 `HeroCard`, `BentoTile`/`BentoRow`, `QuickAction`, `IconChip`, `RoundIconButton`, `PillButton`,
-`DisplayText`, `Note` (one sentence beside the control it explains, never a card of its own),
-the `WMIcon` set, `StatusPill` (tinted, words + dot or icon, optional announcement), `ChoiceChip`, `DayChips`/`DayPicker`,
+`DisplayText`, `Note` (a rare caption under the control it qualifies; text only, no icon),
+`StepProgress`, `Loading` (Android), the `WMFace` animal faces (`FriendAvatar`, `FriendHuddle`,
+`SoundChoice`, `AnimalSoundRow`, `AnimalSoundGrid`), the `WMIcon` set, `StatusPill` (tinted, words + dot or icon, optional announcement), `ChoiceChip`, `DayChips`/`DayPicker`,
 `TimeDisplay`, `FriendAvatar`, `DeliveryTrailView`, `DetailTopBar` (Android), `EmptyState`,
 `DuckMark`, `QuackBurst`, `SettingRow` (whole row toggles), `Stepper` (Android: 48 dp −/+ spoken as
 Fewer/More), app-switcher cover / `HideFromRecents` on Safety and Messages (ADR 0012).
@@ -58,10 +59,14 @@ Fewer/More), app-switcher cover / `HideFromRecents` on Safety and Messages (ADR 
 - Explain before every system prompt (notifications, alarms, Screen Time, accessibility,
   location), at the moment it's needed, never at sign-up.
 - No paywall, feed or upsell during an alarm, a focus shield or a safety flow.
-- At most one sentence of explanation per screen, beside the control it explains (`Note`). A
-  paragraph alone in a card, a card holding only a status pill, a second title that restates the
-  first and a primary action written as a link are all review findings
-  ([polish review](review-2026-10-22-bloom-polish.md)).
+- Not explicit (owner, 2026-10-23): store users know how apps work, so screens show state and
+  choices, not explanations. Keep only consequences in confirmation dialogs, the safety and legal
+  lines (emergency number at SOS, location capture and accuracy, the Play accessibility
+  disclosure) and live feedback. A paragraph in a card, a card holding only a pill, a second
+  title and a primary action written as a link are review findings
+  ([polish review](review-2026-10-22-bloom-polish.md), [UX laws pass](ux-laws-2026-10-23.md)).
+- Sounds are chosen by recognition: an animal face that plays its call when tapped. Quack is the
+  default and never announced as such.
 
 ## 5. What is not done (owner / people needed)
 
@@ -90,4 +95,5 @@ Screenshots come from CI (printed into job logs; see ADR 0009 — not device evi
 | Bloom pass | HTML study from the same tokens and SVGs ([bloom.html](bloom.html)); native renders pending CI | 2026-10-21 (Claude) | Before: Daybreak renders (Android run 60, iOS run 39). The study was reviewed in a browser (light and dark); icons checked at 24 and 40 units, two redrawn. No native screenshots exist for Bloom yet. |
 | Android 76 → 80+ | previews + Android 16/17 emulators | 2026-10-21 (Claude) | Before: run 76 (all green). Fixed: "Use the simple check-in instead" clipped to "Jse … 'nstead" at large text (`QuietButton` kept Material's pill shape with no side padding); selection chips without a check mark on Safety, You, Challenges, Focus and Conversation; no back bar, a smaller heading and an edge-to-edge pill on the challenge try-out/publish step; no back bar on the Paywall and on readiness opened from Routines; the Paywall's selected plan bordered in yellow (< 3:1); "Share precise locatio" on Android 17's system button (sized from a local copy of the label). Test evidence: the Focus shield and location-button screenshots were taken before drawing (blank in runs 56, 64, 76). Not changed: the widget's dynamic colours (system.md §9). No screenshot baselines accepted. |
 | Bloom polish | ios run 44, android-device run 88 (previews + Android 16/17), commit `b9d6ef0` | 2026-10-22 (Claude) | All 38 iOS, 33 Android 17 and 30 preview renders read at full size. Fixed: paragraphs alone in cards (8 screens) → one-line `Note`s; duplicate title on readiness; a card holding only "Alarms allowed"; the welcome tagline and dead gap; the friend page's unlabelled speaker circle and repeated "hasn't turned on"; Challenges' primary action as a link and templates as text cards → lime button and petal tiles; a stray disclosure chevron between a circle's quick actions; three-paragraph invite dialogs; nested readiness cards on Android; Android's display headline at regular weight. List in [the review](review-2026-10-22-bloom-polish.md). Native renders of the fixes pending CI. |
+| Owner review + UX laws | Source edits; native renders pending CI | 2026-10-23 (Claude) | Owner PDF: avatar and action alignment, softer action circles, 10 animal-face avatars, notes without icons and mostly gone, animal sounds with quack default, duck de-emphasised, "not explicit" everywhere. 20 UX laws applied and mapped in [the pass](ux-laws-2026-10-23.md). |
 | Android 49 | Compose previews (layoutlib) | 2026-10-20 (Codex) | All 34 renders pass. Reviewed small-landscape alarm, large-text quiz and tablet chess: readable content with reachable fixed escape controls; chess content scrolls separately. No new baseline images accepted. |

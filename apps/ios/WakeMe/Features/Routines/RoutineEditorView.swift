@@ -98,7 +98,7 @@ struct RoutineEditorView: View {
                         } header: {
                             Text("Challenge (optional)")
                         } footer: {
-                            Text("A follow-up rings \(followUpDelay / 60) minutes later unless the challenge is finished. The wake session can always be ended.")
+                            Text("Follow-up after \(followUpDelay / 60) min if it isn't finished.")
                         }
                     }
                     if friend == nil {
@@ -192,7 +192,8 @@ func soundName(_ id: String) -> String {
     case "bundled:bell.bright": "Bright bell"
     case "bundled:pulse.wake": "Wake pulse"
     case "bundled:quack.double": "Double quack"
-    default: id.replacingOccurrences(of: "bundled:", with: "").replacingOccurrences(of: ".", with: " ")
+    case "bundled:chime.soft": "Soft chime"
+    default: AnimalSounds.sound(id)?.name ?? id.replacingOccurrences(of: "bundled:", with: "").replacingOccurrences(of: ".", with: " ")
     }
 }
 

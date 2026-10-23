@@ -148,7 +148,6 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
         request?.let { r ->
             WMCard {
                 Text("${r.friendName} asks you to focus for ${r.minutes} min", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                Body("You choose. Nothing changes unless you start it, and you can end it anytime.")
                 PrimaryButton("Start focus", onClick = { vm.acceptRequest() }, enabled = serviceOn && chosen.isNotEmpty(), icon = WMIcon.Focus)
                 QuietButton("Not now", onClick = { vm.declineRequest() })
             }
@@ -187,8 +186,6 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
                 ChoiceChip(app.label, selected = app.packageName in chosen, onClick = { vm.toggle(app.packageName); chosen = vm.store.chosenApps })
             }
         }
-        // Said once, under the choice it is about.
-        Note("Your choice stays on this phone. Friends never see which apps.", icon = WMIcon.Lock)
         Gap(WakeMeTokens.spaceXl)
     }
     if (disclosing) {

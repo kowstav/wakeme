@@ -14,7 +14,7 @@ struct GrantEditorView: View {
     let onSaved: () async -> Void
 
     @State private var caps: Set<String> = []
-    @State private var nudge = NudgeLimits(maxPerHour: 3, windows: [LocalWindow(days: [1, 2, 3, 4, 5, 6, 7], start: "08:00", end: "22:00")], sounds: ["bundled:quack.classic", "bundled:quack.double"], overridesQuietHours: false)
+    @State private var nudge = NudgeLimits(maxPerHour: 3, windows: [LocalWindow(days: [1, 2, 3, 4, 5, 6, 7], start: "08:00", end: "22:00")], sounds: AnimalSounds.ids, overridesQuietHours: false)
     @State private var alarm = AlarmLimits(maxAlarmSeconds: 120, maxPerDay: 1, windows: [LocalWindow(days: [1, 2, 3, 4, 5], start: "06:00", end: "10:00")], sounds: ["bundled:rise.gentle", "bundled:bell.bright"], followUp: FollowUp(allowed: true, maxDelaySeconds: 300))
     @State private var challenge = ChallengeLimits(types: ["multiple_choice", "short_answer", "math", "memory_order", "chess"], maxDurationSeconds: 90, maxDifficulty: "medium")
     @State private var validDays = 90
@@ -37,13 +37,9 @@ struct GrantEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // What this screen means, in one sentence on the page; the controls follow at once.
-                Note("Only you set or change what \(name) can do here, and it works one way: you get nothing on \(name)'s phone.", icon: .lock)
-                    .bentoRow()
+                // Choices first, as switches and faces; the detail behind each permission opens on
+                // demand (presets fill it in), so the screen reads as three decisions, not a form.
                 Group {
-                    if let g = friend.iAllowThem {
-                        Section { Text(usageText(g)).foregroundStyle(WMColor.textSecondary) }
-                    }
                     if !presets.isEmpty {
                         Section("Start from") {
                             ForEach(presets.filter { $0.id != "focus_buddy" }, id: \.id) { p in
@@ -52,47 +48,52 @@ struct GrantEditorView: View {
                         }
                     }
                     Section {
-                        Toggle("Send short sounds", isOn: capability(Capability.nudge))
+                        Toggle(isOn: capability(Capability.nudge)) {
+                            Label { Text("Quacks") } icon: { IconChip(icon: .speaker, family: WMPalette.gold, size: 32) }
+                        }
                         if caps.contains(Capability.nudge) {
-                            Stepper("Up to \(nudge.maxPerHour) per hour", value: $nudge.maxPerHour, in: 1...12)
-                            WindowRows(window: first($nudge.windows))
-                            SoundToggles(sounds: $nudge.sounds)
-                            Toggle("Allow during my quiet hours", isOn: $nudge.overridesQuietHours)
+                            AnimalSoundGrid(sounds: $nudge.sounds)
+                                .padding(.vertical, WMSpacing.xxs)
+                            DisclosureGroup("Hours and limits") {
+                                Stepper("Up to \(nudge.maxPerHour) per hour", value: $nudge.maxPerHour, in: 1...12)
+                                WindowRows(window: first($nudge.windows))
+                                Toggle("Allow during my quiet hours", isOn: $nudge.overridesQuietHours)
+                            }
                         }
-                    } header: {
-                        Text("Quacks")
-                    } footer: {
-                        Text("A quack or chime, a few times an hour at most. With quiet hours not allowed, quacks wait for daytime.")
                     }
                     Section {
-                        Toggle("Set wake-up routines for me", isOn: capability(Capability.alarmSchedule))
-                        Toggle("Wake me now", isOn: capability(Capability.alarmRequest))
+                        Toggle(isOn: capability(Capability.alarmSchedule)) {
+                            Label { Text("Set wake-up routines for me") } icon: { IconChip(icon: .calendarPlus, family: WMPalette.apricot, size: 32) }
+                        }
+                        Toggle(isOn: capability(Capability.alarmRequest)) {
+                            Label { Text("Wake me now") } icon: { IconChip(icon: .wake, family: WMPalette.apricot, size: 32) }
+                        }
                         if wakeOn {
-                            WindowRows(window: first($alarm.windows))
-                            Picker("Ring for at most", selection: $alarm.maxAlarmSeconds) {
-                                ForEach([30, 60, 120, 300], id: \.self) { Text("\($0) seconds").tag($0) }
+                            DisclosureGroup("Hours and limits") {
+                                WindowRows(window: first($alarm.windows))
+                                Picker("Ring for at most", selection: $alarm.maxAlarmSeconds) {
+                                    ForEach([30, 60, 120, 300], id: \.self) { Text("\($0) seconds").tag($0) }
+                                }
+                                Stepper("Up to \(alarm.maxPerDay) wake-up\(alarm.maxPerDay > 1 ? "s" : "") a day", value: $alarm.maxPerDay, in: 1...3)
+                                SoundToggles(sounds: $alarm.sounds)
+                                Toggle("Allow one follow-up alarm", isOn: $alarm.followUp.allowed)
                             }
-                            Stepper("Up to \(alarm.maxPerDay) wake-up\(alarm.maxPerDay > 1 ? "s" : "") a day", value: $alarm.maxPerDay, in: 1...3)
-                            SoundToggles(sounds: $alarm.sounds)
-                            Toggle("Allow one follow-up alarm", isOn: $alarm.followUp.allowed)
                         }
-                    } header: {
-                        Text("Help wake me")
-                    } footer: {
-                        Text("You see and accept every routine before it's active. Wake hours are your explicit OK to be woken, even during quiet hours.")
                     }
                     Section {
-                        Toggle("Assign challenges", isOn: capability(Capability.challengeAssign))
+                        Toggle(isOn: capability(Capability.challengeAssign)) {
+                            Label { Text("Assign challenges") } icon: { IconChip(icon: .trophy, family: WMPalette.sky, size: 32) }
+                        }
                         if caps.contains(Capability.challengeAssign) {
-                            Picker("At most", selection: $challenge.maxDurationSeconds) {
-                                ForEach([30, 60, 90, 180], id: \.self) { Text("\($0) seconds").tag($0) }
-                            }
-                            Picker("Hardest", selection: $challenge.maxDifficulty) {
-                                ForEach(["easy", "medium", "hard"], id: \.self) { Text($0.capitalized).tag($0) }
+                            DisclosureGroup("Limits") {
+                                Picker("At most", selection: $challenge.maxDurationSeconds) {
+                                    ForEach([30, 60, 90, 180], id: \.self) { Text("\($0) seconds").tag($0) }
+                                }
+                                Picker("Hardest", selection: $challenge.maxDifficulty) {
+                                    ForEach(["easy", "medium", "hard"], id: \.self) { Text($0.capitalized).tag($0) }
+                                }
                             }
                         }
-                    } footer: {
-                        Text("Quizzes and puzzles to finish your wake-up. New versions always need your OK, and the escape always works.")
                     }
                     Section {
                         Picker("Keep these permissions for", selection: $validDays) {
@@ -105,6 +106,8 @@ struct GrantEditorView: View {
                     if friend.iAllowThem != nil {
                         Section {
                             Button("Remove all of \(name)'s permissions", role: .destructive) { confirmRemove = true }
+                        } footer: {
+                            if let g = friend.iAllowThem { Text(usageText(g)) }
                         }
                     }
                 }
@@ -132,7 +135,7 @@ struct GrantEditorView: View {
                 }
                 Button("Not now", role: .cancel) { dismiss() }
             } message: {
-                Text("Wake Me uses notifications to play the sounds you just allowed. You can change this in Settings at any time.")
+                Text("So the sounds you allowed can reach you.")
             }
             .confirmationDialog("Remove all of \(name)'s permissions?", isPresented: $confirmRemove, titleVisibility: .visible) {
                 Button("Remove", role: .destructive) { Task { await removeAll() } }
@@ -160,7 +163,7 @@ struct GrantEditorView: View {
 
     private func usageText(_ g: GrantDTO) -> String {
         let used = g.lastUsedAt.flatMap { try? Instant.parse($0) }.map { "Last used \($0.formatted(date: .abbreviated, time: .shortened))." } ?? "\(name) hasn't used these yet."
-        return "\(used) Version \(g.version)\(g.paused ? ", paused" : "")."
+        return used + (g.paused ? " Paused." : "")
     }
 
     private func load() async {

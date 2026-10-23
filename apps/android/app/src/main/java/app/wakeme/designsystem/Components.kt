@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -319,7 +320,8 @@ fun QuickAction(
     val c = WM.colors
     val fill = when {
         primary -> c.accent
-        family != null -> family.fill
+        // A family colour at half strength: the row reads as soft petals under the face and name.
+        family != null -> family.fill.copy(alpha = 0.5f)
         else -> quietFill()
     }
     val ink = when {
@@ -577,15 +579,37 @@ fun FieldGroup(label: String, modifier: Modifier = Modifier, content: @Composabl
 }
 
 /**
- * One sentence of explanation, set beside the control it explains: a small icon and supporting
- * text on the page, never in a card of its own (a card holds things to act on). A screen keeps at
- * most one or two of these.
+ * A caption under the control it qualifies, the way the reference apps write footnotes: a short
+ * line of secondary text, no icon (an icon beside wrapped text never lines up with it). Most
+ * screens need none: people who use apps already know what a switch or a button does.
  */
 @Composable
-fun Note(text: String, modifier: Modifier = Modifier, icon: WMIcon = WMIcon.Info) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-        WMIconView(icon, Modifier.padding(top = 1.dp), tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = WM.colors.textSecondary, modifier = Modifier.weight(1f))
+fun Note(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = WM.colors.textSecondary, modifier = modifier.fillMaxWidth())
+}
+
+/**
+ * A wait, shown as motion rather than words (a spinner reads as "working" at a glance; "Loading…"
+ * text makes the wait feel longer). Read as "Loading".
+ */
+@Composable
+fun Loading(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().padding(vertical = WakeMeTokens.spaceLg).semantics { contentDescription = "Loading" }, contentAlignment = Alignment.Center) {
+        androidx.compose.material3.CircularProgressIndicator(Modifier.size(28.dp), color = WM.colors.accentText, strokeWidth = 3.dp)
+    }
+}
+
+/**
+ * How far through a short task you are, as segments that fill one by one (the goal-gradient: the
+ * nearer the end looks, the more people finish). Read as "Step n of total".
+ */
+@Composable
+fun StepProgress(total: Int, done: Int, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "Step ${minOf(done + 1, total)} of $total" }, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
+        repeat(total) { i ->
+            val fill by animateColorAsState(if (i < done) WM.colors.accent else WM.colors.surfaceNeutral, WMMotion.standard(), label = "step")
+            Box(Modifier.weight(1f).height(6.dp).background(fill, CircleShape))
+        }
     }
 }
 
@@ -665,22 +689,17 @@ fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: 
 }
 
 /**
- * A friend's monogram on one of seven petal families, chosen from a stable key so the same friend
- * always has the same colour (and the same one on iOS). Decorative: the name beside it is what
- * TalkBack reads.
+ * A friend's face: one of ten cartoon animals, chosen from a stable key so the same friend always
+ * has the same animal (and the same one on iOS: same hash, same order). Decorative: the name beside
+ * it is what TalkBack reads. [name] stays in the signature for callers and previews.
  */
 @Composable
-fun FriendAvatar(name: String, key: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
-    val families = WM.palette.avatars
-    val family = families[Math.floorMod(key.hashCode(), families.size)]
-    val trimmed = name.trim()
-    val initial = if (trimmed.isEmpty()) "?" else String(Character.toChars(trimmed.codePointAt(0))).uppercase()
-    // Sized to the circle rather than the font scale: the name beside it scales instead.
-    val fontSize = with(LocalDensity.current) { (size * 0.42f).toSp() }
-    Box(modifier.size(size).background(family.fill, CircleShape).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
-        Text(initial, fontSize = fontSize, fontWeight = FontWeight.Bold, color = family.ink, maxLines = 1)
-    }
+fun FriendAvatar(@Suppress("UNUSED_PARAMETER") name: String, key: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
+    Image(painterResource(faceFor(key).res), contentDescription = null, modifier = modifier.size(size).clearAndSetSemantics { })
 }
+
+/** The animal for a stable key (a friend's or circle's id); the same on iOS. */
+fun faceFor(key: String): WMFace = WMFace.avatars[Math.floorMod(key.hashCode(), WMFace.avatars.size)]
 
 /**
  * Sent → reached their phone → seen (quack) / rang (wake alarm), as three icon stops on a track
@@ -786,14 +805,14 @@ fun DetailScreen(onBack: (() -> Unit)?, modifier: Modifier = Modifier, title: St
 
 /** A calm empty state: the duck, what belongs here, and how to add the first one. */
 @Composable
-fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {
+fun EmptyState(title: String, body: String? = null, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {
     WMCard(modifier) {
-        // The words sit beside the duck, title over body, as on iOS.
+        // A friendly face beside the words, title over body, as on iOS; a body only where needed.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-            DuckMark(size = 56.dp)
+            Image(painterResource(faceFor(title).res), contentDescription = null, modifier = Modifier.size(52.dp).clearAndSetSemantics { })
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-                Supporting(body)
+                if (body != null) Supporting(body)
             }
         }
         action?.invoke()

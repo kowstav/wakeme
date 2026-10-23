@@ -43,6 +43,76 @@
       "bytes": 882044,
       "durationMs": 20000,
       "sha256": "1341f126c46617bbb836c448794c11a7062b5e85c5eb169f24c8620da0a63a1c"
+    },
+    {
+      "id": "bundled:frog.ribbit",
+      "file": "frog_ribbit.wav",
+      "bytes": 44144,
+      "durationMs": 1000,
+      "sha256": "b0d853532e923db58d67d1c9b68c408a32f1f7a6dee50be8925f2e3949e58a50"
+    },
+    {
+      "id": "bundled:monkey.hoot",
+      "file": "monkey_hoot.wav",
+      "bytes": 55170,
+      "durationMs": 1250,
+      "sha256": "0cb1dffacd1d6d57a1ecee71874e0dbfff3e8271e13bf8e1988dfdda7486da77"
+    },
+    {
+      "id": "bundled:donkey.heehaw",
+      "file": "donkey_heehaw.wav",
+      "bytes": 83834,
+      "durationMs": 1900,
+      "sha256": "8e5f61a5f04ddad6d8069c60a2b93dc54e402d975c21e25f5e593f4768ae53d6"
+    },
+    {
+      "id": "bundled:cat.meow",
+      "file": "cat_meow.wav",
+      "bytes": 35324,
+      "durationMs": 800,
+      "sha256": "bc3121c695d29f563030be9f28b0750e5c7ac502767672247416a0c1360099d6"
+    },
+    {
+      "id": "bundled:dog.woof",
+      "file": "dog_woof.wav",
+      "bytes": 27386,
+      "durationMs": 620,
+      "sha256": "dc2e0b9b645f7fc5ed4a9b525a7ef7bd1e15a3e03da2614933b24a43a35a7c22"
+    },
+    {
+      "id": "bundled:cow.moo",
+      "file": "cow_moo.wav",
+      "bytes": 61784,
+      "durationMs": 1400,
+      "sha256": "37e6256ff6af08d31bd1aebba127d7e9207874a33c54865f5d2750a00884fc51"
+    },
+    {
+      "id": "bundled:pig.oink",
+      "file": "pig_oink.wav",
+      "bytes": 27386,
+      "durationMs": 620,
+      "sha256": "e8b5c5955f96c80163c12aa48fc32171d108399891666011e8f82b7a454ed7c7"
+    },
+    {
+      "id": "bundled:sheep.baa",
+      "file": "sheep_baa.wav",
+      "bytes": 41940,
+      "durationMs": 950,
+      "sha256": "d084aa77c5a2df337c168c3ea617463566f4d0d18423f84b75c7068a3858769c"
+    },
+    {
+      "id": "bundled:owl.hoot",
+      "file": "owl_hoot.wav",
+      "bytes": 68400,
+      "durationMs": 1550,
+      "sha256": "c656a854d73a57732aa2193a82862e0a0604bfa9177df7e01dc1b2c7c000e57e"
+    },
+    {
+      "id": "bundled:rooster.crow",
+      "file": "rooster_crow.wav",
+      "bytes": 63990,
+      "durationMs": 1450,
+      "sha256": "91493152d78071d169065cceb530183e1fe4c49c7b11ba0e79361977d50eba35"
     }
   ]
 }
