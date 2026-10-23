@@ -35,6 +35,12 @@ Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verifi
   - **Passed:** the ci Android job (unit tests, lint, debug build), the Compose previews and the Android 17 journey.
   - **iOS (ci #31, ios #49):** one error. The grant editor's `Form` was too large for the type checker (`GrantEditorView.swift:46`). Its sections are now separate properties, and the preset button title is a `String`.
   - **Android 16 journey (android-device #93):** timed out waiting for "Step 1 of 2" after the quiz edit (`JourneyTest.kt:141`). android-device #88 failed at the same line before this pass. The test now waits for question 2's answer to land before saving. A failed `waitFor` now lists the texts on screen in its message.
+- **CI on `9a3680a`:**
+  - **Passed:** ci #32 (the iOS app now compiles), the Compose previews, and the Android 16 journey with the quiz-edit wait.
+  - **Two emulator jobs failed (android-device #94), both on test timing; neither touched widget or app code changed on this branch:**
+    - **Android 17:** the journey was skipped. The emulator's single 3 s health check to the dev backend timed out, although the backend answered on the runner. The check now retries for about 15 s.
+    - **Android 16:** `QuickActionsWidgetTest` tapped the widget, but `MainActivity` wasn't resumed within 10 s mid-suite. The same run's three solo repeats opened it in 3–5 s. The test now allows 30 s and names what was resumed if it still fails.
+  - ios #50 was still running at the time of this note.
 
 ## Bloom polish from the first native renders (2026-10-22, Claude)
 

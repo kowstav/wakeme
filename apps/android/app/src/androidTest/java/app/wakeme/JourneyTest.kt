@@ -39,7 +39,10 @@ class JourneyTest {
 
     @Test
     fun selfSetupInviteGrantAndWakeUp() {
-        val unreachable = backendProblem()
+        // The emulator's first request to the host can time out while its network settles
+        // (android-device #94, Android 17), so ask a few times before calling it unreachable.
+        var unreachable = backendProblem()
+        repeat(5) { if (unreachable != null) { Thread.sleep(3_000); unreachable = backendProblem() } }
         assumeTrue("dev backend not reachable: $unreachable", unreachable == null)
 
         // Doc 03 §5 step 2: a personal wake-up first, with no account; it is armed on this phone.

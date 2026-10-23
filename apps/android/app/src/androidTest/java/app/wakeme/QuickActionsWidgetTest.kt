@@ -68,14 +68,23 @@ class QuickActionsWidgetTest {
             onView(isRoot()).inRoot(withDecorView(sameInstance(activity.activity.window.decorView)))
                 .perform(waitAndTapWidgetAction(FRIEND_ACTION))
             var opened: MainActivity? = null
-            val launchDeadline = android.os.SystemClock.elapsedRealtime() + 10_000
+            // A cold start mid-suite on the Android 16 emulator took over 10 s (android-device #94);
+            // the same tap opens the app in 3-5 s when run on its own.
+            val launchDeadline = android.os.SystemClock.elapsedRealtime() + 30_000
             while (opened == null && android.os.SystemClock.elapsedRealtime() < launchDeadline) {
                 instrumentation.runOnMainSync {
                     opened = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().firstOrNull()
                 }
                 if (opened == null) Thread.sleep(200)
             }
-            assertEquals("friends", requireNotNull(opened) { "widget opens the app" }.intent.getStringExtra(MainActivity.EXTRA_ROUTE))
+            if (opened == null) {
+                var resumed = emptyList<String>()
+                instrumentation.runOnMainSync {
+                    resumed = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).map { it.javaClass.simpleName }
+                }
+                throw AssertionError("widget opens the app; resumed after 30 s: $resumed")
+            }
+            assertEquals("friends", requireNotNull(opened).intent.getStringExtra(MainActivity.EXTRA_ROUTE))
         } finally {
             automation.dropShellPermissionIdentity()
             host.stopListening(); host.deleteHost()
