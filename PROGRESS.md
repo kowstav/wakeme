@@ -40,7 +40,11 @@ Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verifi
   - **Two emulator jobs failed (android-device #94), both on test timing; neither touched widget or app code changed on this branch:**
     - **Android 17:** the journey was skipped. The emulator's single 3 s health check to the dev backend timed out, although the backend answered on the runner. The check now retries for about 15 s.
     - **Android 16:** `QuickActionsWidgetTest` tapped the widget, but `MainActivity` wasn't resumed within 10 s mid-suite. The same run's three solo repeats opened it in 3–5 s. The test now allows 30 s and names what was resumed if it still fails.
-  - ios #50 was still running at the time of this note.
+  - ios #50 was still running at the time of this note. It later passed every UI test, including the self-setup journey in 350 s (457 s before this pass, in ios #47). The push of `e7e81c9` then cancelled it: for pull requests the ios path filter covers the whole PR, not just the newest commit.
+- **CI on `e7e81c9`:**
+  - **Passed:** ci #33 and android-device #95, including both emulator journeys and the widget test.
+  - **Failed (ios #51):** `testSelfSetupJourney` waited 15 s for "Hear Alex's quacks?" after Save, while the editor still read "Saving…". The iOS code was the same as ios #50, where this step passed, so it was slow rather than broken.
+  - **Fix:** the test now waits 45 s. If it still fails, the message says whether the grant was still saving.
 
 ## Bloom polish from the first native renders (2026-10-22, Claude)
 

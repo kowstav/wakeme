@@ -245,7 +245,11 @@ final class LaunchTests: XCTestCase {
         app.navigationBars["What can Alex do?"].buttons["Save"].tap()
         // Doc 03 §5 step 6: the sounds just allowed need notifications; the app explains first.
         let hear = app.alerts["Hear Alex's quacks?"]
-        try must(hear.waitForExistence(timeout: 15), "the app explains before the system prompt")
+        // Saving waits on a few requests (the grant, the friend again, this phone's copy of the
+        // grants); on a slow Simulator that took over 15 s (ios #51). Still saving at the deadline
+        // means slow, not wrong, so the message says which it was.
+        let saving = app.navigationBars["What can Alex do?"].buttons["Saving…"]
+        try must(hear.waitForExistence(timeout: 45), saving.exists ? "the grant was still saving after 45 s" : "the app explains before the system prompt")
         shot(app, "14b-hear-quacks")
         hear.buttons["Allow notifications"].tap()
         allowSystemPrompt(springboard)
