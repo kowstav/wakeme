@@ -2,6 +2,12 @@
 
 Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
 
+## Final CI and Swift test review (2026-10-23, Codex)
+
+- PRs #5 and #6 merged; PR #7 now includes the owner-review/animal-sound pass as well as its original four polish fixes. At source 4e5b276, general CI 34 and iOS 52 passed, as did Android 17 and all previews in Android run 96. Android 16 failed only the widget destination assertion: expected friends, got null.
+- The downloaded Android 16 logcat records the test's pointer tap at 15:14:36.975, followed by an ACTION_MAIN/CATEGORY_LAUNCHER start at 15:14:37.049 with whole-widget bounds [16,16][624,344]. The widget's own action is ACTION_VIEW with an explicit route. Android's default widget layout has a launcher click handler ([AOSP AppWidgetHostView](https://android.googlesource.com/platform/frameworks/base/%2B/android16-qpr2-release/core/java/android/appwidget/AppWidgetHostView.java)). The test's nearest-clickable search could walk into that outer fallback during provider updates. It now stops below the host's direct child and waits for an actual inner Glance action. One real pointer tap and the exact destination assertion remain; no tap retries or direct PendingIntent calls.
+- Reviewed the previously uncommitted LaunchTests.swift edit. Keep its bounded checked typing for the observed dropped-keyboard-input failure, but make exhaustion fail immediately through must, with a screenshot and caller file/line. Keep the exact quiz-content assertions and the 15 s wait for the wrong-answer feedback. The shared workspace's original edit is preserved; the improved version is committed from the isolated checkout.
+- Validation of these follow-ups is pending the next PR #7 CI runs. The PR records the final tested source and results. No physical-device or provider integration evidence is implied; workstreams 3–8 still need the owner setup listed in docs/android-owner-setup.md.
 ## Owner review and UX laws pass (2026-10-23, Claude)
 
 - **What changed** (decisions and the law-by-law map: [docs/design/ux-laws-2026-10-23.md](docs/design/ux-laws-2026-10-23.md)):

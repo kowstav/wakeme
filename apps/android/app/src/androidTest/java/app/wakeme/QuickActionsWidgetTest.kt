@@ -114,7 +114,12 @@ class QuickActionsWidgetTest {
                 controller.loopMainThreadUntilIdle()
                 val labelled = findLabel(root, label)
                 val target = labelled?.let { child ->
-                    generateSequence(child) { it.parent as? View }.firstOrNull { it.isClickable }
+                    generateSequence(child) { it.parent as? View }
+                        // The host's direct child is the widget-wide default layout. Its fallback
+                        // click opens MAIN/LAUNCHER without our route (run 96, Android 16).
+                        // Wait for a real Glance action below that boundary, never tap the fallback.
+                        .takeWhile { it !is AppWidgetHostView && it.parent !is AppWidgetHostView }
+                        .firstOrNull { it.isClickable }
                 }
                 if (target != null && target.isAttachedToWindow && target.isEnabled && isDisplayingAtLeast(90).matches(target)) {
                     DeviceEvidence.note("widget-action", "labelType=${labelled?.contentDescription?.javaClass?.name}, one pointer tap on the live clickable ancestor")

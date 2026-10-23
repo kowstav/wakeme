@@ -69,6 +69,23 @@ final class LaunchTests: XCTestCase {
         if allow.waitForExistence(timeout: timeout) { allow.tap() }
     }
 
+    /// Types into a field and retypes if a slow simulator dropped keystrokes (seen in run 35:
+    /// "Brunch, Pasta night" arrived as "Brunch, P").
+    @MainActor
+    private func typeChecked(_ field: XCUIElement, _ text: String, file: StaticString = #filePath, line: UInt = #line) throws {
+        for _ in 0..<3 {
+            field.tap()
+            let current = (field.value as? String) ?? ""
+            let placeholder = field.placeholderValue ?? ""
+            if !current.isEmpty, current != placeholder {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+            }
+            field.typeText(text)
+            if (field.value as? String) == text { return }
+        }
+        try must(false, "Could not enter \(text) in \(field.identifier); got \(String(describing: field.value)) after three attempts", file: file, line: line)
+    }
+
     @MainActor
     private func shot(_ app: XCUIApplication, _ name: String) {
         let a = XCTAttachment(screenshot: app.screenshot())
@@ -316,8 +333,7 @@ final class LaunchTests: XCTestCase {
         func quizField(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
         for (id, text) in [("quizTitle", "Thursday quiz"), ("quizQuestion", "What do we call our Thursday dinner?"), ("quizAnswer", "Chaos curry"), ("quizWrong", "Brunch, Pasta night")] {
             try must(quizField(id).waitForExistence(timeout: 5), "field \(id)")
-            quizField(id).tap()
-            quizField(id).typeText(text)
+            try typeChecked(quizField(id), text)
         }
         shot(app, "23-create-challenge")
         app.navigationBars["Create a challenge"].buttons["Create"].tap()
@@ -433,7 +449,7 @@ final class LaunchTests: XCTestCase {
         try must(app.buttons["End this wake session"].exists, "the escape is always on screen")
         try must(app.buttons["Use the simple check-in instead"].exists, "the check-in is offered")
         app.buttons["Brunch"].tap()
-        try must(app.staticTexts["Not quite. Take your time and try again."].waitForExistence(timeout: 5), "a wrong answer is a calm retry")
+        try must(app.staticTexts["Not quite. Take your time and try again."].waitForExistence(timeout: 15), "a wrong answer is a calm retry")
         shot(app, "20-challenge-retry")
         app.buttons["Chaos curry"].tap()
         try must(app.staticTexts["7 + 8 = ?"].waitForExistence(timeout: 5), "the next step")
