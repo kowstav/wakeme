@@ -222,7 +222,10 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
         WMCard {
             SettingRow("Quacks", null, Capability.NUDGE in d.caps, icon = WMIcon.Speaker, family = WM.palette.gold) { vm.toggle(Capability.NUDGE, it) }
             if (Capability.NUDGE in d.caps) {
-                AnimalSoundGrid(d.nudge.sounds.filter { it in AnimalSounds.ids }.ifEmpty { listOf(AnimalSounds.DEFAULT_ID) }) { list -> vm.edit { it.copy(nudge = it.nudge.copy(sounds = list)) } }
+                AnimalSoundGrid(
+                    d.nudge.sounds.filter { it in AnimalSounds.ids }.ifEmpty { listOf(AnimalSounds.DEFAULT_ID) },
+                    onChange = { list -> vm.edit { it.copy(nudge = it.nudge.copy(sounds = list)) } },
+                )
                 Disclosure("Hours and limits") {
                     Stepper("Up to ${d.nudge.maxPerHour} per hour", d.nudge.maxPerHour, 1, 12) { v -> vm.edit { it.copy(nudge = it.nudge.copy(maxPerHour = v)) } }
                     WindowEditor(d.nudge.windows.first()) { w -> vm.edit { it.copy(nudge = it.nudge.copy(windows = listOf(w))) } }

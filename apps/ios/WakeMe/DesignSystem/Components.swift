@@ -208,7 +208,8 @@ struct QuickActionLabel: View {
     var body: some View {
         // A family colour at half strength: the row reads as a set of soft petals, so the circles
         // never outshout the face and name above them.
-        let fill = primary ? WMColor.accent : family.map { $0.fill.opacity(0.5) } ?? quietFill(onCard: onCard, scheme: scheme)
+        let petal: Color? = family.map { (f: WMFamily) -> Color in f.fill.opacity(0.5) }
+        let fill: Color = primary ? WMColor.accent : petal ?? quietFill(onCard: onCard, scheme: scheme)
         let ink = primary ? WMColor.textOnAccent : family?.ink ?? WMColor.textPrimary
         VStack(spacing: WMSpacing.xs) {
             WMIconImage(icon)

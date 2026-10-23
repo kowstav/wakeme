@@ -370,9 +370,8 @@ struct FriendDetailView: View {
 
     @ViewBuilder private func quackCard(_ f: FriendDTO) -> some View {
         let quack = f.actions?.first { $0.capability == Capability.nudge }
-        let sounds = f.theyAllowMe?.limits.nudge?.sounds ?? []
-        let animals = sounds.filter { AnimalSounds.ids.contains($0) }
-        let chosen = quackSound.flatMap { sounds.contains($0) ? $0 : nil } ?? animals.first ?? sounds.first ?? AnimalSounds.defaultId
+        let animals = (f.theyAllowMe?.limits.nudge?.sounds ?? []).filter { AnimalSounds.ids.contains($0) }
+        let chosen = chosenSound(f)
         let word = (AnimalSounds.sound(chosen)?.name ?? soundName(chosen)).lowercased()
         if let quack, quack.granted, quack.availableNow {
             WMCard {
@@ -525,11 +524,16 @@ struct FriendDetailView: View {
 
     private func sendQuack() async {
         guard let f = friend else { return }
-        let sounds = f.theyAllowMe?.limits.nudge?.sounds ?? []
-        // The same choice the card shows: the picked animal, else the first allowed animal.
-        let animals = sounds.filter { AnimalSounds.ids.contains($0) }
-        let sound = quackSound.flatMap { sounds.contains($0) ? $0 : nil } ?? animals.first ?? sounds.first ?? AnimalSounds.defaultId
-        await send(.init(targetUserId: f.user.id, capability: Capability.nudge, expectedGrantVersion: f.theyAllowMe?.version, soundId: sound))
+        await send(.init(targetUserId: f.user.id, capability: Capability.nudge, expectedGrantVersion: f.theyAllowMe?.version, soundId: chosenSound(f)))
+    }
+
+    /// The sound a quack to `f` uses (the card shows the same): the picked one while they still
+    /// allow it, else their first allowed animal, else their first allowed sound, else the quack.
+    private func chosenSound(_ f: FriendDTO) -> String {
+        let sounds: [String] = f.theyAllowMe?.limits.nudge?.sounds ?? []
+        if let picked = quackSound, sounds.contains(picked) { return picked }
+        if let animal = sounds.first(where: { AnimalSounds.ids.contains($0) }) { return animal }
+        return sounds.first ?? AnimalSounds.defaultId
     }
 
     private func sendWakeAlarm() async {

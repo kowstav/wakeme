@@ -131,9 +131,10 @@ fun FriendHuddle(modifier: Modifier = Modifier) {
     LaunchedEffect(hopping) { if (hopping != null) { delay(220); hopping = null } }
     Row(modifier.fillMaxWidth().padding(top = WakeMeTokens.spaceMd), horizontalArrangement = Arrangement.spacedBy((-10).dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.Bottom) {
         huddle.forEach { (id, size, lift) ->
-            val sound = AnimalSounds.sound(id) ?: return@forEach
             val hop by animateDpAsState(if (hopping == id && !reduced) 10.dp else 0.dp, WMMotion.playful(), label = "hop")
-            Face(sound, size, Modifier.offset(y = -(lift + hop)).clickable(onClickLabel = sound.name, role = Role.Button) { playSoundPreview(context, id); hopping = id })
+            AnimalSounds.sound(id)?.let { sound ->
+                Face(sound, size, Modifier.offset(y = -(lift + hop)).clickable(onClickLabel = sound.name, role = Role.Button) { playSoundPreview(context, id); hopping = id })
+            }
         }
     }
 }

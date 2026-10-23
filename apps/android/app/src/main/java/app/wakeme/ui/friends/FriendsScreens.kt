@@ -254,6 +254,8 @@ private fun JoinWithCodeDialog(onDismiss: () -> Unit, onJoin: (String) -> Unit) 
  */
 @Composable
 internal fun InviteDialogBody(code: String) {
+    // Read in composition: the text builder below isn't a composable scope (ci run 29).
+    val ink = WM.colors.textPrimary
     Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
         Text(
             buildAnnotatedString {
@@ -261,7 +263,7 @@ internal fun InviteDialogBody(code: String) {
                 // Its own paragraph with a line height for 28 sp: inside the 14 sp style's lines
                 // the code overlapped the words above it (android-device run 89).
                 withStyle(ParagraphStyle(lineHeight = 36.sp)) {
-                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 28.sp, color = WM.colors.textPrimary)) { append(code) }
+                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 28.sp, color = ink)) { append(code) }
                 }
             },
             style = MaterialTheme.typography.bodyMedium,

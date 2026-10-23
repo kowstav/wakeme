@@ -26,6 +26,11 @@ Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verifi
   - Name, import and test-string reviews of the changed Swift and Kotlin.
 - **Not run:** any iOS or Android compile, lint, unit, UI or preview job (no Android SDK or macOS here). Nobody has listened to the synthesised calls. No physical device.
 - **Next:** run CI and fix what it finds; review the renders against the map; the owner should listen to the animal calls and approve them.
+- **CI follow-up (same day):** every app job failed on `9074928` (ci #30, ios #48, android-device #92). The logs couldn't be read while the browser pane was signed out of GitHub, so these fixes come from review, not from the logs:
+  - Kotlin: `AnimalSoundGrid` was called with a trailing lambda but its last parameter is `modifier`; `fillMaxWidth` was not imported in `AlarmActivity`; `WM.colors` was read inside `buildAnnotatedString`.
+  - Swift: the huddle now uses a `Hashable` struct, not a tuple key path; the quick-action fill has an explicit `Color` type; the chosen quack sound is one typed helper.
+  - Generator: the iOS face SVGs gain an explicit 64 × 64 size.
+  - Not compiled here. CI on the next push is the check.
 
 ## Bloom polish from the first native renders (2026-10-22, Claude)
 

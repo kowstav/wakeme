@@ -241,6 +241,8 @@ ${f.parts.map((p) => `    <path
         android:strokeLineJoin="${p.join}"` : ''}` : ''} />`).join('\n')}
 </vector>
 `;
+/** The SVG for the asset catalog, with an explicit 64 × 64 size (as the icons have) besides its viewBox. */
+const iosFaceSvg = (f: Face) => f.svg.replace(/<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 64 64">/, '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">');
 const iosFaceSet = (f: Face) => `${JSON.stringify(
   {
     images: [{ filename: `${f.res}.svg`, idiom: 'universal' }],
@@ -511,7 +513,7 @@ const outputs: [string, string][] = [
   ['apps/android/app/src/main/java/app/wakeme/designsystem/Faces.kt', kotlinFaces],
   ...faces.flatMap((f): [string, string][] => [
     [`apps/android/app/src/main/res/drawable/${f.res}.xml`, androidFace(f)],
-    [`apps/ios/WakeMe/Resources/Icons.xcassets/${f.res}.imageset/${f.res}.svg`, f.svg],
+    [`apps/ios/WakeMe/Resources/Icons.xcassets/${f.res}.imageset/${f.res}.svg`, iosFaceSvg(f)],
     [`apps/ios/WakeMe/Resources/Icons.xcassets/${f.res}.imageset/Contents.json`, iosFaceSet(f)],
   ]),
 ];

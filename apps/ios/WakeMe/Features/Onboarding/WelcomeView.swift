@@ -55,16 +55,23 @@ struct WelcomeView: View {
 /// Five friends' faces in a slight arc, the middle one largest. Tapping a face plays its call here
 /// and gives it a little hop (with Reduce Motion, only the sound).
 struct FriendHuddle: View {
-    private let huddle: [(sound: String, size: CGFloat, lift: CGFloat)] = [
-        ("bundled:cat.meow", 64, 10), ("bundled:frog.ribbit", 76, 2), ("bundled:dog.woof", 92, 0),
-        ("bundled:monkey.hoot", 76, 2), ("bundled:cow.moo", 64, 10),
+    private struct Spot: Hashable {
+        let sound: String
+        let size: CGFloat
+        let lift: CGFloat
+    }
+
+    private let huddle: [Spot] = [
+        Spot(sound: "bundled:cat.meow", size: 64, lift: 10), Spot(sound: "bundled:frog.ribbit", size: 76, lift: 2),
+        Spot(sound: "bundled:dog.woof", size: 92, lift: 0), Spot(sound: "bundled:monkey.hoot", size: 76, lift: 2),
+        Spot(sound: "bundled:cow.moo", size: 64, lift: 10),
     ]
     @State private var hopping: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(alignment: .bottom, spacing: -10) {
-            ForEach(huddle, id: \.sound) { f in
+            ForEach(huddle, id: \.self) { f in
                 if let sound = AnimalSounds.sound(f.sound) {
                     Button {
                         SoundPreview.shared.play(sound.id)
