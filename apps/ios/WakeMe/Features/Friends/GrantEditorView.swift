@@ -39,77 +39,18 @@ struct GrantEditorView: View {
             Form {
                 // Choices first, as switches and faces; the detail behind each permission opens on
                 // demand (presets fill it in), so the screen reads as three decisions, not a form.
+                // Each section is its own property so the compiler type-checks them one at a time
+                // (as one expression it gave up: ci #31).
                 Group {
-                    if !presets.isEmpty {
-                        Section("Start from") {
-                            ForEach(presets.filter { $0.id != "focus_buddy" }, id: \.id) { p in
-                                Button(p.id == "gentle_nudges" ? "Gentle nudges" : "Wake buddy") { apply(p) }
-                            }
-                        }
-                    }
-                    Section {
-                        Toggle(isOn: capability(Capability.nudge)) {
-                            Label { Text("Quacks") } icon: { IconChip(icon: .speaker, family: WMPalette.gold, size: 32) }
-                        }
-                        if caps.contains(Capability.nudge) {
-                            AnimalSoundGrid(sounds: $nudge.sounds)
-                                .padding(.vertical, WMSpacing.xxs)
-                            DisclosureGroup("Hours and limits") {
-                                Stepper("Up to \(nudge.maxPerHour) per hour", value: $nudge.maxPerHour, in: 1...12)
-                                WindowRows(window: first($nudge.windows))
-                                Toggle("Allow during my quiet hours", isOn: $nudge.overridesQuietHours)
-                            }
-                        }
-                    }
-                    Section {
-                        Toggle(isOn: capability(Capability.alarmSchedule)) {
-                            Label { Text("Set wake-up routines for me") } icon: { IconChip(icon: .calendarPlus, family: WMPalette.apricot, size: 32) }
-                        }
-                        Toggle(isOn: capability(Capability.alarmRequest)) {
-                            Label { Text("Wake me now") } icon: { IconChip(icon: .wake, family: WMPalette.apricot, size: 32) }
-                        }
-                        if wakeOn {
-                            DisclosureGroup("Hours and limits") {
-                                WindowRows(window: first($alarm.windows))
-                                Picker("Ring for at most", selection: $alarm.maxAlarmSeconds) {
-                                    ForEach([30, 60, 120, 300], id: \.self) { Text("\($0) seconds").tag($0) }
-                                }
-                                Stepper("Up to \(alarm.maxPerDay) wake-up\(alarm.maxPerDay > 1 ? "s" : "") a day", value: $alarm.maxPerDay, in: 1...3)
-                                SoundToggles(sounds: $alarm.sounds)
-                                Toggle("Allow one follow-up alarm", isOn: $alarm.followUp.allowed)
-                            }
-                        }
-                    }
-                    Section {
-                        Toggle(isOn: capability(Capability.challengeAssign)) {
-                            Label { Text("Assign challenges") } icon: { IconChip(icon: .trophy, family: WMPalette.sky, size: 32) }
-                        }
-                        if caps.contains(Capability.challengeAssign) {
-                            DisclosureGroup("Limits") {
-                                Picker("At most", selection: $challenge.maxDurationSeconds) {
-                                    ForEach([30, 60, 90, 180], id: \.self) { Text("\($0) seconds").tag($0) }
-                                }
-                                Picker("Hardest", selection: $challenge.maxDifficulty) {
-                                    ForEach(["easy", "medium", "hard"], id: \.self) { Text($0.capitalized).tag($0) }
-                                }
-                            }
-                        }
-                    }
-                    Section {
-                        Picker("Keep these permissions for", selection: $validDays) {
-                            ForEach([30, 90, 180], id: \.self) { Text("\($0) days").tag($0) }
-                        }
-                    }
+                    presetSection
+                    quackSection
+                    wakeSection
+                    challengeSection
+                    durationSection
                     if let problem {
                         Section { Text(problem).foregroundStyle(WMColor.warning) }
                     }
-                    if friend.iAllowThem != nil {
-                        Section {
-                            Button("Remove all of \(name)'s permissions", role: .destructive) { confirmRemove = true }
-                        } footer: {
-                            if let g = friend.iAllowThem { Text(usageText(g)) }
-                        }
-                    }
+                    removeSection
                 }
                 .cardRows()
             }
@@ -143,6 +84,99 @@ struct GrantEditorView: View {
                 Text("\(name) can't do anything on your phone until you choose again. Queued requests are cancelled.")
             }
             .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK") { message = nil } }
+        }
+    }
+
+    @ViewBuilder private var presetSection: some View {
+        if !presets.isEmpty {
+            Section("Start from") {
+                ForEach(presets.filter { $0.id != "focus_buddy" }, id: \.id) { p in
+                    Button(presetTitle(p.id)) { apply(p) }
+                }
+            }
+        }
+    }
+
+    private func presetTitle(_ id: String) -> String {
+        id == "gentle_nudges" ? "Gentle nudges" : "Wake buddy"
+    }
+
+    private var quackSection: some View {
+        Section {
+            Toggle(isOn: capability(Capability.nudge)) {
+                Label { Text("Quacks") } icon: { IconChip(icon: .speaker, family: WMPalette.gold, size: 32) }
+            }
+            if caps.contains(Capability.nudge) {
+                AnimalSoundGrid(sounds: $nudge.sounds)
+                    .padding(.vertical, WMSpacing.xxs)
+                DisclosureGroup("Hours and limits") {
+                    Stepper("Up to \(nudge.maxPerHour) per hour", value: $nudge.maxPerHour, in: 1...12)
+                    WindowRows(window: first($nudge.windows))
+                    Toggle("Allow during my quiet hours", isOn: $nudge.overridesQuietHours)
+                }
+            }
+        }
+    }
+
+    private var wakeSection: some View {
+        Section {
+            Toggle(isOn: capability(Capability.alarmSchedule)) {
+                Label { Text("Set wake-up routines for me") } icon: { IconChip(icon: .calendarPlus, family: WMPalette.apricot, size: 32) }
+            }
+            Toggle(isOn: capability(Capability.alarmRequest)) {
+                Label { Text("Wake me now") } icon: { IconChip(icon: .wake, family: WMPalette.apricot, size: 32) }
+            }
+            if wakeOn {
+                DisclosureGroup("Hours and limits") {
+                    WindowRows(window: first($alarm.windows))
+                    Picker("Ring for at most", selection: $alarm.maxAlarmSeconds) {
+                        ForEach([30, 60, 120, 300], id: \.self) { Text("\($0) seconds").tag($0) }
+                    }
+                    Stepper(wakeUpsPerDay, value: $alarm.maxPerDay, in: 1...3)
+                    SoundToggles(sounds: $alarm.sounds)
+                    Toggle("Allow one follow-up alarm", isOn: $alarm.followUp.allowed)
+                }
+            }
+        }
+    }
+
+    private var wakeUpsPerDay: String {
+        alarm.maxPerDay > 1 ? "Up to \(alarm.maxPerDay) wake-ups a day" : "Up to 1 wake-up a day"
+    }
+
+    private var challengeSection: some View {
+        Section {
+            Toggle(isOn: capability(Capability.challengeAssign)) {
+                Label { Text("Assign challenges") } icon: { IconChip(icon: .trophy, family: WMPalette.sky, size: 32) }
+            }
+            if caps.contains(Capability.challengeAssign) {
+                DisclosureGroup("Limits") {
+                    Picker("At most", selection: $challenge.maxDurationSeconds) {
+                        ForEach([30, 60, 90, 180], id: \.self) { Text("\($0) seconds").tag($0) }
+                    }
+                    Picker("Hardest", selection: $challenge.maxDifficulty) {
+                        ForEach(["easy", "medium", "hard"], id: \.self) { Text($0.capitalized).tag($0) }
+                    }
+                }
+            }
+        }
+    }
+
+    private var durationSection: some View {
+        Section {
+            Picker("Keep these permissions for", selection: $validDays) {
+                ForEach([30, 90, 180], id: \.self) { Text("\($0) days").tag($0) }
+            }
+        }
+    }
+
+    @ViewBuilder private var removeSection: some View {
+        if let g = friend.iAllowThem {
+            Section {
+                Button("Remove all of \(name)'s permissions", role: .destructive) { confirmRemove = true }
+            } footer: {
+                Text(usageText(g))
+            }
         }
     }
 

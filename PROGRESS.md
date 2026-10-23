@@ -31,6 +31,10 @@ Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verifi
   - Swift: the huddle now uses a `Hashable` struct, not a tuple key path; the quick-action fill has an explicit `Color` type; the chosen quack sound is one typed helper.
   - Generator: the iOS face SVGs gain an explicit 64 × 64 size.
   - Not compiled here. CI on the next push is the check.
+- **CI on `0867e54`** (logs read once the browser pane was signed in):
+  - **Passed:** the ci Android job (unit tests, lint, debug build), the Compose previews and the Android 17 journey.
+  - **iOS (ci #31, ios #49):** one error. The grant editor's `Form` was too large for the type checker (`GrantEditorView.swift:46`). Its sections are now separate properties, and the preset button title is a `String`.
+  - **Android 16 journey (android-device #93):** timed out waiting for "Step 1 of 2" after the quiz edit (`JourneyTest.kt:141`). android-device #88 failed at the same line before this pass. The test now waits for question 2's answer to land before saving. A failed `waitFor` now lists the texts on screen in its message.
 
 ## Bloom polish from the first native renders (2026-10-22, Claude)
 
