@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
+import app.wakeme.designsystem.Loading
 import app.wakeme.designsystem.FriendAvatar
 import app.wakeme.designsystem.IconChip
 import app.wakeme.designsystem.QuickAction
@@ -51,7 +52,6 @@ import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SectionTitle
-import app.wakeme.designsystem.Note
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.WMCard
@@ -136,7 +136,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
     val d = s.detail
     DetailScreen(onBack = onBack) {
         if (d == null) {
-            Body("Loading…")
+            Loading()
             return@DetailScreen
         }
         val admin = d.circle.role == "owner" || d.circle.role == "admin"
@@ -165,7 +165,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
                                 m.role == "admin" -> "Admin"
                                 m.user.id == s.myId -> "Member"
                                 m.isFriend -> "Friend"
-                                else -> "Not your friend: no permissions either way"
+                                else -> "Not a friend"
                             },
                         )
                     }
@@ -173,7 +173,6 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
                 if (admin && m.role != "owner" && m.user.id != s.myId) QuietButton("Remove ${m.user.displayName}", onClick = { vm.remove(circleId, m.user.id) }, icon = WMIcon.Close)
             }
         }
-        Note("Being in a circle never lets anyone do anything on your phone.", icon = WMIcon.Lock)
         DangerButton("Leave circle", onClick = { confirmLeave = true }, icon = WMIcon.Logout)
         Gap(WakeMeTokens.spaceXl)
     }
@@ -200,7 +199,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
         AlertDialog(
             onDismissRequest = vm::dismiss,
             title = { Text("Invite to ${d?.circle?.name ?: "the circle"}") },
-            text = { InviteDialogBody(inv.code, "Expires soon. Joining gives no one permissions on anyone's phone.") },
+            text = { InviteDialogBody(inv.code) },
             confirmButton = {
                 TextButton(onClick = {
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "Join ${d?.circle?.name ?: "our circle"} on Wake Me: ${inv.url} (code ${inv.code})"), "Share invite"))
@@ -225,7 +224,6 @@ internal fun circleFamily(id: String): WakeMeFamily {
 fun CirclesList(circles: List<CircleDto>, onOpen: (String) -> Unit, onNew: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         SectionTitle("Circles")
-        if (circles.isEmpty()) Note("A private group, like your flat or team, with its own chat.", icon = WMIcon.Circles)
         circles.forEach { c ->
             // Same proportions as a friend row: a 17 sp title with its supporting line close below.
             WMCard(onClick = { onOpen(c.id) }, onClickLabel = "Open ${c.name}") {

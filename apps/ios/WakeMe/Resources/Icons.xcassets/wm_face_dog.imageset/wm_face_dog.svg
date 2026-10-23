@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><title>Dog</title>
+<circle cx="32" cy="32" r="32" fill="#A4F2ED"/>
+<path d="M17 19C8 21 8 39 14 44C18.5 40 20.5 30 22.5 23Z" fill="#6B4226" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+<path d="M47 19C56 21 56 39 50 44C45.5 40 43.5 30 41.5 23Z" fill="#6B4226" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="32" cy="32" r="17" fill="#D9A066" stroke="#2B2118" stroke-width="2"/>
+<circle cx="39" cy="28.5" r="6" fill="#6B4226"/>
+<circle cx="25.5" cy="28.5" r="2.6" fill="#2B2118"/>
+<circle cx="39" cy="28.5" r="2.6" fill="#2B2118"/>
+<circle cx="26.3" cy="27.7" r="0.8" fill="#FFFFFF"/>
+<circle cx="39.8" cy="27.7" r="0.8" fill="#FFFFFF"/>
+<path d="M29 41.5Q29 52 32.5 52Q36 52 36 41.5Z" fill="#F2627E" stroke="#2B2118" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M32.5 43V48.5" fill="none" stroke="#2B2118" stroke-width="1" stroke-linecap="round"/>
+<ellipse cx="32" cy="39" rx="9" ry="6.5" fill="#F3D9B5" stroke="#2B2118" stroke-width="1.5"/>
+<ellipse cx="32" cy="36" rx="3.5" ry="2.5" fill="#2B2118"/>
+<path d="M26.5 41.5Q29.5 43.5 32 41.5Q34.5 43.5 37.5 41.5" fill="none" stroke="#2B2118" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

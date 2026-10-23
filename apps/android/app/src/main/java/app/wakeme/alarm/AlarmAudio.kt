@@ -41,15 +41,7 @@ class AlarmAudio(private val context: Context) {
         .build()
 
     fun resolve(soundId: String): Pair<Uri, Boolean> {
-        val bundled = mapOf(
-            "bundled:quack.classic" to R.raw.quack_classic,
-            "bundled:quack.double" to R.raw.quack_double,
-            "bundled:chime.soft" to R.raw.chime_soft,
-            "bundled:bell.bright" to R.raw.bell_bright,
-            "bundled:rise.gentle" to R.raw.rise_gentle,
-            "bundled:pulse.wake" to R.raw.pulse_wake,
-        )
-        bundled[soundId]?.let { return Uri.parse("android.resource://${context.packageName}/$it") to false }
+        app.wakeme.push.Channels.quackSounds[soundId]?.let { return Uri.parse("android.resource://${context.packageName}/$it") to false }
         if (soundId.startsWith("media:") && context.getSystemService(android.os.UserManager::class.java).isUserUnlocked) {
             val file = File(context.filesDir, "sounds/${soundId.removePrefix("media:")}.audio")
             if (file.exists()) return Uri.fromFile(file) to false

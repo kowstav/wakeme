@@ -91,8 +91,26 @@ export interface GrantSnapshot {
 
 export const SOUND_ID_PATTERN = /^(bundled:[a-z0-9][a-z0-9._-]{0,39}|media:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
-export const BUNDLED_SOUNDS = [
+/**
+ * Animal calls a friend can send as a quack (packages/sounds). The duck's quack comes first and is
+ * the default; the rest are offered beside it.
+ */
+export const ANIMAL_SOUNDS = [
   'bundled:quack.classic',
+  'bundled:frog.ribbit',
+  'bundled:dog.woof',
+  'bundled:cat.meow',
+  'bundled:cow.moo',
+  'bundled:monkey.hoot',
+  'bundled:donkey.heehaw',
+  'bundled:pig.oink',
+  'bundled:sheep.baa',
+  'bundled:owl.hoot',
+  'bundled:rooster.crow',
+] as const;
+
+export const BUNDLED_SOUNDS = [
+  ...ANIMAL_SOUNDS,
   'bundled:quack.double',
   'bundled:chime.soft',
   'bundled:bell.bright',
@@ -267,7 +285,8 @@ export function presetDraft(preset: PresetId, now: Date, validityDays = 90): Gra
           nudge: {
             maxPerHour: 3,
             windows: [{ days: EVERY_DAY, start: '08:00', end: '22:00' }],
-            sounds: ['bundled:quack.classic', 'bundled:quack.double', 'bundled:chime.soft'],
+            // Every animal call, quack first (the default), so a friend can pick one without asking.
+            sounds: [...ANIMAL_SOUNDS],
             overridesQuietHours: false,
           },
         },

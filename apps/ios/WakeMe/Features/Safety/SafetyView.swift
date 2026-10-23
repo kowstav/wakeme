@@ -25,12 +25,9 @@ struct SafetyView: View {
 
     var body: some View {
         List {
-            // The one thing to know before anything else, said once, on the page rather than in a card.
-            VStack(alignment: .leading, spacing: WMSpacing.sm) {
-                Note("Wake Me is not an emergency service. In an emergency, call your local emergency number.", icon: .warning)
-                if offline { StatusPill(text: "You're offline. Showing what was last loaded.", tone: .warning, icon: toneIcon(.warning)) }
+            if offline {
+                StatusPill(text: "You're offline. Showing what was last loaded.", tone: .warning, icon: toneIcon(.warning)).bentoRow()
             }
-            .bentoRow()
             Group {
                 if let a = sharer.active {
                     Section {
@@ -62,7 +59,7 @@ struct SafetyView: View {
                     SecondaryButton(title: "Share my location for a while") { composing = .share }
                         .disabled(busy || friends.isEmpty)
                     if loaded && friends.isEmpty {
-                        Text("Add a friend first. Only friends you pick can see a session.").foregroundStyle(WMColor.textSecondary)
+                        Text("Add a friend first.").foregroundStyle(WMColor.textSecondary)
                     }
                 }
                 Section {
@@ -73,7 +70,8 @@ struct SafetyView: View {
                     .tint(WMColor.dangerFill)
                     .foregroundStyle(WMColor.textOnDanger)
                     .disabled(busy || friends.isEmpty)
-                    Text("Alerts the friends you pick, and shares your location for 2 hours if you allow it.").foregroundStyle(WMColor.textSecondary)
+                } footer: {
+                    Text("Not an emergency service. In an emergency, call your local emergency number.")
                 }
             }
             .cardRows()
@@ -132,7 +130,7 @@ struct SafetyView: View {
                 if s.checkedInAt != nil {
                     StatusPill(text: "Checked in at \(time(s.checkedInAt))", tone: .success)
                 } else {
-                    Text("If you don't check in by \(time(s.checkinDueAt)), they'll get a notice that you haven't checked in yet. That's all: nobody else is contacted.")
+                    Text("Check in by \(time(s.checkinDueAt)).")
                         .foregroundStyle(WMColor.textSecondary)
                     PrimaryButton(title: "I'm OK — check in now") { Task { await act { _ = try await app.api.checkIn(s.id) } } }
                 }
@@ -309,7 +307,7 @@ private struct StartSafetySheet: View {
                 Section {
                     Toggle("Share my location", isOn: $shareLocation)
                 } footer: {
-                    Text("Friends see where you were, when it was captured and how accurate it is. iOS shows that Wake Me is using your location while it's on.")
+                    Text("With when it was captured and how accurate it is.")
                 }
                 if kind != .sos {
                     TextField("Note (optional)", text: $note).onChange(of: note) { _, v in if v.count > 200 { note = String(v.prefix(200)) } }

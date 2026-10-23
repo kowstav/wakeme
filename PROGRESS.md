@@ -1,6 +1,62 @@
 # Wake Me — progress
 
-Last updated: 2026-10-22. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+Last updated: 2026-10-23. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+
+## Final CI and Swift test review (2026-10-23, Codex)
+
+- PRs #5 and #6 merged; PR #7 now includes the owner-review/animal-sound pass as well as its original four polish fixes. At source 4e5b276, general CI 34 and iOS 52 passed, as did Android 17 and all previews in Android run 96. Android 16 failed only the widget destination assertion: expected friends, got null.
+- The downloaded Android 16 logcat records the test's pointer tap at 15:14:36.975, followed by an ACTION_MAIN/CATEGORY_LAUNCHER start at 15:14:37.049 with whole-widget bounds [16,16][624,344]. The widget's own action is ACTION_VIEW with an explicit route. Android's default widget layout has a launcher click handler ([AOSP AppWidgetHostView](https://android.googlesource.com/platform/frameworks/base/%2B/android16-qpr2-release/core/java/android/appwidget/AppWidgetHostView.java)). The test's nearest-clickable search could walk into that outer fallback during provider updates. It now stops below the host's direct child and waits for an actual inner Glance action. One real pointer tap and the exact destination assertion remain; no tap retries or direct PendingIntent calls.
+- Reviewed the previously uncommitted LaunchTests.swift edit. Keep its bounded checked typing for the observed dropped-keyboard-input failure, but make exhaustion fail immediately through must, with a screenshot and caller file/line. Keep the exact quiz-content assertions and the 15 s wait for the wrong-answer feedback. The shared workspace's original edit is preserved; the improved version is committed from the isolated checkout.
+- At bee106c, general CI 36 and iOS 54 passed (all three UI tests, including checked typing). Android run 98 passed both component suites, all six independent widget taps, both backend journeys and Android 17 Focus. Android 16 Focus failed its precondition: the saved before/after dumps had empty Enabled/Bound/Binding/Crashed sets and the setting was blank; it never reached shielding assertions. CI now establishes that journey's service permission immediately before its own process and waits for the accessibility observer to list it. The existing real binding, shield, drawn-content, End and no-new-shield assertions are unchanged. Validation of this workflow follow-up is pending the next PR #7 run. The PR records the final tested source and results. No physical-device or provider integration evidence is implied; workstreams 3–8 still need the owner setup listed in docs/android-owner-setup.md.
+- At 35fc98d, general CI 37 and every Android run 99 job passed: both OS component/Focus/backend journeys, six independent widget taps and the previews. Android 16's Focus service bound after one off/on cycle and the drawn shield was captured. In iOS 55 the first challenge test timed out launching the app via Xcode (before app assertions), while the setup journey and welcome test passed in the same run. CI now boots the selected simulator and waits for bootstatus before starting XCTest, without retrying tests or weakening app launch/content assertions. The Swift and app sources are unchanged from iOS 54's passing run.
+## Owner review and UX laws pass (2026-10-23, Claude)
+
+- **What changed** (decisions and the law-by-law map: [docs/design/ux-laws-2026-10-23.md](docs/design/ux-laws-2026-10-23.md)):
+  - **Owner's PDF review:**
+    - The friend header follows the Contacts layout: centred face, name and action columns, with action circles at 50 % colour.
+    - Ten cartoon animal-face avatars (`packages/design-tokens/faces`) are generated into both apps as `WMFace`; a friend gets a face from a stable hash.
+    - `Note` is now text-only and almost every explanation is gone.
+    - Ten synthesised animal calls are added (`packages/sounds`, policy `ANIMAL_SOUNDS`, the "Gentle nudges" preset, app sound maps, Android channels). They are chosen by tapping a face, which plays the call; quack stays the default.
+    - The welcome hero is a huddle of friends' faces, and the duck is de-emphasised.
+  - **The 20 laws:**
+    - Progressive disclosure in the permission editors.
+    - A generous join input that takes any code shape or a pasted link (`InviteInput`, with Android unit tests).
+    - `StepProgress` on readiness.
+    - A "You're up." finish after a wake-up.
+    - One lime button per screen.
+    - Android loading text replaced by an indicator.
+    - The iOS UI test now waits for "Create a challenge" instead of the removed sentence.
+- **Tests actually run** (Windows 11, Node 24.19.0):
+  - `npm run generate:tokens` (57 icons, 11 faces; contrast passes) and `npm run generate:sounds` (16 sounds; the existing six unchanged byte for byte).
+  - Policy tests 119/119, and API tests 104 passed with 1 skipped (it needs a PostgreSQL server).
+  - Faces rendered and reviewed in a browser at 88, 56 and 36 px.
+  - Name, import and test-string reviews of the changed Swift and Kotlin.
+- **Not run:** any iOS or Android compile, lint, unit, UI or preview job (no Android SDK or macOS here). Nobody has listened to the synthesised calls. No physical device.
+- **Next:** run CI and fix what it finds; review the renders against the map; the owner should listen to the animal calls and approve them.
+- **CI follow-up (same day):** every app job failed on `9074928` (ci #30, ios #48, android-device #92). The logs couldn't be read while the browser pane was signed out of GitHub, so these fixes come from review, not from the logs:
+  - Kotlin: `AnimalSoundGrid` was called with a trailing lambda but its last parameter is `modifier`; `fillMaxWidth` was not imported in `AlarmActivity`; `WM.colors` was read inside `buildAnnotatedString`.
+  - Swift: the huddle now uses a `Hashable` struct, not a tuple key path; the quick-action fill has an explicit `Color` type; the chosen quack sound is one typed helper.
+  - Generator: the iOS face SVGs gain an explicit 64 × 64 size.
+  - Not compiled here. CI on the next push is the check.
+- **CI on `0867e54`** (logs read once the browser pane was signed in):
+  - **Passed:** the ci Android job (unit tests, lint, debug build), the Compose previews and the Android 17 journey.
+  - **iOS (ci #31, ios #49):** one error. The grant editor's `Form` was too large for the type checker (`GrantEditorView.swift:46`). Its sections are now separate properties, and the preset button title is a `String`.
+  - **Android 16 journey (android-device #93):** timed out waiting for "Step 1 of 2" after the quiz edit (`JourneyTest.kt:141`). android-device #88 failed at the same line before this pass. The test now waits for question 2's answer to land before saving. A failed `waitFor` now lists the texts on screen in its message.
+- **CI on `9a3680a`:**
+  - **Passed:** ci #32 (the iOS app now compiles), the Compose previews, and the Android 16 journey with the quiz-edit wait.
+  - **Two emulator jobs failed (android-device #94), both on test timing; neither touched widget or app code changed on this branch:**
+    - **Android 17:** the journey was skipped. The emulator's single 3 s health check to the dev backend timed out, although the backend answered on the runner. The check now retries for about 15 s.
+    - **Android 16:** `QuickActionsWidgetTest` tapped the widget, but `MainActivity` wasn't resumed within 10 s mid-suite. The same run's three solo repeats opened it in 3–5 s. The test now allows 30 s and names what was resumed if it still fails.
+  - ios #50 was still running at the time of this note. It later passed every UI test, including the self-setup journey in 350 s (457 s before this pass, in ios #47). The push of `e7e81c9` then cancelled it: for pull requests the ios path filter covers the whole PR, not just the newest commit.
+- **CI on `e7e81c9`:**
+  - **Passed:** ci #33 and android-device #95, including both emulator journeys and the widget test.
+  - **Failed (ios #51):** `testSelfSetupJourney` waited 15 s for "Hear Alex's quacks?" after Save, while the editor still read "Saving…". The iOS code was the same as ios #50, where this step passed, so it was slow rather than broken.
+  - **Fix:** the test now waits 45 s. If it still fails, the message says whether the grant was still saving.
+- **CI on `4e5b276`:**
+  - **Passed:** ios #52 (every UI test), ci #34, the Compose previews and the Android 17 emulator.
+  - **Failed (android-device #96, Android 16):** `QuickActionsWidgetTest` in the shared instrumentation run found a resumed `MainActivity` with no route (`expected:<friends> but was:<null>`). `MainActivity` calls `setIntent` in `onNewIntent`, so the widget's tap didn't open that one.
+  - **Pattern:** with the same app code, this test passed in the shared run in #93 and #95 and failed in #94 and #96, two different ways. Its dedicated step (three fresh instrumentation processes, one tap each) passed every time.
+  - **Fix:** the shared run now leaves it out, as it already does for the journey and focus tests, which also have their own processes. A wrong or missing route now names each resumed activity and its route.
 
 ## Bloom polish from the first native renders (2026-10-22, Claude)
 
@@ -18,7 +74,15 @@ Last updated: 2026-10-22. Status words: **specified**, **implemented**, **verifi
   - Every string the UI tests look up keeps its text.
 - **Tests actually run** (Windows 11, Node 24.19.0): `generate.ts --check` (contrast passes). It reports the generated files as stale only because this checkout converts them to CRLF line endings; they are unchanged from HEAD. Also a reference check of every icon and palette name used, an import review of the changed Kotlin files, and a scan of the iOS and Android test strings against the new copy.
 - **Not run:** any compile, lint or test of these edits (no Android SDK or macOS here). Nothing in this pass is verified until CI renders it. No physical device.
-- **Next:** run CI, fix what fails, and compare the new renders against the review's findings.
+- **Verified at `67c041f` (simulator/emulators):** [ci 28](https://github.com/kowstav/wakeme/actions/runs/39760415277), [ios 45](https://github.com/kowstav/wakeme/actions/runs/39760415283) and [android-device 89](https://github.com/kowstav/wakeme/actions/runs/39760415253) passed every job. Android 17's journey skipped on attempt 1 because the dev backend timed out before any app UI; it passed on attempt 2.
+- **Side-by-side check of the renders (2026-10-23):** the intended changes show on both platforms. Four problems were found and fixed (not yet rendered):
+  - the iOS readiness bar still showed its title;
+  - the Android invite code overlapped the line above it;
+  - disabled primary buttons were invisible on cards;
+  - Android's empty-state text sat under the duck instead of beside it.
+
+  Listed in the review.
+- **Next:** commit and run CI on these four fixes, then check them in the renders.
 
 ## Design pass: Bloom, vibrant colour, icons and bento layouts (2026-10-21, Claude)
 

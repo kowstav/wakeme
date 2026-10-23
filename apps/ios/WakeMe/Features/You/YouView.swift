@@ -62,7 +62,6 @@ struct YouView: View {
                                 Label { Text("Pause all requests for 8 hours") } icon: { IconChip(icon: .hourglass, family: WMPalette.sky, size: 32) }
                             }
                         }
-                        Text("Your own alarms still ring while requests are paused.").font(.footnote).foregroundStyle(WMColor.textSecondary)
                     }
                     Section("Subscription") {
                         Text("AI credits: \(me.billing.credits.available) available").foregroundStyle(WMColor.textPrimary)
@@ -174,7 +173,7 @@ struct ConfirmIdentityView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: WMSpacing.md) {
-                    Text("For your safety, confirm it's you. This keeps someone holding your unlocked phone from deleting your account.")
+                    Text("Confirm it's you.")
                         .foregroundStyle(WMColor.textSecondary)
                     if AppConfig.supabaseConfigured {
                         TextField("Email", text: $email)

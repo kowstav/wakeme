@@ -110,16 +110,15 @@ private fun Shield(store: FocusStore, onLeave: () -> Unit, onDone: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
     ) {
         Text(if (s.friendName != null) "Focusing with ${s.friendName}" else "You're focusing", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-        Body("$minutesLeft min left. You chose to keep this app closed until then.", color = WM.colors.textPrimary)
+        Body("$minutesLeft min left.", color = WM.colors.textPrimary)
         PrimaryButton("Back to what I was doing", onClick = onLeave)
         if (breaksLeft > 0) {
             SecondaryButton("Take a $FOCUS_BREAK_MINUTES-minute break", onClick = { earning = true })
-            Body("Finish a short challenge first. $breaksLeft break${if (breaksLeft == 1) "" else "s"} left this session.")
+            Body("$breaksLeft break${if (breaksLeft == 1) "" else "s"} left.")
         } else {
             Body("No breaks left this session.")
         }
         DangerButton("End focus", onClick = { store.end(); onDone() })
-        Body("Ending is always possible. ${if (s.friendName != null) "${s.friendName} only sees whether you finished, if you chose to share that." else ""}")
     }
 }
 

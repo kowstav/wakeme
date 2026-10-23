@@ -68,14 +68,24 @@ class QuickActionsWidgetTest {
             onView(isRoot()).inRoot(withDecorView(sameInstance(activity.activity.window.decorView)))
                 .perform(waitAndTapWidgetAction(FRIEND_ACTION))
             var opened: MainActivity? = null
-            val launchDeadline = android.os.SystemClock.elapsedRealtime() + 10_000
+            // A cold start mid-suite on the Android 16 emulator took over 10 s (android-device #94);
+            // the same tap opens the app in 3-5 s when run on its own.
+            val launchDeadline = android.os.SystemClock.elapsedRealtime() + 30_000
             while (opened == null && android.os.SystemClock.elapsedRealtime() < launchDeadline) {
                 instrumentation.runOnMainSync {
                     opened = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().firstOrNull()
                 }
                 if (opened == null) Thread.sleep(200)
             }
-            assertEquals("friends", requireNotNull(opened) { "widget opens the app" }.intent.getStringExtra(MainActivity.EXTRA_ROUTE))
+            if (opened?.intent?.getStringExtra(MainActivity.EXTRA_ROUTE) != "friends") {
+                // Name what was resumed and with which route, so the CI log alone explains it.
+                var resumed = emptyList<String>()
+                instrumentation.runOnMainSync {
+                    resumed = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                        .map { "${it.javaClass.simpleName}(route=${it.intent?.getStringExtra(MainActivity.EXTRA_ROUTE)})" }
+                }
+                throw AssertionError("widget opens the app on friends; resumed after the tap: $resumed")
+            }
         } finally {
             automation.dropShellPermissionIdentity()
             host.stopListening(); host.deleteHost()
@@ -104,7 +114,12 @@ class QuickActionsWidgetTest {
                 controller.loopMainThreadUntilIdle()
                 val labelled = findLabel(root, label)
                 val target = labelled?.let { child ->
-                    generateSequence(child) { it.parent as? View }.firstOrNull { it.isClickable }
+                    generateSequence(child) { it.parent as? View }
+                        // The host's direct child is the widget-wide default layout. Its fallback
+                        // click opens MAIN/LAUNCHER without our route (run 96, Android 16).
+                        // Wait for a real Glance action below that boundary, never tap the fallback.
+                        .takeWhile { it !is AppWidgetHostView && it.parent !is AppWidgetHostView }
+                        .firstOrNull { it.isClickable }
                 }
                 if (target != null && target.isAttachedToWindow && target.isEnabled && isDisplayingAtLeast(90).matches(target)) {
                     DeviceEvidence.note("widget-action", "labelType=${labelled?.contentDescription?.javaClass?.name}, one pointer tap on the live clickable ancestor")

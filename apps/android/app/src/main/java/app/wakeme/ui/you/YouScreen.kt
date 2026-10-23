@@ -273,10 +273,8 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
                     }
                     if (paused != null) {
                         StatusPill("Paused until ${dateFmt.format(paused)}", Tone.Info, icon = WMIcon.Pause)
-                        Body("Your own alarms still ring. Friends see that you're not taking requests, not why.")
                         PrimaryButton("Resume now", onClick = { vm.update(buildJsonObject { put("pausedUntil", JsonNull) }) { app.refreshMe() } }, icon = WMIcon.Play)
                     } else {
-                        Body("Stops quacks and wake requests from everyone. Your own alarms still ring.")
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                             listOf(1L to "1 hour", 8L to "8 hours", 24L to "1 day", 24L * 7 to "1 week").forEach { (h, label) ->
                                 ChoiceChip(label, selected = false, onClick = { vm.update(buildJsonObject { put("pausedUntil", Instant.now().plusSeconds(h * 3600).toString()) }) { app.refreshMe() } })
@@ -291,7 +289,7 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
                         IconChip(WMIcon.Speaker, palette.gold)
                         Text("Sounds per hour from friends", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
                     }
-                    Body("After ${m.settings.soundBudgetPerHour} audible quacks in an hour, the rest arrive silently.")
+                    Body("Silent after ${m.settings.soundBudgetPerHour} quacks an hour.")
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                         listOf(1, 3, 5, 10).forEach { n ->
                             ChoiceChip("$n", selected = m.settings.soundBudgetPerHour == n, onClick = { vm.update(buildJsonObject { put("soundBudgetPerHour", n) }) { app.refreshMe() } })
@@ -367,10 +365,10 @@ private fun PhonesSection(devices: List<DeviceDto>, thisDeviceId: String?, busy:
             val label = (if (d.id == thisDeviceId) "This phone" else d.platform.replaceFirstChar { it.uppercase() } + (d.osVersion?.let { " $it" } ?: "")) +
                 (if (d.isPrimary) " · rings for wake alarms" else " · gets updates only")
             StatusPill(label, if (d.isPrimary) Tone.Success else Tone.Neutral, icon = if (d.isPrimary) WMIcon.Wake else WMIcon.Bell)
-            if (d.readinessIssues.isNotEmpty() && d.id != thisDeviceId) Body("Needs setup on that device before alarms are reliable there.")
+            if (d.readinessIssues.isNotEmpty() && d.id != thisDeviceId) Body("Needs setup.")
         }
         if (!thisIsPrimary) {
-            Body("Only one phone rings, so you don't get woken twice. Your routines move to the phone you choose; the other phone removes them the next time it syncs.")
+            Body("Only one phone rings.")
             SecondaryButton("Ring wake alarms on this phone", onClick = onMakePrimary, enabled = !busy, icon = WMIcon.Phone)
         }
     }
@@ -388,7 +386,7 @@ private fun QuietHoursDialog(me: MeDto, onDismiss: () -> Unit, onSave: (String, 
             androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                 OutlinedTextField(start, { start = it.take(5) }, label = { Text("Start (HH:MM)") }, singleLine = true, isError = !HH_MM.matches(start))
                 OutlinedTextField(end, { end = it.take(5) }, label = { Text("End (HH:MM)") }, singleLine = true, isError = !HH_MM.matches(end))
-                Body("In your time zone (${me.timeZone}). Can run past midnight, for example 22:00–07:00.")
+                Body("In your time zone (${me.timeZone}).")
             }
         },
         confirmButton = { TextButton(enabled = valid, onClick = { onSave(start, end) }) { Text("Save") } },

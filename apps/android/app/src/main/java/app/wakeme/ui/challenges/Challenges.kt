@@ -1,5 +1,6 @@
 package app.wakeme.ui.challenges
 
+import app.wakeme.designsystem.Loading
 import app.wakeme.designsystem.WMIcon
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -67,7 +68,6 @@ import app.wakeme.designsystem.BentoTile
 import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.IconChip
-import app.wakeme.designsystem.Note
 import app.wakeme.designsystem.PillButton
 import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.WakeMeFamily
@@ -237,7 +237,6 @@ fun ChallengesList(
         fullWidth {
             Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                 PrimaryButton("Create a challenge", onClick = onNew, icon = WMIcon.Plus)
-                Note("Your group's own jokes and goals. They work offline and always have a way out.", icon = WMIcon.Trophy)
             }
         }
         // Yours first: what you made is what you came back for.
@@ -313,7 +312,6 @@ private fun TryOut(c: ChallengeDto, def: ChallengeDefinition, vm: ChallengesView
             val state by vm.state.collectAsState()
             Body(challengeAudience(c.circleId, state.circles))
             if (draft) {
-                Body("Publishing freezes this version. Friends who accept it get exactly this; later edits become a new version they must accept.")
                 PrimaryButton("Publish", onClick = { vm.finishedTrying(publish = true) }, icon = WMIcon.Share)
                 SecondaryButton("Keep as draft", onClick = { vm.finishedTrying(publish = false) })
             } else PrimaryButton("Done", onClick = { vm.finishedTrying(publish = false) })
@@ -363,7 +361,7 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
     LaunchedEffect(s.saved) { if (s.saved) onDone() }
     if (editId != null && filledFrom != editId) {
         Column(Modifier.padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-            Body(if (editing != null && editQuestions == null) "Only quizzes can be edited. Make a template challenge again to change it." else "Loading…")
+            if (editing != null && editQuestions == null) Body("Only quizzes can be edited.") else Loading()
             QuietButton("Back", onClick = onDone)
         }
         Messages(s, vm, onUpgrade)
@@ -372,14 +370,13 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
     DetailScreen(onBack = onDone) {
         Text(if (editId != null) "Edit challenge" else "Create a challenge", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
         if (editId != null) {
-            Body("Your changes become version ${(editing?.latestRevision ?: 0) + 1}. You try it before publishing, and friends keep the version they accepted until they accept the new one.")
+            StatusPill("Version ${(editing?.latestRevision ?: 0) + 1}", Tone.Neutral, icon = WMIcon.Edit)
         } else FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             ChoiceChip("Build a quiz myself", selected = mode == "quiz", onClick = { mode = "quiz" })
             ChoiceChip("Describe it", selected = mode == "ai", onClick = { mode = "ai" })
         }
         if (editId != null) {
             Body(challengeAudience(editing?.circleId, s.circles))
-            Body("New versions keep the same audience. Sharing never gives anyone permission to ring your phone.")
         } else if (mode == "quiz") {
             SectionTitle("Who can see this quiz?")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
@@ -390,10 +387,9 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
             }
             Body(if (circleId == null) "Only you can read this quiz here. You can still offer its published version in a wake-up someone accepts." else "Everyone in this circle can read the quiz and its answers, including drafts. Only you can edit or publish it. Circle membership gives no alarm permissions.")
         } else {
-            Body("AI drafts are visible only to you. You can offer a published version in a wake-up someone accepts.")
         }
         if (mode == "ai") {
-            s.credits?.let { Body("$it AI creation${if (it == 1) "" else "s"} left. Saved challenges never use credits again.") }
+            s.credits?.let { Body("$it AI creation${if (it == 1) "" else "s"} left.") }
             OutlinedTextField(prompt, { prompt = it.take(500) }, label = { Text("Describe a challenge only your group would get") }, placeholder = { Text("Ask which café we call headquarters. Use the choices I give.") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                 listOf("easy", "medium", "hard").forEach { d -> ChoiceChip(d.replaceFirstChar { it.uppercase() }, selected = difficulty == d, onClick = { difficulty = d }) }

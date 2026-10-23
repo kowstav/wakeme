@@ -16,7 +16,7 @@ struct GuestView: View {
                 Group {
                     if routines.isEmpty {
                         Section {
-                            EmptyState(title: "No wake-ups yet", message: "They live on this phone and ring without a connection.")
+                            EmptyState(title: "No wake-ups yet")
                         }
                     } else {
                         Section("On this phone") {
@@ -46,12 +46,9 @@ struct GuestView: View {
                         .frame(minHeight: WMSize.minTouchTarget)
                     }
                     Section {
-                        HStack(alignment: .top, spacing: WMSpacing.sm) {
+                        HStack(spacing: WMSpacing.sm) {
                             IconChip(icon: .friends, family: WMPalette.sky)
-                            VStack(alignment: .leading, spacing: WMSpacing.xxs) {
-                                Text("Wake each other up").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
-                                Text("Your wake-ups come with you when you sign in.").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
-                            }
+                            Text("Wake each other up").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         }
                         .accessibilityElement(children: .combine)
                         SecondaryButton(title: "Sign in to add friends", icon: .personPlus) { app.signInFromGuest() }

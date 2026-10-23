@@ -31,6 +31,20 @@ with two questions in mind: *is this element or sentence needed here?* and *is t
 | 13 | Android welcome | The display face renders as regular-weight Roboto Condensed: the brand moment is thin next to iOS's Condensed Black. | Load the condensed device family at ExtraBold, so the weight axis is used instead of a fixed regular typeface. |
 | 14 | Android guest home | "Make this phone ready" is a card of three paragraphs and two buttons. | A title, one status, the two actions, and a one-line note. |
 
+## Checked against the renders (2026-10-23)
+
+ios run 45 and android-device run 89 at `67c041f` were compared side by side with the `b9d6ef0` renders (welcome,
+guest home, readiness, friends, invite, friend detail, permissions, focus, challenges, safety and circle
+on both platforms, plus the previews). Findings 1, 2 and 4–14 show as intended. The comparison also found
+four problems, now fixed and waiting for CI to render them:
+
+- Readiness (iOS) still showed the bar title: an empty principal toolbar item doesn't hide it on iOS 26. The bar title is now empty.
+  The new step header "Allow alarms" repeated its own button; it is now "Alarm access".
+- The Android invite code (28 sp) overlapped the line above it, because it sat inside 14 sp line metrics. It now has its own paragraph style.
+  "Or they type this code" read oddly with nothing before it; on both platforms it is now "They can also type this code".
+- A disabled primary button on a card (Focus "Start focus") lost its shape, grey on grey, on both platforms. It now uses the quiet fill there.
+- Android's empty state put its text under the duck; it now sits beside the duck, as on iOS.
+
 ## Not changed
 
 - Strings the UI tests look up (for example "Invite someone you trust", "07:00 · Weekdays",

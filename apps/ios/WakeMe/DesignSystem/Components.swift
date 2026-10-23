@@ -84,6 +84,8 @@ struct PrimaryButton: View {
     var icon: WMIcon? = nil
     let action: () -> Void
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.wmOnCard) private var onCard
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         Button(action: action) {
@@ -93,7 +95,9 @@ struct PrimaryButton: View {
                 .padding(.vertical, WMSpacing.xs)
                 .frame(maxWidth: .infinity, minHeight: WMLayout.buttonHeight)
         }
-        .buttonStyle(WMPressStyle(fill: isEnabled ? WMColor.accent : WMColor.surfaceNeutral, pressedFill: WMColor.accentPressed))
+        // Disabled on a card, the card's grey would hide the button's shape (Focus, ios run 45):
+        // the quiet fill keeps it visible there.
+        .buttonStyle(WMPressStyle(fill: isEnabled ? WMColor.accent : quietFill(onCard: onCard, scheme: scheme), pressedFill: WMColor.accentPressed))
     }
 }
 
@@ -202,7 +206,10 @@ struct QuickActionLabel: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let fill = primary ? WMColor.accent : family?.fill ?? quietFill(onCard: onCard, scheme: scheme)
+        // A family colour at half strength: the row reads as a set of soft petals, so the circles
+        // never outshout the face and name above them.
+        let petal: Color? = family.map { (f: WMFamily) -> Color in f.fill.opacity(0.5) }
+        let fill: Color = primary ? WMColor.accent : petal ?? quietFill(onCard: onCard, scheme: scheme)
         let ink = primary ? WMColor.textOnAccent : family?.ink ?? WMColor.textPrimary
         VStack(spacing: WMSpacing.xs) {
             WMIconImage(icon)
@@ -430,22 +437,29 @@ func toneIcon(_ tone: Tone) -> WMIcon? {
     }
 }
 
-/// A friend's monogram on one of seven petal families, chosen from a stable key so the same friend
-/// always has the same colour. Decorative: the name beside it is what VoiceOver reads.
+/// A friend's face: one of ten cartoon animals, chosen from a stable key so the same friend always
+/// has the same animal (on both platforms: same hash, same order). Decorative: the name beside it is
+/// what VoiceOver reads.
 struct FriendAvatar: View {
     let name: String
     let key: String
     var size: CGFloat = WMLayout.avatarRow
 
     var body: some View {
-        let family = familyFor(key)
-        Text(name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?")
-            .font(.system(size: size * 0.42, weight: .bold))
-            .foregroundStyle(family.ink)
+        faceFor(key).image
+            .resizable()
+            .scaledToFit()
             .frame(width: size, height: size)
-            .background(family.fill, in: Circle())
             .accessibilityHidden(true)
     }
+}
+
+/// The animal for a stable key (a friend's or circle's id). Java's String.hashCode and floorMod, so
+/// it matches Android (Swift's hashValue is randomised per launch).
+func faceFor(_ key: String) -> WMFace {
+    let faces = WMFace.avatars
+    let hash = key.utf16.reduce(Int32(0)) { $0 &* 31 &+ Int32($1) }
+    return faces[((Int(hash) % faces.count) + faces.count) % faces.count]
 }
 
 /// The petal family for a stable key (a friend's or circle's id). Java's String.hashCode and
@@ -527,43 +541,58 @@ struct DeliveryTrailView: View {
     }
 }
 
-/// One sentence of explanation, set beside the control it explains: a small icon and supporting
-/// text on the page, never in a card of its own (a card holds things to act on). A screen keeps at
-/// most one or two of these; anything longer belongs in a help page, not on the way.
-struct Note: View {
-    let text: String
-    var icon: WMIcon = .info
-
-    init(_ text: String, icon: WMIcon = .info) {
-        self.text = text
-        self.icon = icon
-    }
+/// How far through a short task you are, as segments that fill one by one (the goal-gradient: the
+/// nearer the end looks, the more people finish). Visual; the screen's words carry the meaning.
+struct StepProgress: View {
+    let total: Int
+    let done: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(alignment: .top, spacing: WMSpacing.xs) {
-            WMIconImage(icon, size: WMLayout.iconSizeSmall)
-                .foregroundStyle(WMColor.textSecondary)
-                .padding(.top, 1)
-            Text(text)
-                .font(WMFont.supporting)
-                .foregroundStyle(WMColor.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: WMSpacing.xxs) {
+            ForEach(0..<total, id: \.self) { i in
+                Capsule()
+                    .fill(i < done ? WMColor.accent : WMColor.surfaceNeutral)
+                    .frame(height: 6)
+            }
         }
+        .animation(WMMotion.respecting(reduceMotion, WMMotion.standard), value: done)
+        .accessibilityElement()
+        .accessibilityLabel("Step \(min(done + 1, total)) of \(total)")
     }
 }
 
-/// A calm empty state: the duck, what belongs here, and how to add the first one.
-struct EmptyState: View {
-    let title: String
-    let message: String
+/// A caption under the control it qualifies, the way the reference apps write footnotes: a short
+/// line of secondary text, no icon (an icon beside wrapped text never lines up with it). Most
+/// screens need none: people who use apps already know what a switch or a button does.
+struct Note: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
 
     var body: some View {
-        HStack(alignment: .top, spacing: WMSpacing.sm) {
-            DuckMark(size: 52)
+        Text(text)
+            .font(WMFont.supporting)
+            .foregroundStyle(WMColor.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// A calm empty state: a friendly face and what belongs here, centred on its title; a message
+/// only where the title alone wouldn't do.
+struct EmptyState: View {
+    let title: String
+    var message: String? = nil
+
+    var body: some View {
+        HStack(alignment: message == nil ? .center : .top, spacing: WMSpacing.sm) {
+            faceFor(title).image.resizable().scaledToFit().frame(width: 52, height: 52).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: WMSpacing.xxs) {
                 Text(title).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
-                Text(message).foregroundStyle(WMColor.textSecondary)
+                if let message { Text(message).foregroundStyle(WMColor.textSecondary) }
             }
         }
     }

@@ -90,13 +90,12 @@
     <!-- Readiness -->
     <string name="ready_title">Make this phone ready</string>
     <string name="ready_all_good">Ready for wake-ups on this phone</string>
-    <string name="ready_notifications">Allow notifications so quacks and requests can reach you.</string>
-    <string name="ready_exact_alarm">Allow “Alarms &amp; reminders” so wake-ups ring on time.</string>
-    <string name="ready_full_screen">Allow full-screen alarms so a wake-up can show over the lock screen.</string>
-    <string name="ready_battery">Battery optimisation may delay wake-ups on some phones. You can exempt Wake Me.</string>
-    <string name="ready_volume">Your alarm volume is at zero, so alarms would be silent. Turn it up in sound settings.</string>
+    <string name="ready_notifications">Notifications</string>
+    <string name="ready_exact_alarm">Alarms &amp; reminders</string>
+    <string name="ready_full_screen">Full-screen alarms</string>
+    <string name="ready_battery">Battery optimisation</string>
+    <string name="ready_volume">Alarm volume is at zero</string>
     <string name="ready_test_sound">Test my alarm sound</string>
-    <string name="ready_test_note">Plays here only, at alarm volume, through the speaker when the phone allows it.</string>
     <string name="channel_sharing">Location sharing</string>
     <string name="channel_sharing_desc">Shown while you are sharing your location, with a Stop button.</string>
     <string name="sharing_title">Sharing your location with %1$s</string>

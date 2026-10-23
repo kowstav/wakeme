@@ -20,19 +20,14 @@ struct FocusView: View {
     var body: some View {
         List {
             Group {
-                // Explanations sit under the control they explain (section footers), not in cards
-                // of their own ahead of everything.
                 if !focus.authorized {
                     Section {
                         PrimaryButton(title: "Allow Screen Time access") { Task { await focus.requestAuthorization() } }
-                    } footer: {
-                        Text("Screen Time keeps the apps you choose closed on your own phone. It isn't parental supervision, and you can turn it off in Settings.")
                     }
                 }
                 if let r = focus.request {
                     Section {
                         Text("\(r.friendName) asks you to focus for \(r.minutes) min").font(.headline).foregroundStyle(WMColor.textPrimary)
-                        Text("You choose. Nothing changes unless you start it, and you can end it anytime.").foregroundStyle(WMColor.textSecondary)
                         PrimaryButton(title: "Start focus") { Task { await accept(r) } }
                             .disabled(!focus.authorized || !focus.hasSelection)
                         Button("Not now") { focus.offer(nil) }.frame(minHeight: WMSize.minTouchTarget)
@@ -76,8 +71,6 @@ struct FocusView: View {
                         .disabled(!focus.authorized)
                 } header: {
                     Text("Apps to keep closed")
-                } footer: {
-                    Text("Your choice stays on this phone. Friends never see which apps.")
                 }
             }
             .cardRows()

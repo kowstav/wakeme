@@ -19,7 +19,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.wakeme.designsystem.BentoRow
 import app.wakeme.designsystem.BentoTile
-import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.DisplayText
 import app.wakeme.designsystem.HeroCard
 import app.wakeme.designsystem.IconChip
@@ -33,6 +32,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.DeliveryTrailView
 import app.wakeme.designsystem.DuckMark
+import app.wakeme.designsystem.WMFace
+import app.wakeme.designsystem.StepProgress
+import app.wakeme.designsystem.Note
+import app.wakeme.designsystem.Loading
+import app.wakeme.ui.AnimalSoundRow
+import app.wakeme.ui.AnimalSoundGrid
+import app.wakeme.ui.AnimalSounds
+import app.wakeme.ui.FriendHuddle
+import androidx.compose.foundation.layout.size
 import app.wakeme.designsystem.EmptyState
 import app.wakeme.designsystem.FriendAvatar
 import app.wakeme.designsystem.PrimaryButton
@@ -61,10 +69,14 @@ private fun Sheet() {
         Modifier.fillMaxSize().background(c.surface).verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd),
         verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
     ) {
+        FriendHuddle()
         DisplayText("Alert your friends. Wake each other up.")
+        // Every face in the set (avatars and the sound picker), so a broken path shows up in review.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+            WMFace.entries.forEach { androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(it.res), null, Modifier.size(52.dp)) }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
             DuckMark(size = 64.dp)
-            DuckMark(size = 64.dp, beakOpen = 0.8f)
             FriendAvatar("Maya", "u-maya")
             FriendAvatar("Sam", "u-sam")
             FriendAvatar("Alex", "u-alex")
@@ -105,13 +117,12 @@ private fun Sheet() {
             PillButton("Invite", onClick = {}, icon = WMIcon.PersonPlus, primary = true)
         }
         WMCard {
-            Text("Quack", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                ChoiceChip("Classic quack", selected = true, onClick = {})
-                ChoiceChip("Double quack", selected = false, onClick = {})
-            }
+            AnimalSoundRow(AnimalSounds.ids, AnimalSounds.DEFAULT_ID, onSelect = {})
             SecondaryButton("Change permissions", onClick = {}, icon = WMIcon.Sliders)
             PrimaryButton("Send quack", onClick = {}, icon = WMIcon.Send)
+            StepProgress(total = 2, done = 1)
+            Note("Set for 07:31. Lock the phone and wait for it.")
+            AnimalSoundGrid(AnimalSounds.ids.take(5), onChange = {})
             PrimaryButton("Send wake alarm", onClick = {}, enabled = false, icon = WMIcon.Wake)
         }
         WMCard {
@@ -134,7 +145,8 @@ private fun Sheet() {
             StatusPill("Saved · not yet confirmed on this phone", Tone.Warning)
             StatusPill("Paused", Tone.Neutral)
         }
-        EmptyState("Invite someone you trust", "Send a private link. They choose what you can do on their phone, and you choose what they can do on yours.")
+        EmptyState("Invite someone you trust")
+        Loading()
         QuietButton("New circle", onClick = {}, icon = WMIcon.Plus)
         DangerButton("End this routine", onClick = {}, icon = WMIcon.Trash)
     }

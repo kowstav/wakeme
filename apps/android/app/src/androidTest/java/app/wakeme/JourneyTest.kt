@@ -39,7 +39,10 @@ class JourneyTest {
 
     @Test
     fun selfSetupInviteGrantAndWakeUp() {
-        val unreachable = backendProblem()
+        // The emulator's first request to the host can time out while its network settles
+        // (android-device #94, Android 17), so ask a few times before calling it unreachable.
+        var unreachable = backendProblem()
+        repeat(5) { if (unreachable != null) { Thread.sleep(3_000); unreachable = backendProblem() } }
         assumeTrue("dev backend not reachable: $unreachable", unreachable == null)
 
         // Doc 03 §5 step 2: a personal wake-up first, with no account; it is armed on this phone.
@@ -136,6 +139,9 @@ class JourneyTest {
         tap("Add another question")
         type("Question 2", "Who forgets the keys?")
         compose.onAllNodes(hasText("Your answer"))[1].run { runCatching { performScrollTo() }; performTextInput("Sam") }
+        // Saving before the answer lands saves a one-question quiz ("Step 1 of 1"); the Android 16
+        // emulator is slow enough for that (android-device #88 and #93).
+        waitFor("Sam")
         DeviceEvidence.screenshot("30-quiz-edited")
         tap("Save and try it")
         waitFor("Step 1 of 2", timeout = 30_000)
@@ -289,7 +295,13 @@ class JourneyTest {
             compose.waitUntil(timeout) { compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
         } catch (failure: Throwable) {
             DeviceEvidence.screenshot("99-journey-failure")
-            throw failure
+            // Name what was on screen, so the CI log alone explains the failure.
+            val shown = runCatching {
+                compose.onAllNodes(hasText("", substring = true), useUnmergedTree = true).fetchSemanticsNodes()
+                    .flatMap { n -> n.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } + listOfNotNull(n.config.getOrNull(SemanticsProperties.EditableText)?.text) }
+                    .filter { it.isNotBlank() }.distinct().take(40)
+            }.getOrDefault(emptyList())
+            throw AssertionError("\"$text\" didn't appear. On screen: $shown", failure)
         }
     }
 

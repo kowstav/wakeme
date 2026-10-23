@@ -1,43 +1,24 @@
-import AVFAudio
 import SwiftUI
 
-/// Plays a bundled quack on this phone only. A preview never sends anything.
-@MainActor
-final class QuackPreview {
-    static let shared = QuackPreview()
-    private var player: AVAudioPlayer?
-
-    func play() {
-        guard let url = Bundle.main.url(forResource: "quack_classic", withExtension: "wav") else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.duckOthers])
-        player = try? AVAudioPlayer(contentsOf: url)
-        player?.play()
-    }
-}
-
-/// Doc 03 §5 step 1: the headline with an interactive quack, laid out like the reference apps'
-/// welcome: a large illustration and a condensed capital headline centred in the space, and the two
-/// ways in pinned where a thumb reaches them (lime first, grey second) with the one promise that
-/// matters at that moment under them. Tapping the duck (or "Play preview") plays the quack on this
-/// phone only and the duck quacks with it. The blocks arrive with a short stagger the first time;
-/// with Reduce Motion everything is simply there.
+/// Doc 03 §5 step 1, laid out like the reference apps' welcome: a picture of the idea (a huddle of
+/// friends, each a cartoon animal), a condensed capital headline, and the two ways in pinned where
+/// a thumb reaches them, lime first. Each face plays its own call on this phone when tapped, and
+/// "Play preview" plays the quack, the default: the sounds explain themselves, so nothing else is
+/// said. The blocks arrive with a short stagger the first time; with Reduce Motion they are simply
+/// there.
 struct WelcomeView: View {
     let onInvite: () -> Void
     let onSelfSetup: () -> Void
-    @State private var quacks = 0
 
     var body: some View {
         GeometryReader { space in
             ScrollView {
                 VStack(spacing: WMSpacing.lg) {
-                    Button { quack() } label: { QuackBurst(tick: quacks, height: 140) }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Play a quack on this phone")
+                    FriendHuddle()
                         .wmEntrance(0)
                     DisplayText("Alert your friends. Wake each other up.", alignment: .center)
                         .wmEntrance(1)
-                    // The preview plays only on this phone; the duck above does the same.
-                    PillButton(title: "Play preview", icon: .speaker) { quack() }
+                    PillButton(title: "Play preview", icon: .speaker) { SoundPreview.shared.play() }
                         .wmEntrance(2)
                 }
                 .padding(.horizontal, WMLayout.screenMargin)
@@ -53,8 +34,6 @@ struct WelcomeView: View {
             VStack(spacing: WMLayout.controlGap) {
                 PrimaryButton(title: "I have an invite", icon: .ticket, action: onInvite)
                 SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
-                Note("You decide what each friend can do. Nobody can ring your phone unless you allow it.", icon: .lock)
-                    .padding(.top, WMSpacing.xxs)
             }
             .padding(.horizontal, WMLayout.screenMargin)
             .padding(.vertical, WMSpacing.md)
@@ -71,9 +50,47 @@ struct WelcomeView: View {
             .wmEntrance(4)
         }
     }
+}
 
-    private func quack() {
-        QuackPreview.shared.play()
-        quacks += 1
+/// Five friends' faces in a slight arc, the middle one largest. Tapping a face plays its call here
+/// and gives it a little hop (with Reduce Motion, only the sound).
+struct FriendHuddle: View {
+    private struct Spot: Hashable {
+        let sound: String
+        let size: CGFloat
+        let lift: CGFloat
+    }
+
+    private let huddle: [Spot] = [
+        Spot(sound: "bundled:cat.meow", size: 64, lift: 10), Spot(sound: "bundled:frog.ribbit", size: 76, lift: 2),
+        Spot(sound: "bundled:dog.woof", size: 92, lift: 0), Spot(sound: "bundled:monkey.hoot", size: 76, lift: 2),
+        Spot(sound: "bundled:cow.moo", size: 64, lift: 10),
+    ]
+    @State private var hopping: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: -10) {
+            ForEach(huddle, id: \.self) { f in
+                if let sound = AnimalSounds.sound(f.sound) {
+                    Button {
+                        SoundPreview.shared.play(sound.id)
+                        hopping = sound.id
+                        Task { try? await Task.sleep(for: .milliseconds(220)); if hopping == sound.id { hopping = nil } }
+                    } label: {
+                        sound.face.image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: f.size, height: f.size)
+                            .offset(y: -f.lift - (hopping == sound.id && !reduceMotion ? 10 : 0))
+                            .animation(WMMotion.respecting(reduceMotion, WMMotion.standard), value: hopping)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(sound.name)
+                }
+            }
+        }
+        .padding(.top, WMSpacing.md)
+        .frame(maxWidth: .infinity)
     }
 }

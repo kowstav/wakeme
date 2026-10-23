@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import app.wakeme.designsystem.Loading
 import app.wakeme.designsystem.AdaptiveList
 import app.wakeme.designsystem.ReloadWhenBackOnTop
 import app.wakeme.designsystem.fullWidth
@@ -228,7 +229,7 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
         if (proposals.isNotEmpty()) fullWidth { SectionTitle("Waiting for you") }
         items(proposals, key = { "p" + it.id }) { p -> PlanCard(p, s.myId, onOpen, Modifier.animateItem()) }
         fullWidth { SectionTitle("On this phone") }
-        if (s.mine.none { it.accepted != null }) fullWidth { EmptyState("No alarms yet", "Set one for yourself, or let a friend suggest one. Nothing rings until this phone confirms it.") }
+        if (s.mine.none { it.accepted != null }) fullWidth { EmptyState("No alarms yet") }
         items(s.mine.filter { it.accepted != null }, key = { it.id }) { p -> PlanCard(p, s.myId, onOpen, Modifier.animateItem()) }
         if (s.helping.isNotEmpty()) {
             fullWidth { SectionTitle("Helping friends") }
@@ -301,7 +302,7 @@ private fun timeAndDays(time: String, days: String, quiet: androidx.compose.ui.g
 fun RoutineDetailScreen(planId: String, onBack: () -> Unit, onReuse: () -> Unit = {}, vm: RoutinesViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
     // Read the observed state before the loading return, so the first API result recomposes this pane.
-    val p = (s.mine + s.helping).firstOrNull { it.id == planId } ?: run { Body("Loading routine…"); return }
+    val p = (s.mine + s.helping).firstOrNull { it.id == planId } ?: run { Loading(); return }
     val mine = p.owner.id == s.myId
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXxs))
@@ -323,7 +324,6 @@ fun RoutineDetailScreen(planId: String, onBack: () -> Unit, onReuse: () -> Unit 
             p.pending?.let { pending ->
                 VersionCard(if (p.accepted == null) "Proposed by ${p.creator.displayName}" else "Proposed change from ${p.creator.displayName}", pending)
                 if (mine) {
-                    Body("Nothing changes until you accept. You can change your mind anytime.")
                     PrimaryButton("Accept this version", onClick = { vm.act({ acceptPlan(p.id, pending.version) }) }, icon = WMIcon.Check)
                     SecondaryButton(if (p.accepted == null) "Decline" else "Keep the current version", onClick = { vm.act({ declinePlan(p.id, pending.version) }) }, icon = WMIcon.Close)
                 }
@@ -484,9 +484,6 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
     }
     DetailScreen(onBack = onDone) {
         Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-        if (ownerId != null) Body("${s.friendName ?: "Your friend"} sees exactly this and decides. Nothing changes on their phone until they accept.")
-        Body("Use routines for waking, study, gym or practice. These are reminders you choose; Wake Me doesn't verify attendance or penalize missed days.")
-        if (reuseId != null) Body("This creates a new routine for you. Your existing routine and your friends' permissions stay as they are. Choose any challenge again.")
         FieldGroup("Start with") { FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             listOf("Wake-up" to WMIcon.Sun, "Study" to WMIcon.Book, "Gym" to WMIcon.Dumbbell, "Language practice" to WMIcon.Language, "Music practice" to WMIcon.Music).forEach { (preset, icon) ->
                 ChoiceChip(preset, selected = selectedPreset == preset, icon = icon, onClick = {
@@ -524,7 +521,6 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
                 rings.forEach { v -> ChoiceChip("${v}s", selected = ring == v, onClick = { ring = v }) }
             }
         }
-        if (ownerId != null) Body("Only the sounds and ring length ${s.friendName ?: "they"} approved.")
         if (s.challenges.isNotEmpty() && (ownerId == null || s.canAssignChallenges)) {
             FieldGroup("Challenge (optional)") { FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                 ChoiceChip("None", selected = challengeRevision == null, onClick = { challengeRevision = null })

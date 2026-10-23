@@ -27,7 +27,6 @@ import app.wakeme.alarm.AlarmAudio
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
-import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.CardTitle
 import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.IconChip
@@ -37,7 +36,7 @@ import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SecondaryButton
 import app.wakeme.designsystem.StatusPill
-import app.wakeme.designsystem.Supporting
+import app.wakeme.designsystem.StepProgress
 import app.wakeme.designsystem.Tone
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
@@ -142,16 +141,15 @@ fun ReadinessSection(vm: ReadyViewModel = hiltViewModel(), showTitle: Boolean = 
             else -> StatusPill("Ready for wake-ups · ${s.readiness.missing.size} optional step${if (s.readiness.missing.size == 1) "" else "s"}", Tone.Info, icon = WMIcon.Info)
         }
         s.readiness.missing.forEach { r ->
-            Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.Top) {
+            // One line per step: what it is, and the way to fix it at the end, within thumb reach.
+            Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
                 IconChip(readinessIcon(r), WM.palette.apricot, size = 32.dp)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                    Supporting(stringResource(readinessCopy(r)), color = WM.colors.textPrimary)
-                    PillButton("Open settings", onClick = { runCatching { context.startActivity(vm.settingsIntent(r)) } }, icon = WMIcon.ArrowUpRight)
-                }
+                Text(stringResource(readinessCopy(r)), style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+                PillButton("Open settings", onClick = { runCatching { context.startActivity(vm.settingsIntent(r)) } }, icon = WMIcon.ArrowUpRight)
             }
         }
         SecondaryButton(if (s.testing) "Playing…" else stringResource(R.string.ready_test_sound), onClick = { vm.testSound() }, enabled = !s.testing, icon = WMIcon.Speaker)
-        Note(s.testResult ?: stringResource(R.string.ready_test_note), icon = if (s.testResult != null) WMIcon.CheckCircle else WMIcon.Info)
+        s.testResult?.let { Note(it) }
     }
 }
 
@@ -166,17 +164,11 @@ fun ReadyScreen(onContinue: () -> Unit, continueLabel: String = "Set my first wa
     // Opened from Routines it is a pushed screen with a back bar; during setup it has none.
     DetailScreen(onBack = onBack) {
         Text("Let's make sure your alarm rings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        Body("Android needs your OK for alarms to ring on time and over the lock screen.")
+        // Two steps (the required permissions, then hearing it once); the bar fills as each is done.
+        StepProgress(total = 2, done = if (!s.readiness.readyForWake) 0 else if (!s.testPlayed) 1 else 2)
         WMCard { ReadinessSection(vm, showTitle = false) }
-        // The one next step, or Ready: said once, right above the button it leads to.
-        val nextStep = s.readiness.missing.firstOrNull { it == ReadinessItem.EXACT_ALARMS || it == ReadinessItem.NOTIFICATIONS }
-        when {
-            nextStep != null -> Note("Next step: ${stringResource(readinessCopy(nextStep))}", icon = WMIcon.Info)
-            !s.testPlayed -> Note("Next step: play the test sound.", icon = WMIcon.Speaker)
-            else -> StatusPill("Ready on this phone", Tone.Success, icon = WMIcon.CheckCircle)
-        }
+        if (s.readiness.readyForWake && s.testPlayed) StatusPill("Ready on this phone", Tone.Success, icon = WMIcon.CheckCircle)
         PrimaryButton(continueLabel, onClick = onContinue, enabled = s.readiness.readyForWake)
-        if (!s.readiness.readyForWake) Note("You can still add friends and send quacks while you sort this out.")
         onSkip?.let { QuietButton("Do this later", onClick = it) }
     }
 }

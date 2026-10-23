@@ -15,18 +15,15 @@ struct ReadyView: View {
                     .font(.largeTitle.bold())
                     .foregroundStyle(WMColor.textPrimary)
                     .accessibilityAddTraits(.isHeader)
-                Text("iPhone alarms ring even in silent mode or a Focus, once you allow them.")
-                    .foregroundStyle(WMColor.textSecondary)
+                // Two steps, and the bar shows how close you are (it fills as each one is done).
+                StepProgress(total: 2, done: authorization != .authorized ? 0 : testResult == nil ? 1 : 2)
                 // Step 1: alarm access. Once allowed it shrinks to its status, inside step 2's card.
                 if authorization != .authorized {
                     WMCard {
-                        stepHeader(icon: .alarm, family: WMPalette.lime, title: "Allow alarms")
+                        stepHeader(icon: .alarm, family: WMPalette.lime, title: "Alarm access")
                         switch authorization {
                         case .denied:
                             StatusPill(text: "Alarms are turned off for Wake Me", tone: .danger, icon: toneIcon(.danger))
-                            Text("Turn them on in Settings → Wake Me → Alarms. You can still add friends and send quacks.")
-                                .font(WMFont.supporting)
-                                .foregroundStyle(WMColor.textSecondary)
                             SecondaryButton(title: "Open Settings", icon: .arrowUpRight) {
                                 if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                             }
@@ -41,9 +38,6 @@ struct ReadyView: View {
                     WMCard {
                         stepHeader(icon: .wake, family: WMPalette.gold, title: "Test alarm")
                         StatusPill(text: "Alarms allowed", tone: .success, icon: toneIcon(.success))
-                        Text("Rings once in about a minute, on this phone only. Try it with headphones too.")
-                            .font(WMFont.supporting)
-                            .foregroundStyle(WMColor.textSecondary)
                         SecondaryButton(title: working ? "Setting…" : "Ring a test alarm in 1 minute", icon: .alarm) {
                             working = true
                             Task {
@@ -57,7 +51,7 @@ struct ReadyView: View {
                             }
                         }
                         // The result is the next step: lock the phone and listen.
-                        if let testResult { Note(testResult, icon: .clock) }
+                        if let testResult { Note(testResult) }
                     }
                 }
             }
@@ -66,11 +60,10 @@ struct ReadyView: View {
             .frame(maxWidth: .infinity)
         }
         .background(WMColor.surface)
-        // The heading above is the screen's one visible title; the bar keeps the name for VoiceOver
-        // and the back button without showing it a second time.
-        .navigationTitle("Make this phone ready")
+        // The heading above is the screen's one visible title, so the bar shows none (an empty
+        // principal item did not hide it on iOS 26: ios run 45). The heading is a header for VoiceOver.
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .principal) { EmptyView() } }
     }
 
     private func stepHeader(icon: WMIcon, family: WMFamily, title: String) -> some View {

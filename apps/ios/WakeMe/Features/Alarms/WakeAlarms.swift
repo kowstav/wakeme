@@ -339,8 +339,9 @@ final class WakeAlarms: @unchecked Sendable {
 
     /// Bundled sounds ship in the app; approved custom sounds fall back to a bundled one when not cached.
     static func sound(for soundId: String) -> AlertConfiguration.AlertSound {
-        let bundled = ["bundled:quack.classic": "quack_classic", "bundled:quack.double": "quack_double", "bundled:chime.soft": "chime_soft",
-                       "bundled:bell.bright": "bell_bright", "bundled:rise.gentle": "rise_gentle", "bundled:pulse.wake": "pulse_wake"]
-        return .named("\(bundled[soundId] ?? "rise_gentle").wav")
+        // "bundled:frog.ribbit" ships as frog_ribbit.wav (packages/sounds); anything not in the app falls back.
+        let file = soundId.replacingOccurrences(of: "bundled:", with: "").replacingOccurrences(of: ".", with: "_")
+        let shipped = soundId.hasPrefix("bundled:") && Bundle.main.url(forResource: file, withExtension: "wav") != nil
+        return .named("\(shipped ? file : "rise_gentle").wav")
     }
 }

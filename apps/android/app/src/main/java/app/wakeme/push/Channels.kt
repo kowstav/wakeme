@@ -25,8 +25,19 @@ object Channels {
     const val UPDATES = "updates"
     private const val GROUP_FRIENDS = "friends"
 
+    /** Every bundled sound (packages/sounds), by id; each quack sound gets its own channel. */
     val quackSounds = mapOf(
         "bundled:quack.classic" to R.raw.quack_classic,
+        "bundled:frog.ribbit" to R.raw.frog_ribbit,
+        "bundled:dog.woof" to R.raw.dog_woof,
+        "bundled:cat.meow" to R.raw.cat_meow,
+        "bundled:cow.moo" to R.raw.cow_moo,
+        "bundled:monkey.hoot" to R.raw.monkey_hoot,
+        "bundled:donkey.heehaw" to R.raw.donkey_heehaw,
+        "bundled:pig.oink" to R.raw.pig_oink,
+        "bundled:sheep.baa" to R.raw.sheep_baa,
+        "bundled:owl.hoot" to R.raw.owl_hoot,
+        "bundled:rooster.crow" to R.raw.rooster_crow,
         "bundled:quack.double" to R.raw.quack_double,
         "bundled:chime.soft" to R.raw.chime_soft,
         "bundled:bell.bright" to R.raw.bell_bright,
@@ -42,7 +53,7 @@ object Channels {
         val notifAttrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
         for ((id, res) in quackSounds) {
             nm.createNotificationChannel(
-                NotificationChannel(quackChannel(id), context.getString(R.string.channel_quacks) + " · " + id.removePrefix("bundled:"), NotificationManager.IMPORTANCE_HIGH).apply {
+                NotificationChannel(quackChannel(id), context.getString(R.string.channel_quacks) + " · " + app.wakeme.ui.soundName(id), NotificationManager.IMPORTANCE_HIGH).apply {
                     description = context.getString(R.string.channel_quacks_desc)
                     group = GROUP_FRIENDS
                     setSound(Uri.parse("android.resource://${context.packageName}/$res"), notifAttrs)

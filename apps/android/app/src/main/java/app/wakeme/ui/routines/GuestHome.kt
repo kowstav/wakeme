@@ -86,7 +86,7 @@ fun GuestHome(onSignIn: () -> Unit, vm: GuestViewModel = hiltViewModel()) {
             Text("Your wake-ups", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
         }
         if (s.routines.isEmpty()) {
-            fullWidth { EmptyState("No wake-ups yet", "They live on this phone and ring without a connection.") }
+            fullWidth { EmptyState("No wake-ups yet") }
         }
         items(s.routines, key = { it.first.planId }) { (r, armed) ->
             val (icon, family) = timeOfDay(r.localTime)
@@ -109,10 +109,7 @@ fun GuestHome(onSignIn: () -> Unit, vm: GuestViewModel = hiltViewModel()) {
             WMCard {
                 Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
                     IconChip(WMIcon.Friends, WM.palette.sky)
-                    Column(Modifier.weight(1f)) {
-                        CardTitle("Wake each other up")
-                        Supporting("Your wake-ups come with you when you sign in.")
-                    }
+                    CardTitle("Wake each other up", Modifier.weight(1f))
                 }
                 SecondaryButton("Sign in to add friends", onClick = onSignIn, icon = WMIcon.PersonPlus)
             }

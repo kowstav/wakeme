@@ -202,7 +202,7 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
                 val mine = m.senderId != null && m.senderId == s.myId
                 Bubble(m, mine, onLongPress = { if (m.state == "visible") acting = m }, modifier = Modifier.animateItem())
             }
-            if (s.messages.isEmpty() && !s.loading) item { Body("No messages yet. Say hi, or send a quack from their profile.") }
+            if (s.messages.isEmpty() && !s.loading) item { Body("No messages yet.") }
         }
         // The composer is one row: the field grows to four lines, the send button stays a 48 dp
         // target beside it (a full-width yellow pill under the field was the heaviest thing on screen).
@@ -241,7 +241,6 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
                             ChoiceChip(e, selected = e == myReaction, onClick = { vm.react(m, e); acting = null })
                         }
                     }
-                    if (myReaction != null) Body("Tap your reaction again to remove it.")
                     if (!mineMsg) TextButton(onClick = { reporting = m; acting = null }) { Text("Report message", color = WM.colors.danger) }
                 }
             },

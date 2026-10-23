@@ -4,16 +4,11 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.heightIn
-import app.wakeme.designsystem.Note
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -25,8 +20,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import app.wakeme.designsystem.QuackBurst
 import app.wakeme.designsystem.rememberEntrance
+import app.wakeme.push.Channels
+import app.wakeme.ui.AnimalSounds
+import app.wakeme.ui.FriendHuddle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -71,6 +68,7 @@ import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SecondaryButton
+import app.wakeme.designsystem.Supporting
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
@@ -82,10 +80,11 @@ import java.security.MessageDigest
 import java.util.UUID
 
 /** Preview plays only on this phone, at media volume. It is never a remote command. */
-fun playQuackPreview(context: Context) {
+fun playSoundPreview(context: Context, soundId: String = AnimalSounds.DEFAULT_ID) {
+    val res = Channels.quackSounds[soundId] ?: R.raw.quack_classic
     val mp = MediaPlayer()
     mp.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-    mp.setDataSource(context, Uri.parse("android.resource://${context.packageName}/${R.raw.quack_classic}"))
+    mp.setDataSource(context, Uri.parse("android.resource://${context.packageName}/$res"))
     mp.setOnCompletionListener { it.release() }
     mp.prepare()
     mp.start()
@@ -103,17 +102,16 @@ private fun Page(content: @Composable () -> Unit) {
 private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
 
 /**
- * Doc 03 §5 step 1: the headline with an interactive quack, laid out like the reference apps'
- * welcome: a large illustration, a condensed capital headline, one line under it, and the two ways
- * in pinned where a thumb reaches them (lime first, grey second). Tapping the duck (or "Play
- * preview") plays the quack on this phone only and the duck quacks with it. The blocks arrive with
- * a short stagger the first time; with Remove animations on, everything is simply there.
+ * Doc 03 §5 step 1, laid out like the reference apps' welcome: a picture of the idea (a huddle of
+ * friends, each a cartoon animal), a condensed capital headline, and the two ways in pinned where a
+ * thumb reaches them, lime first. Each face plays its own call on this phone when tapped, and
+ * "Play preview" plays the quack, the default: the sounds explain themselves, so nothing else is
+ * said. The blocks arrive with a short stagger the first time; with Remove animations on,
+ * everything is simply there.
  */
 @Composable
 fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
     val context = LocalContext.current
-    var quacks by rememberSaveable { mutableIntStateOf(0) }
-    val quack: () -> Unit = { playQuackPreview(context); quacks++ }
     // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         val surface = WM.colors.surface
@@ -137,31 +135,20 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit) {
                 .padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceLg),
             verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceLg, Alignment.CenterVertically),
         ) {
-            Entrance(0) {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(WakeMeTokens.radiusXl))
-                            .clickable(onClickLabel = "Play a quack on this phone", role = Role.Button, onClick = quack)
-                            .padding(WakeMeTokens.spaceXs),
-                    ) { QuackBurst(tick = quacks, height = 140.dp) }
-                }
-            }
+            Entrance(0) { FriendHuddle() }
             Entrance(1) {
                 DisplayText(stringResource(R.string.headline), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
             Entrance(2) {
-                // The preview plays only on this phone; the duck above does the same.
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PillButton("Play preview", onClick = quack, icon = WMIcon.Speaker) }
+                // The preview plays only on this phone; so does tapping a face above.
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PillButton("Play preview", onClick = { playSoundPreview(context) }, icon = WMIcon.Speaker) }
             }
         }
         }
         Entrance(4) {
-            // The one promise that matters at this moment sits with the decision it is about.
             Column(Modifier.padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
                 PrimaryButton("I have an invite", onClick = onInvite, icon = WMIcon.Ticket)
                 SecondaryButton("Set up my own wake-up", onClick = onSelf, icon = WMIcon.Alarm)
-                Note("You decide what each friend can do. Nobody can ring your phone unless you allow it.", Modifier.padding(top = WakeMeTokens.spaceXxs), icon = WMIcon.Lock)
             }
         }
     }
@@ -183,7 +170,6 @@ fun SignInScreen(app: AppViewModel) {
     var sent by remember { mutableStateOf(false) }
     Page {
         Heading("Save your connection")
-        Body("Sign in to keep your friends and settings. We never ask for your phone number or contacts.")
         if (AppConfig.googleServerClientId.isNotBlank()) {
             PrimaryButton("Continue with Google", onClick = {
                 scope.launch {
@@ -248,7 +234,7 @@ fun ProfileScreen(onCreate: (name: String, adult: Boolean) -> Unit) {
             Checkbox(checked = adult, onCheckedChange = null)
             Body("I'm 18 or older", color = WM.colors.textPrimary)
         }
-        Body("Your time zone is used for quiet hours and wake windows. You can change it later.")
+        Supporting("Time zone: ${java.util.TimeZone.getDefault().id}")
         PrimaryButton("Continue", onClick = { onCreate(name, adult) }, enabled = name.isNotBlank() && adult)
     }
 }
@@ -266,9 +252,8 @@ fun InviteScreen(preview: InvitePreviewDto?, onAccept: () -> Unit, onDecline: ()
         }
         val who = preview.inviter.displayName
         Heading(if (preview.kind == "circle") "$who invited you to ${preview.circle?.name ?: "a circle"}" else "$who wants to quack you.")
-        Body("Connect so you can get each other's attention, with rules you choose.")
-        PillButton("Play preview", onClick = { playQuackPreview(context) }, icon = WMIcon.Speaker)
-        Body("Accepting doesn't give $who any permissions. Next you'll choose exactly what they can do, if anything.")
+        PillButton("Play preview", onClick = { playSoundPreview(context) }, icon = WMIcon.Speaker)
+        if (preview.kind != "circle") Body("Next, you choose what they can do.")
         if (preview.ownInvite) {
             Body("This is your own invite. Share it with a friend.")
             SecondaryButton("Back", onClick = onDecline)

@@ -69,6 +69,23 @@ final class LaunchTests: XCTestCase {
         if allow.waitForExistence(timeout: timeout) { allow.tap() }
     }
 
+    /// Types into a field and retypes if a slow simulator dropped keystrokes (seen in run 35:
+    /// "Brunch, Pasta night" arrived as "Brunch, P").
+    @MainActor
+    private func typeChecked(_ field: XCUIElement, _ text: String, file: StaticString = #filePath, line: UInt = #line) throws {
+        for _ in 0..<3 {
+            field.tap()
+            let current = (field.value as? String) ?? ""
+            let placeholder = field.placeholderValue ?? ""
+            if !current.isEmpty, current != placeholder {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+            }
+            field.typeText(text)
+            if (field.value as? String) == text { return }
+        }
+        try must(false, "Could not enter \(text) in \(field.identifier); got \(String(describing: field.value)) after three attempts", file: file, line: line)
+    }
+
     @MainActor
     private func shot(_ app: XCUIApplication, _ name: String) {
         let a = XCTAttachment(screenshot: app.screenshot())
@@ -245,7 +262,11 @@ final class LaunchTests: XCTestCase {
         app.navigationBars["What can Alex do?"].buttons["Save"].tap()
         // Doc 03 §5 step 6: the sounds just allowed need notifications; the app explains first.
         let hear = app.alerts["Hear Alex's quacks?"]
-        try must(hear.waitForExistence(timeout: 15), "the app explains before the system prompt")
+        // Saving waits on a few requests (the grant, the friend again, this phone's copy of the
+        // grants); on a slow Simulator that took over 15 s (ios #51). Still saving at the deadline
+        // means slow, not wrong, so the message says which it was.
+        let saving = app.navigationBars["What can Alex do?"].buttons["Saving…"]
+        try must(hear.waitForExistence(timeout: 45), saving.exists ? "the grant was still saving after 45 s" : "the app explains before the system prompt")
         shot(app, "14b-hear-quacks")
         hear.buttons["Allow notifications"].tap()
         allowSystemPrompt(springboard)
@@ -303,7 +324,7 @@ final class LaunchTests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap() // back; the keyboard covered the tab bar
 
         app.tabBars.buttons["Challenges"].tap()
-        try must(app.staticTexts["No challenges yet. Make one, or start from a template."].waitForExistence(timeout: 15), "the Challenges tab lists what can be practised")
+        try must(app.buttons["Create a challenge"].waitForExistence(timeout: 15), "the Challenges tab leads with creating one")
         shot(app, "22-challenges")
 
         // Doc 03: write a one-question quiz; every draft is tried before it can be published.
@@ -312,8 +333,7 @@ final class LaunchTests: XCTestCase {
         func quizField(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
         for (id, text) in [("quizTitle", "Thursday quiz"), ("quizQuestion", "What do we call our Thursday dinner?"), ("quizAnswer", "Chaos curry"), ("quizWrong", "Brunch, Pasta night")] {
             try must(quizField(id).waitForExistence(timeout: 5), "field \(id)")
-            quizField(id).tap()
-            quizField(id).typeText(text)
+            try typeChecked(quizField(id), text)
         }
         shot(app, "23-create-challenge")
         app.navigationBars["Create a challenge"].buttons["Create"].tap()
@@ -429,7 +449,7 @@ final class LaunchTests: XCTestCase {
         try must(app.buttons["End this wake session"].exists, "the escape is always on screen")
         try must(app.buttons["Use the simple check-in instead"].exists, "the check-in is offered")
         app.buttons["Brunch"].tap()
-        try must(app.staticTexts["Not quite. Take your time and try again."].waitForExistence(timeout: 5), "a wrong answer is a calm retry")
+        try must(app.staticTexts["Not quite. Take your time and try again."].waitForExistence(timeout: 15), "a wrong answer is a calm retry")
         shot(app, "20-challenge-retry")
         app.buttons["Chaos curry"].tap()
         try must(app.staticTexts["7 + 8 = ?"].waitForExistence(timeout: 5), "the next step")
