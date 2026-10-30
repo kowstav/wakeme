@@ -11,6 +11,8 @@ Last updated: 2026-10-30. Status words: **specified**, **implemented**, **verifi
 - The initial alarm fix passed android-device #107 on APIs 33/36/37, ios #59 and Android unit/lint CI. General CI exposed an expired fixed-date account deletion fixture; it now follows a database-clock snapshot, retaining seven-day and before/after checks (5 local account tests pass). Final artwork/source CI is pending on PR #10.
 - The local release candidate ran out of disk space; only disposable build/cache output and the already-extracted JDK installer were cleared. Preserve the shared checkout, signing key and deployment configuration. Worker/push, billing/media providers and physical release checks remain open.
 
+- Android-device #111 on Android 13 reproduced the widget reset: RescheduleReceiver enabled at 15:11:40.599, PACKAGE_CHANGED arrived at 15:11:41.603 during the one pointer tap (down 41.551, up 41.788), and the host remained foreground with no friends route. Reviewed PR #9 passed ci #40 and android-device #103 and was merged as 31f8447. This branch was rebased onto that base, retaining both progress entries and the strict widget assertions. Final combined-source verification follows.
+
 ## Widget taps lost to a WorkManager package change (2026-10-24, Claude)
 
 - **Failure:** in android-device #102 (PR #8, `bd724b5`), the Android 17 widget test failed in its own process. It tapped "Choose a friend to quack", and nothing opened in 30 s. The same commit passed every job in #101.
