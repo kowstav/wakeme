@@ -40,7 +40,10 @@ describe('accounts', () => {
   });
 
   it('deletion needs a recent sign-in, deactivates at once, revokes everything, and deletes after the grace period', async () => {
-    h.setNow('2026-10-19T14:00:00Z');
+    // Outbox eligibility uses PostgreSQL's clock, not the API's injected clock.
+    // Anchor both to one database instant so this grace-period case never expires with the calendar.
+    const dbNow = (await h.db.query<{ now: Date }>('select now() as now')).rows[0]!.now;
+    h.setNow(dbNow);
     const maya = await h.createUser('Maya');
     const alex = await h.createUser('Alex');
     await h.befriend(maya, alex);
@@ -49,7 +52,7 @@ describe('accounts', () => {
     assert.equal((await h.req('DELETE', '/v1/account', { token: maya.staleToken })).body.error.code, 'reauth_required');
     const del = await h.req('DELETE', '/v1/account', { user: maya });
     assert.equal(del.status, 200);
-    assert.equal(del.body.deletionScheduledFor, '2026-10-26T14:00:00.000Z');
+    assert.equal(del.body.deletionScheduledFor, new Date(h.clock.now.getTime() + 7 * 86_400_000).toISOString());
     const live = await h.db.query('select 1 from grants where (grantor_id = $1 or grantee_id = $1) and revoked_at is null', [maya.id]);
     assert.equal(live.rowCount, 0);
     assert.equal((await h.req('GET', '/v1/friends', { user: maya })).body.error.code, 'account_deleting');
