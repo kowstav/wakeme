@@ -5,47 +5,57 @@ struct WelcomeView: View {
     let onInvite: () -> Void
     let onSelfSetup: () -> Void
 
+    @ScaledMetric(relativeTo: .largeTitle) private var welcomeTitleSize: CGFloat = 30
+
     var body: some View {
         GeometryReader { space in
+            let sceneHeight = min(420, max(100, space.size.height - 380 * max(1, welcomeTitleSize / 30)))
             ScrollView {
-                VStack(spacing: WMSpacing.lg) {
-                    Text("WakeMe").font(WMFont.section).foregroundStyle(WMColor.brandInk)
-                    Image("WakeMorning").resizable().scaledToFit().frame(height: min(360, max(180, space.size.height - 220))).accessibilityHidden(true)
-                        .wmEntrance(0)
-                    DisplayText("Better mornings.\nTogether.", alignment: .center)
-                        .wmEntrance(1)
+                VStack(spacing: 0) {
+                    Image("WakeMorning")
+                        .resizable().scaledToFit()
+                        .padding(12)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: sceneHeight)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 28) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Better mornings,\ntogether.")
+                                .font(.system(size: welcomeTitleSize, weight: .medium))
+                                .tracking(-0.8)
+                                .foregroundStyle(WMColor.textPrimary)
+                                .accessibilityAddTraits(.isHeader)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text("Your alarms. Your people.")
+                                .font(.body).foregroundStyle(WMColor.textSecondary)
+                        }
+                        VStack(spacing: 0) {
+                            PrimaryButton(title: "Sign in", icon: .personPlus, action: onInvite)
+                            Divider().padding(.vertical, 16)
+                            Button(action: onSelfSetup) {
+                                Text("Set up my own wake-up")
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(WMColor.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: .infinity, minHeight: 48)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(28)
+                    .frame(maxWidth: .infinity, minHeight: max(0, space.size.height - sceneHeight), alignment: .topLeading)
+                    .background(WMColor.surface, in: UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32))
                 }
-                .padding(.horizontal, WMLayout.screenMargin)
-                .padding(.vertical, WMSpacing.lg)
                 .frame(maxWidth: WMLayout.readableWidth)
-                // Centred in the space above the actions; at large text sizes it simply scrolls.
-                .frame(maxWidth: .infinity, minHeight: space.size.height)
+                .frame(maxWidth: .infinity)
             }
-        }
-        .background(WMColor.surface)
-        // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: WMLayout.controlGap) {
-                PrimaryButton(title: "Sign in", icon: .personPlus, action: onInvite)
-                SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
-            }
-            .padding(.horizontal, WMLayout.screenMargin)
-            .padding(.vertical, WMSpacing.md)
-            .frame(maxWidth: WMLayout.readableWidth)
-            .frame(maxWidth: .infinity)
+            .background(LinearGradient(colors: [WMColor.brandInk.opacity(0.12), WMColor.surface],
+                startPoint: .top, endPoint: .bottom))
             .background(WMColor.surface)
-            // Text scrolling under the pinned actions fades out instead of being cut mid-line.
-            .overlay(alignment: .top) {
-                LinearGradient(colors: [WMColor.surface.opacity(0), WMColor.surface], startPoint: .top, endPoint: .bottom)
-                    .frame(height: WMSpacing.lg)
-                    .offset(y: -WMSpacing.lg)
-                    .allowsHitTesting(false)
-            }
-            .wmEntrance(4)
         }
     }
 }
-
 /// Five friends' faces in a slight arc, the middle one largest. Tapping a face plays its call here
 /// and gives it a little hop (with Reduce Motion, only the sound).
 struct FriendHuddle: View {

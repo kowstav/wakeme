@@ -4,6 +4,10 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -11,17 +15,12 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import app.wakeme.designsystem.rememberEntrance
 import app.wakeme.push.Channels
 import app.wakeme.ui.AnimalSounds
 import app.wakeme.ui.FriendHuddle
@@ -60,9 +59,7 @@ import app.wakeme.R
 import app.wakeme.config.AppConfig
 import app.wakeme.data.net.InvitePreviewDto
 import app.wakeme.designsystem.GoogleAuthButton
-import app.wakeme.designsystem.MorningArtwork
 import app.wakeme.designsystem.Body
-import app.wakeme.designsystem.DisplayText
 import app.wakeme.designsystem.IconChip
 import app.wakeme.designsystem.PillButton
 import app.wakeme.designsystem.WMIcon
@@ -104,57 +101,67 @@ private fun Page(content: @Composable () -> Unit) {
 @Composable
 private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
 
-/** Welcome prioritizes account sign-in and an account-free local alarm. */
+/** A continuous illustration field and one aligned, accessible entry panel. */
 @Composable
 fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit, signInAction: (@Composable () -> Unit)? = null) {
-    // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
-    Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-        val surface = WM.colors.surface
-        BoxWithConstraints(
-            Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                // Text scrolling under the pinned actions fades out instead of being cut mid-line.
-                .drawWithContent {
-                    drawContent()
-                    val fade = WakeMeTokens.spaceLg.toPx()
-                    drawRect(Brush.verticalGradient(listOf(surface.copy(alpha = 0f), surface), startY = size.height - fade, endY = size.height), topLeft = Offset(0f, size.height - fade), size = Size(size.width, fade))
-                },
-        ) {
-        val artworkHeight = (maxHeight - 220.dp).coerceIn(180.dp, 360.dp)
-        // Centred in the space above the actions; at large text sizes it simply scrolls.
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .heightIn(min = maxHeight)
-                .padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceLg),
-            verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceLg, Alignment.CenterVertically),
-        ) {
-            Text("WakeMe", style = MaterialTheme.typography.titleLarge, color = WM.colors.brandInk, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            Entrance(0) { MorningArtwork(Modifier.fillMaxWidth().height(artworkHeight)) }
-            Entrance(1) {
-                DisplayText("Better mornings.\nTogether.", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+    BoxWithConstraints(
+        Modifier.fillMaxSize().background(WM.colors.surface)
+            .background(Brush.verticalGradient(listOf(WM.palette.lime.fill.copy(alpha = 0.38f), WM.colors.surface)))
+            .safeDrawingPadding(),
+    ) {
+        val sceneHeight = (maxHeight - 380.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)).coerceIn(100.dp, 420.dp)
+        val panelHeight = (maxHeight - sceneHeight).coerceAtLeast(0.dp)
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)) {
+            Box(Modifier.fillMaxWidth().height(sceneHeight), contentAlignment = Alignment.Center) {
+                androidx.compose.foundation.Image(
+                    painterResource(R.drawable.wm_morning), contentDescription = null,
+                    modifier = Modifier.fillMaxSize().padding(12.dp),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                )
             }
-        }
-        }
-        Entrance(4) {
-            Column(Modifier.padding(horizontal = WakeMeTokens.spaceLg, vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) {
-                if (signInAction != null) signInAction() else PrimaryButton("Sign in", onClick = onInvite, icon = WMIcon.PersonPlus)
-                SecondaryButton("Set up my own wake-up", onClick = onSelf, icon = WMIcon.Alarm)
-                if (signInAction != null) QuietButton("More sign-in options", onClick = onInvite)
+            Column(
+                Modifier.fillMaxWidth().heightIn(min = panelHeight)
+                    .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                    .background(WM.colors.surface).padding(horizontal = 28.dp, vertical = 28.dp),
+                verticalArrangement = Arrangement.Top,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Better mornings,\ntogether.",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontSize = 30.sp, lineHeight = 36.sp,
+                            fontWeight = FontWeight.Medium, letterSpacing = (-0.8).sp,
+                        ),
+                        color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() },
+                    )
+                    Text("Your alarms. Your people.", style = MaterialTheme.typography.bodyLarge,
+                        color = WM.colors.textSecondary)
+                }
+                Column(Modifier.padding(top = 28.dp)) {
+                    if (signInAction != null) signInAction()
+                    else PrimaryButton("Sign in", onClick = onInvite, icon = WMIcon.PersonPlus)
+                    if (signInAction != null) {
+                        androidx.compose.material3.TextButton(
+                            onClick = onInvite, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Text("Continue with email", style = MaterialTheme.typography.labelLarge,
+                                color = WM.colors.textPrimary)
+                        }
+                    }
+                    androidx.compose.material3.HorizontalDivider(
+                        Modifier.padding(vertical = 8.dp), color = WM.colors.textSecondary.copy(alpha = 0.15f),
+                    )
+                    androidx.compose.material3.TextButton(
+                        onClick = onSelf, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Text("Set up my own wake-up", style = MaterialTheme.typography.labelLarge,
+                            color = WM.colors.textSecondary, textAlign = TextAlign.Center)
+                    }
+                }
             }
         }
     }
 }
-
-@Composable
-private fun Entrance(index: Int, content: @Composable () -> Unit) {
-    val rise = with(LocalDensity.current) { 12.dp.toPx() }
-    val p = rememberEntrance(index)
-    Box(Modifier.graphicsLayer { val v = p.value; alpha = v; translationY = (1f - v) * rise }) { content() }
-}
-
 @Composable
 fun GoogleSignInButton(app: AppViewModel) {
     val context = LocalContext.current

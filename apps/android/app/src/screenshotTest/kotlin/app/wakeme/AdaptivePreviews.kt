@@ -153,4 +153,7 @@ fun ChallengesTab() = Shell(2) {
 @PreviewTest
 @FormFactorPreviews
 @Composable
+@Preview(name = "Small phone", widthDp = 320, heightDp = 640)
+@Preview(name = "Large text", widthDp = 360, heightDp = 800, fontScale = 1.6f)
+@Preview(name = "Dark", device = Devices.PHONE, uiMode = Configuration.UI_MODE_NIGHT_YES)
 fun Welcome() = WakeMeTheme { Readable { WelcomeScreen(onInvite = {}, onSelf = {}, signInAction = { GoogleAuthButton(onClick = {}) }) } }

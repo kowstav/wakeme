@@ -2,6 +2,12 @@
 
 Last updated: 2026-10-30. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. No production release. The owner has installed the staging build on Android 13; full physical-device verification is still open.
 
+## Welcome composition revision (2026-10-31, Codex)
+
+- Owner rejected the isolated wordmark, boxed artwork, bold centred type and disconnected “More sign-in options” action. Revised both native welcome compositions using three actually viewed Dribbble references, documented in docs/design/welcome-2026-10-31.md.
+- Removed the top wordmark; integrated the original art into the background and a rounded lower panel; aligned type/actions; made email explicit and local setup secondary. Added small-phone, dark and large-text Compose render coverage.
+- The final local staging APK build, lint and native preview rendering passed (0 lint errors; 71 warnings, 6 hints). Visually inspected phone, 320×640, dark and 1.6× text welcome renders; fixed the dark background blending found during review. APK staging markers and registered debug certificate were verified. Fresh head CI and physical acceptance remain open. The previous iOS run 63 passed; Android run 116 failed the API 33 Focus binding precondition despite passing widget checks. These are not new-source verification or a completed release.
+
 ## Android 13 owner report and native hierarchy refresh (2026-10-30, Codex)
 
 - The owner reports a second local-alarm editor immediately closing on a real Android 13 phone, and confirms they only see the guest screen. This is a physical report, not yet an on-device verification by Codex. The guest editor retained an activity-scoped completed ViewModel; it now gets navigation-entry ownership.
