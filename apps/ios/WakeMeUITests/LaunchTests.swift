@@ -206,7 +206,7 @@ final class LaunchTests: XCTestCase {
         shot(app, "03-profile")
         app.buttons["Continue"].firstMatch.tap()
 
-        try must(app.staticTexts["Invite someone you trust"].waitForExistence(timeout: 20), "step failed")
+        try must(app.staticTexts["Your people, closer."].waitForExistence(timeout: 20), "Friends empty state after creating a profile")
         shot(app, "05-friends-empty")
         app.buttons["Invite a friend"].tap()
         try must(app.staticTexts["Share your invite"].waitForExistence(timeout: 15), "step failed")
