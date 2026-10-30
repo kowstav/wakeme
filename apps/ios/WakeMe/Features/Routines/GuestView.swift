@@ -16,7 +16,7 @@ struct GuestView: View {
                 Group {
                     if routines.isEmpty {
                         Section {
-                            EmptyState(title: "No wake-ups yet")
+                            Image("WakeMorning").resizable().scaledToFit().frame(height: 220).accessibilityHidden(true)
                         }
                     } else {
                         Section("On this phone") {
@@ -51,8 +51,8 @@ struct GuestView: View {
                             Text("Better together").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         }
                         .accessibilityElement(children: .combine)
-                        Text("Friends, shared wake-ups, challenges and check-ins live in your account.").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
-                        SecondaryButton(title: "Sign in to add friends", icon: .personPlus) { app.signInFromGuest() }
+                        Text("Friends \u{00b7} Challenges \u{00b7} Check-ins").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                        SecondaryButton(title: "Sign in", icon: .personPlus) { app.signInFromGuest() }
                     }
                 }
                 .cardRows()

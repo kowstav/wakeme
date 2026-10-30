@@ -70,6 +70,8 @@ import app.wakeme.ui.grants.GrantEditorScreen
 import app.wakeme.ui.messages.ConversationScreen
 import app.wakeme.ui.onboarding.InviteScreen
 import app.wakeme.ui.onboarding.ProfileScreen
+import app.wakeme.config.AppConfig
+import app.wakeme.ui.onboarding.GoogleSignInButton
 import app.wakeme.ui.onboarding.SignInScreen
 import app.wakeme.ui.onboarding.WelcomeScreen
 import app.wakeme.ui.paywall.PaywallScreen
@@ -95,7 +97,8 @@ fun WakeMeRoot(app: AppViewModel) {
                 CircularProgressIndicator(Modifier.size(24.dp), color = WM.colors.accentText, strokeWidth = 2.5.dp)
             }
         }
-        Gate.Welcome -> Readable { WelcomeScreen(onInvite = app::chooseInviteFlow, onSelf = app::chooseSelfSetup) }
+        Gate.Welcome -> Readable { WelcomeScreen(onInvite = app::chooseInviteFlow, onSelf = app::chooseSelfSetup,
+            signInAction = if (AppConfig.googleServerClientId.isNotBlank()) { { GoogleSignInButton(app) } } else null) }
         Gate.SignIn -> Readable { SignInScreen(app) }
         Gate.Profile -> Readable { ProfileScreen(onCreate = app::createProfile) }
         is Gate.Invite -> Readable { InviteScreen(g.preview, onAccept = { app.acceptInvite(g.token) }, onDecline = app::declineInvite) }

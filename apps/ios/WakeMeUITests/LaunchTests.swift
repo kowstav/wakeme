@@ -98,9 +98,9 @@ final class LaunchTests: XCTestCase {
     @MainActor
     func testWelcomeShowsBothRoutes() throws {
         let app = launch()
-        XCTAssertTrue(app.buttons["I have an invite"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["Sign in"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.buttons["Set up my own wake-up"].exists)
-        XCTAssertTrue(app.buttons["Play preview"].exists)
+        XCTAssertFalse(app.buttons["Play preview"].exists)
         shot(app, "01-welcome")
     }
 
@@ -187,7 +187,7 @@ final class LaunchTests: XCTestCase {
         try must(app.staticTexts["Ready on this phone"].waitForExistence(timeout: 10), "AlarmKit armed it on this phone")
         shot(app, "09-guest-wake-up")
         // Friends need an account; the wake-up moves to it.
-        let signIn = app.buttons["Sign in to add friends"]
+        let signIn = app.buttons["Sign in"]
         for _ in 0..<3 where !signIn.isHittable { app.swipeUp() }
         signIn.tap()
 

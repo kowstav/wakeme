@@ -21,6 +21,7 @@ import app.wakeme.data.net.PlanVersionDto
 import app.wakeme.data.net.PublicUser
 import app.wakeme.data.net.TemplateDto
 import app.wakeme.data.local.ScheduledAlarmEntity
+import app.wakeme.designsystem.GoogleAuthButton
 import app.wakeme.designsystem.Readable
 import app.wakeme.designsystem.WMIcon
 import app.wakeme.designsystem.WakeMeTheme
@@ -152,4 +153,4 @@ fun ChallengesTab() = Shell(2) {
 @PreviewTest
 @FormFactorPreviews
 @Composable
-fun Welcome() = WakeMeTheme { Readable { WelcomeScreen(onInvite = {}, onSelf = {}) } }
+fun Welcome() = WakeMeTheme { Readable { WelcomeScreen(onInvite = {}, onSelf = {}, signInAction = { GoogleAuthButton(onClick = {}) }) } }

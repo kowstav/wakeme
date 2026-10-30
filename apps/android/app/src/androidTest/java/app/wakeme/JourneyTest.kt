@@ -74,7 +74,7 @@ class JourneyTest {
         waitFor("Scheduled", timeout = 30_000)
         DeviceEvidence.screenshot("26-guest-wake-up")
         // Friends need an account; the wake-up moves to it.
-        tap("Sign in to add friends")
+        tap("Sign in")
         tap("Use a local test account (debug build)")
         waitFor("Display name")
         compose.onNodeWithText("Display name").performTextInput("Sam")
@@ -82,7 +82,7 @@ class JourneyTest {
         DeviceEvidence.screenshot("20-profile")
         tap("Continue")
 
-        tap("Invite a friend", timeout = 30_000)
+        tap("Invite", timeout = 30_000)
         waitFor("Share your invite")
         val dialog = compose.onAllNodes(hasText("type this code", substring = true)).fetchSemanticsNodes().first()
         val text = dialog.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()

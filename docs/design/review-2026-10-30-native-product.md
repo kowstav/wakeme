@@ -59,3 +59,11 @@ The new design must make the account route clear without fabricating functional 
 ## Acceptance
 
 Required: open/save/cancel/reopen local editors; save another routine; preserve earlier alarms; verify Android 13 plus the existing 16/17 journeys; review native phone/dark/large-text renders; verify iOS compile and UI journeys. Owner acceptance on the Android 13 handset remains necessary for touch feel, audio and subjective visual quality. Full product completion still includes the provider, physical QA and release gates in docs 01–04 and 06.
+
+## Owner steering and artwork implementation
+
+The owner confirms that Google sign-in succeeds on the Android 13 handset and the four tabs appear. This is an owner-observed sign-in outcome; session refresh and the wider physical delivery matrix remain separate checks. The owner also requests a clear Google entry on the first screen, removal of Play preview, less explanatory copy and more purposeful background imagery. Those instructions supersede the older two-choice welcome hierarchy.
+
+The welcome now launches the existing Credential Manager flow directly through an official-brand Google action, with account-free alarm setup and other sign-in options alongside it. iOS retains its platform-appropriate account entry. Startup tests assert the explicit sign-in action and absence of Play preview. Two original transparent illustrations (morning and connection) are bundled locally on both platforms. Native gradients supply light/dark surfaces; artwork is decorative, with real state, permissions and actions remaining accessible native controls. Long account explanations and repeated Friends availability badges are removed.
+
+The alarm fix passed android-device #107 on APIs 33, 36 and 37, and ios #59 before the final artwork/welcome additions. New-source validation is required for those additions. General CI exposed an existing date-sensitive deletion test: its API fixture was fixed at 19 October while outbox eligibility uses the database calendar. The test now snapshots PostgreSQL time, still asserts exactly seven days and retains both before/after deletion checks. The local account suite passes all five cases.

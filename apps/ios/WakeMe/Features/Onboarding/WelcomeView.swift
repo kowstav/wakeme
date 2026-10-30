@@ -1,11 +1,6 @@
 import SwiftUI
 
-/// Doc 03 §5 step 1, laid out like the reference apps' welcome: a picture of the idea (a huddle of
-/// friends, each a cartoon animal), a condensed capital headline, and the two ways in pinned where
-/// a thumb reaches them, lime first. Each face plays its own call on this phone when tapped, and
-/// "Play preview" plays the quack, the default: the sounds explain themselves, so nothing else is
-/// said. The blocks arrive with a short stagger the first time; with Reduce Motion they are simply
-/// there.
+/// Clear account entry and an account-free alarm, with a decorative morning illustration.
 struct WelcomeView: View {
     let onInvite: () -> Void
     let onSelfSetup: () -> Void
@@ -14,12 +9,11 @@ struct WelcomeView: View {
         GeometryReader { space in
             ScrollView {
                 VStack(spacing: WMSpacing.lg) {
-                    FriendHuddle()
+                    Text("WakeMe").font(WMFont.section).foregroundStyle(WMColor.brandInk)
+                    Image("WakeMorning").resizable().scaledToFit().frame(height: min(360, max(180, space.size.height - 220))).accessibilityHidden(true)
                         .wmEntrance(0)
-                    DisplayText("Alert your friends. Wake each other up.", alignment: .center)
+                    DisplayText("Better mornings.\nTogether.", alignment: .center)
                         .wmEntrance(1)
-                    PillButton(title: "Play preview", icon: .speaker) { SoundPreview.shared.play() }
-                        .wmEntrance(2)
                 }
                 .padding(.horizontal, WMLayout.screenMargin)
                 .padding(.vertical, WMSpacing.lg)
@@ -32,7 +26,7 @@ struct WelcomeView: View {
         // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: WMLayout.controlGap) {
-                PrimaryButton(title: "I have an invite", icon: .ticket, action: onInvite)
+                PrimaryButton(title: "Sign in", icon: .personPlus, action: onInvite)
                 SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
             }
             .padding(.horizontal, WMLayout.screenMargin)

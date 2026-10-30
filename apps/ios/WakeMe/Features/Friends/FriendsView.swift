@@ -28,14 +28,17 @@ struct FriendsView: View {
                 NextAlarmHero(fireAt: nextAlarm.fireAt, label: nextAlarm.label).bentoRow()
             }
             BentoRow {
-                BentoTile(title: "Invite a friend", icon: .personPlus, family: WMPalette.lime, supporting: "Send a private link") { Task { await createInvite() } }
-                BentoTile(title: "Join with a code", icon: .ticket, family: WMPalette.sky, supporting: "From a friend's invite") { joining = true }
+                SecondaryButton(title: "Invite", icon: .personPlus) { Task { await createInvite() } }.accessibilityLabel("Invite a friend")
+                SecondaryButton(title: "Join", icon: .ticket) { joining = true }.accessibilityLabel("Join with a code")
             }
             .bentoRow()
             Group {
                 if loaded && friends.isEmpty {
                     Section {
-                        EmptyState(title: "Invite someone you trust")
+                        VStack {
+                            Image("WakeConnection").resizable().scaledToFit().frame(height: 240).accessibilityHidden(true)
+                            Text("Your people, closer.").font(WMFont.section).foregroundStyle(WMColor.textPrimary)
+                        }.frame(maxWidth: .infinity)
                     }
                 }
                 if !friends.isEmpty {

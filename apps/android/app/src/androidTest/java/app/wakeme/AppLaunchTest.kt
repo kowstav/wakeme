@@ -24,14 +24,13 @@ class AppLaunchTest {
 
     @Test
     fun welcomeScreenShowsBothRoutes() {
-        compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("I have an invite")).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Sign in")).fetchSemanticsNodes().isNotEmpty() }
         DeviceEvidence.screenshot("01-welcome")
-        // The two routes are pinned at the bottom (always visible); the preview is in the scrolling
-        // story, so small screens scroll to it. Each must be visible.
-        for (label in listOf("I have an invite", "Set up my own wake-up")) {
+        // The two routes are pinned at the bottom (always visible); sign-in is explicit, with no audio-preview detour.
+        for (label in listOf("Sign in", "Set up my own wake-up")) {
             compose.onNodeWithText(label).assertIsDisplayed()
         }
-        compose.onNodeWithText("Play preview").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Play preview").assertDoesNotExist()
     }
 
     /** Doc 03 §5 step 2: a personal wake-up needs no account; signing in is for friends. */
@@ -44,8 +43,8 @@ class AppLaunchTest {
             compose.waitUntil(10_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Your wake-ups")).fetchSemanticsNodes().isNotEmpty() }
             DeviceEvidence.screenshot("02-guest-home")
             // The list composes only what is on screen: scroll it to the button first.
-            compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Sign in to add friends"))
-            compose.onNodeWithText("Sign in to add friends").performClick()
+            compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Sign in"))
+            compose.onNodeWithText("Sign in").performClick()
             compose.waitUntil(10_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Save your connection")).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Save your connection").assertIsDisplayed()
             DeviceEvidence.screenshot("02-sign-in")

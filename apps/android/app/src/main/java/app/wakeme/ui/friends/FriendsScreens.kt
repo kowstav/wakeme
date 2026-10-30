@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -59,6 +62,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
+import app.wakeme.designsystem.ConnectionArtwork
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.CardTitle
 import app.wakeme.designsystem.DeliveryTrailView
@@ -173,13 +177,16 @@ fun FriendsList(
         s.nextAlarm?.let { next -> fullWidth { NextAlarmHero(next.fireAt, next.label, s.readinessIssue, onFixReadiness) } }
         fullWidth {
             BentoRow {
-                SecondaryButton("Invite a friend", onClick = onInvite, modifier = Modifier.weight(1f), icon = WMIcon.PersonPlus)
-                SecondaryButton("Join with a code", onClick = { joining = true }, modifier = Modifier.weight(1f), icon = WMIcon.Ticket)
+                SecondaryButton("Invite", onClick = onInvite, modifier = Modifier.weight(1f).semantics { contentDescription = "Invite a friend" }, icon = WMIcon.PersonPlus)
+                SecondaryButton("Join", onClick = { joining = true }, modifier = Modifier.weight(1f).semantics { contentDescription = "Join with a code" }, icon = WMIcon.Ticket)
             }
         }
         if (!s.loading && s.friends.isEmpty()) {
             fullWidth {
-                EmptyState(title = "Invite someone you trust")
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    ConnectionArtwork(Modifier.fillMaxWidth().height(240.dp))
+                    Text("Your people, closer.", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
+                }
             }
         }
         if (s.friends.isNotEmpty() && !notificationsOn) {
@@ -292,8 +299,6 @@ private fun FriendCard(f: FriendDto, modifier: Modifier = Modifier, onOpen: () -
             }
             WMIconView(WMIcon.ChevronRight, tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
         }
-        if (quack?.availableNow == true) StatusPill("Quack available now", Tone.Success, icon = WMIcon.Quack)
-        else if (quack?.granted == true) StatusPill(reasonText(name, quack.reason), Tone.Neutral, icon = WMIcon.Clock)
     }
 }
 

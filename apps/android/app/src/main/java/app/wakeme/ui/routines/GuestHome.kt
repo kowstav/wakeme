@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -95,13 +96,7 @@ fun GuestAlarmContent(
                         color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
                 }
             }
-            if (state.routines.isEmpty()) fullWidth {
-                HeroCard {
-                    WMIconView(WMIcon.Sun, tint = WM.colors.onHero, size = WakeMeTokens.iconSizeLarge)
-                    Text("A better morning\nstarts tonight.", style = MaterialTheme.typography.headlineLarge, color = WM.colors.onHero)
-                    Text("Choose a time. Make it yours.", style = MaterialTheme.typography.bodyLarge, color = WM.colors.onHeroSecondary)
-                }
-            }
+            fullWidth { MorningArtwork(Modifier.fillMaxWidth().height(if (state.routines.isEmpty()) 240.dp else 180.dp)) }
             items(state.routines, key = { it.first.planId }) { (routine, armed) ->
                 WMCard {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
@@ -119,18 +114,21 @@ fun GuestAlarmContent(
                 WMCard(onClick = onReady) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                         IconChip(WMIcon.Phone, WM.palette.lime)
-                        Text("Make this phone ready", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                        Text("Check permissions", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                         WMIconView(WMIcon.ChevronRight, tint = WM.colors.textSecondary)
                     }
                 }
             }
             fullWidth {
                 Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-                    Gap(WakeMeTokens.spaceSm)
-                    Text("Better together", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
-                    Supporting("Friends, shared wake-ups, challenges and check-ins live in your account.")
-                    SecondaryButton("Sign in to add friends", onClick = onSignIn, icon = WMIcon.Friends)
-                    Supporting("Your personal alarms stay on this phone.")
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                        ConnectionArtwork(Modifier.size(96.dp))
+                        Column {
+                            Text("Better together", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
+                            Supporting("Friends \u00b7 Challenges \u00b7 Check-ins")
+                        }
+                    }
+                    SecondaryButton("Sign in", onClick = onSignIn, icon = WMIcon.Friends)
                 }
             }
             fullWidth { Gap() }
