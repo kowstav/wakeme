@@ -121,6 +121,7 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit, signInAction: (@Comp
                     drawRect(Brush.verticalGradient(listOf(surface.copy(alpha = 0f), surface), startY = size.height - fade, endY = size.height), topLeft = Offset(0f, size.height - fade), size = Size(size.width, fade))
                 },
         ) {
+        val artworkHeight = (maxHeight - 220.dp).coerceIn(180.dp, 360.dp)
         // Centred in the space above the actions; at large text sizes it simply scrolls.
         Column(
             Modifier
@@ -131,7 +132,7 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit, signInAction: (@Comp
             verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceLg, Alignment.CenterVertically),
         ) {
             Text("WakeMe", style = MaterialTheme.typography.titleLarge, color = WM.colors.brandInk, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            Entrance(0) { MorningArtwork(Modifier.fillMaxWidth().height((maxHeight - 220.dp).coerceIn(180.dp, 360.dp))) }
+            Entrance(0) { MorningArtwork(Modifier.fillMaxWidth().height(artworkHeight)) }
             Entrance(1) {
                 DisplayText("Better mornings.\nTogether.", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
