@@ -48,9 +48,10 @@ struct GuestView: View {
                     Section {
                         HStack(spacing: WMSpacing.sm) {
                             IconChip(icon: .friends, family: WMPalette.sky)
-                            Text("Wake each other up").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                            Text("Better together").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         }
                         .accessibilityElement(children: .combine)
+                        Text("Friends, shared wake-ups, challenges and check-ins live in your account.").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
                         SecondaryButton(title: "Sign in to add friends", icon: .personPlus) { app.signInFromGuest() }
                     }
                 }

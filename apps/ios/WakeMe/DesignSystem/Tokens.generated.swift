@@ -95,26 +95,26 @@ enum WMSize {
 /// Semantic type roles. Each follows Dynamic Type through its text style; roles with a fixed
 /// design size (iosSize) are for views that scale it with @ScaledMetric(relativeTo:).
 enum WMFont {
-    /// Hero headline on welcome and celebration screens, in capitals
-    static var display: Font { .system(size: 46, weight: .black).width(.condensed) }
+    /// Welcome and celebration headline, sentence case
+    static var display: Font { .system(size: 36, weight: .bold) }
     /// Alarm clock face
     static var alarmTime: Font { .system(size: 80, weight: .bold) }
     /// Routine time on heroes, detail and editor
-    static var timeDisplay: Font { .system(size: 60, weight: .bold) }
+    static var timeDisplay: Font { .system(size: 56, weight: .medium) }
     /// Routine time on cards and lists
-    static var timeInline: Font { .largeTitle.weight(.bold) }
+    static var timeInline: Font { .largeTitle.weight(.medium) }
     /// Large headings on full-screen states
-    static var hero: Font { .largeTitle.weight(.bold) }
+    static var hero: Font { .largeTitle.weight(.semibold) }
     /// Top of a screen
-    static var screenTitle: Font { .largeTitle.weight(.bold) }
+    static var screenTitle: Font { .largeTitle.weight(.semibold) }
     /// Alarm label, challenge title, question
     static var prominent: Font { .title2.weight(.bold) }
     /// Header between groups (outside cards); large alarm button labels
-    static var section: Font { .title2.weight(.bold) }
+    static var section: Font { .title2.weight(.semibold) }
     /// Card and list-row titles, button labels
     static var cardTitle: Font { .headline.weight(.semibold) }
     /// Bento tile titles
-    static var tileTitle: Font { .callout.weight(.bold) }
+    static var tileTitle: Font { .callout.weight(.semibold) }
     /// Label above a group of form controls; small section headers
     static var fieldLabel: Font { .subheadline.weight(.semibold) }
     /// Paragraphs and sentences

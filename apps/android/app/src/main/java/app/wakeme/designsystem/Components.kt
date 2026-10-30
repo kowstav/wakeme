@@ -46,6 +46,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -538,15 +540,13 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: (@Compos
 }
 
 /**
- * The hero headline: condensed, heavy and in capitals (tokens: type.roles.display), in forest by
+ * The hero headline: sentence case and system typography (tokens: type.roles.display), in forest by
  * day and lime by night. TalkBack reads the sentence as written, not letter by letter.
  */
 @Composable
 fun DisplayText(text: String, modifier: Modifier = Modifier, color: Color = WM.colors.brandInk, textAlign: TextAlign = TextAlign.Start) {
-    // The configuration's locale, so a language change recomposes the capitals (lint: NonObservableLocale).
-    val locale = LocalConfiguration.current.locales[0]
     Text(
-        text.uppercase(locale),
+        text,
         style = DisplayStyle,
         color = color,
         textAlign = textAlign,
@@ -816,5 +816,22 @@ fun EmptyState(title: String, body: String? = null, modifier: Modifier = Modifie
             }
         }
         action?.invoke()
+    }
+}
+
+
+/** Keep uncommon settings available without filling the first screen with choices. */
+@Composable
+fun DisclosureGroup(label: String, summary: String, content: @Composable ColumnScope.() -> Unit) {
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(label) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth()) {
+        TextButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = WakeMeTokens.buttonHeight)) {
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                Text(label, style = MaterialTheme.typography.titleMedium)
+                Text(summary, style = MaterialTheme.typography.bodyMedium, color = WM.colors.textSecondary)
+            }
+            Text(if (expanded) "Hide" else "Edit", style = MaterialTheme.typography.labelLarge)
+        }
+        if (expanded) Column(Modifier.padding(WakeMeTokens.spaceSm), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd), content = content)
     }
 }

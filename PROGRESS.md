@@ -1,6 +1,13 @@
 # Wake Me — progress
 
-Last updated: 2026-10-24. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+Last updated: 2026-10-30. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. No production release. The owner has installed the staging build on Android 13; full physical-device verification is still open.
+
+## Android 13 owner report and native hierarchy refresh (2026-10-30, Codex)
+
+- The owner reports a second local-alarm editor immediately closing on a real Android 13 phone, and confirms they only see the guest screen. This is a physical report, not yet an on-device verification by Codex. The guest editor retained an activity-scoped completed ViewModel; it now gets navigation-entry ownership.
+- Simplified guest home/readiness, exposed the account-feature boundary, reduced friend-list repetition, moved uncommon editor options behind disclosure, and refined shared native typography. Design research, selected GitHub skills, source-by-source limitations and feature completion boundaries are in docs/design/review-2026-10-30-native-product.md.
+- Added Android 13 to the native CI matrix, a real second-editor journey assertion and guest light/dark/large-text previews. App version code 2 / 0.1.1 is reserved for this update. Native validation is in progress; no new build or complete visual acceptance is claimed yet.
+- Staging API and Supabase were provisioned and verified separately; a human Google session, worker/push, billing/media providers and physical release checks remain open. Preserve the protected local signing key and private deployment files outside source control.
 
 ## Widget taps lost to a WorkManager package change (2026-10-24, Claude)
 

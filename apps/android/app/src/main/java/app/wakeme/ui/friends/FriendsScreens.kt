@@ -173,8 +173,8 @@ fun FriendsList(
         s.nextAlarm?.let { next -> fullWidth { NextAlarmHero(next.fireAt, next.label, s.readinessIssue, onFixReadiness) } }
         fullWidth {
             BentoRow {
-                BentoTile("Invite a friend", WMIcon.PersonPlus, palette.lime, onClick = onInvite, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "Send a private link")
-                BentoTile("Join with a code", WMIcon.Ticket, palette.sky, onClick = { joining = true }, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "From a friend's invite")
+                SecondaryButton("Invite a friend", onClick = onInvite, modifier = Modifier.weight(1f), icon = WMIcon.PersonPlus)
+                SecondaryButton("Join with a code", onClick = { joining = true }, modifier = Modifier.weight(1f), icon = WMIcon.Ticket)
             }
         }
         if (!s.loading && s.friends.isEmpty()) {
@@ -283,7 +283,12 @@ private fun FriendCard(f: FriendDto, modifier: Modifier = Modifier, onOpen: () -
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(name, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 val allowed = f.theyAllowMe?.capabilities.orEmpty()
-                Supporting(if (allowed.isEmpty()) "$name hasn't allowed anything yet." else "You can " + wordList(allowed.map(::capabilityLabelForThem)) + ".")
+                Supporting(when {
+                    quack?.availableNow == true -> "Quack available now"
+                    quack?.granted == true -> reasonText(name, quack.reason)
+                    allowed.isEmpty() -> "Choose what you share"
+                    else -> "Open for shared actions"
+                })
             }
             WMIconView(WMIcon.ChevronRight, tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
         }

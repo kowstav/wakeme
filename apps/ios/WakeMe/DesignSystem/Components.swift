@@ -322,7 +322,7 @@ struct HeroCard<Content: View>: View {
 struct DisplayText: View {
     let text: String
     let alignment: TextAlignment
-    @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 46
+    @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 36
 
     init(_ text: String, alignment: TextAlignment = .leading) {
         self.text = text
@@ -331,8 +331,7 @@ struct DisplayText: View {
 
     var body: some View {
         Text(text)
-            .textCase(.uppercase)
-            .font(.system(size: min(size, 46 * 1.3), weight: .black).width(.condensed))
+            .font(.system(size: min(size, 36 * 1.3), weight: .bold))
             .foregroundStyle(WMColor.brandInk)
             .multilineTextAlignment(alignment)
             .minimumScaleFactor(0.7)

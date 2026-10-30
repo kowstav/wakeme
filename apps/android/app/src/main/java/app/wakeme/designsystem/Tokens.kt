@@ -303,26 +303,26 @@ object WakeMeTokens {
 
 /** Semantic type roles (sp, so they follow font scale). Figures are tabular in every role. */
 object WakeMeType {
-    /** Hero headline on welcome and celebration screens, in capitals */
-    val display = TextStyle(fontSize = 44.sp, lineHeight = 42.sp, fontWeight = FontWeight.W800, letterSpacing = -0.44.sp, fontFeatureSettings = "tnum", fontFamily = CondensedFontFamily)
+    /** Welcome and celebration headline, sentence case */
+    val display = TextStyle(fontSize = 36.sp, lineHeight = 42.sp, fontWeight = FontWeight.W700, letterSpacing = -0.36.sp, fontFeatureSettings = "tnum")
     /** Alarm clock face */
     val alarmTime = TextStyle(fontSize = 80.sp, lineHeight = 84.sp, fontWeight = FontWeight.W700, letterSpacing = -1.60.sp, fontFeatureSettings = "tnum")
     /** Routine time on heroes, detail and editor */
-    val timeDisplay = TextStyle(fontSize = 60.sp, lineHeight = 64.sp, fontWeight = FontWeight.W700, letterSpacing = -1.20.sp, fontFeatureSettings = "tnum")
+    val timeDisplay = TextStyle(fontSize = 56.sp, lineHeight = 62.sp, fontWeight = FontWeight.W500, letterSpacing = -1.12.sp, fontFeatureSettings = "tnum")
     /** Routine time on cards and lists */
-    val timeInline = TextStyle(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.W700, letterSpacing = -0.34.sp, fontFeatureSettings = "tnum")
+    val timeInline = TextStyle(fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.W500, letterSpacing = -0.32.sp, fontFeatureSettings = "tnum")
     /** Large headings on full-screen states */
-    val hero = TextStyle(fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.W700, letterSpacing = -0.48.sp, fontFeatureSettings = "tnum")
+    val hero = TextStyle(fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.W600, letterSpacing = -0.45.sp, fontFeatureSettings = "tnum")
     /** Top of a screen */
-    val screenTitle = TextStyle(fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.W700, letterSpacing = -0.60.sp, fontFeatureSettings = "tnum")
+    val screenTitle = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.W600, letterSpacing = -0.56.sp, fontFeatureSettings = "tnum")
     /** Alarm label, challenge title, question */
     val prominent = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.W700, letterSpacing = -0.24.sp, fontFeatureSettings = "tnum")
     /** Header between groups (outside cards); large alarm button labels */
-    val section = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.W700, letterSpacing = -0.22.sp, fontFeatureSettings = "tnum")
+    val section = TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.W600, letterSpacing = -0.20.sp, fontFeatureSettings = "tnum")
     /** Card and list-row titles, button labels */
     val cardTitle = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.W600, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum")
     /** Bento tile titles */
-    val tileTitle = TextStyle(fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.W700, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum")
+    val tileTitle = TextStyle(fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.W600, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum")
     /** Label above a group of form controls; small section headers */
     val fieldLabel = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.W600, letterSpacing = 0.10.sp, fontFeatureSettings = "tnum")
     /** Paragraphs and sentences */

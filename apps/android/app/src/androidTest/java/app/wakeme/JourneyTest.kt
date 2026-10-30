@@ -2,6 +2,7 @@ package app.wakeme
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -52,8 +53,18 @@ class JourneyTest {
         tap("New wake-up")
         DeviceEvidence.screenshot("25-new-wake-up")
         tap("Save wake-up")
-        waitFor("07:00 · Weekdays", timeout = 30_000) // the guest list, not the editor
-        waitFor("Ready on this phone", timeout = 30_000)
+        waitFor("07:00", timeout = 30_000)
+        waitFor("Weekdays", timeout = 30_000)
+        waitFor("Scheduled", timeout = 30_000)
+        // Regression: a completed activity-scoped editor used to close this second editor at once.
+        tap("New wake-up")
+        waitFor("Name (optional)")
+        waitFor("Save wake-up")
+        compose.waitForIdle()
+        compose.onNodeWithText("Save wake-up").performScrollTo().assertIsDisplayed()
+        DeviceEvidence.screenshot("26-second-guest-editor")
+        tap("Cancel")
+        waitFor("Scheduled", timeout = 30_000)
         DeviceEvidence.screenshot("26-guest-wake-up")
         // Friends need an account; the wake-up moves to it.
         tap("Sign in to add friends")
@@ -203,6 +214,7 @@ class JourneyTest {
 
         tap("Routines")
         tap("New wake-up")
+        tap("More options")
         tap("Study")
         waitFor("18:00", substring = true)
         tap("Save wake-up")

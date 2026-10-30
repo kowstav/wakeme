@@ -1,49 +1,27 @@
 package app.wakeme.ui.routines
 
-import app.wakeme.designsystem.WMIcon
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.padding
-import app.wakeme.designsystem.AdaptiveList
-import app.wakeme.designsystem.Readable
-import app.wakeme.designsystem.fullWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
 import app.wakeme.alarm.LocalRoutines
 import app.wakeme.core.InstalledRoutine
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.ui.Alignment
-import app.wakeme.designsystem.CardTitle
-import app.wakeme.designsystem.EmptyState
-import app.wakeme.designsystem.Gap
-import app.wakeme.designsystem.IconChip
-import app.wakeme.designsystem.Supporting
-import app.wakeme.designsystem.PrimaryButton
-import app.wakeme.designsystem.QuietButton
-import app.wakeme.designsystem.SecondaryButton
-import app.wakeme.designsystem.StatusPill
-import app.wakeme.designsystem.Tone
-import app.wakeme.designsystem.WM
-import app.wakeme.designsystem.WMCard
-import app.wakeme.designsystem.WakeMeTokens
-import app.wakeme.ui.readiness.ReadinessSection
+import app.wakeme.designsystem.*
+import app.wakeme.ui.Route
+import app.wakeme.ui.readiness.ReadyScreen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,64 +34,112 @@ data class GuestState(val routines: List<Pair<InstalledRoutine, Boolean>> = empt
 class GuestViewModel @Inject constructor(private val local: LocalRoutines) : ViewModel() {
     private val _s = MutableStateFlow(GuestState())
     val state: StateFlow<GuestState> = _s
-
-    init {
-        viewModelScope.launch {
-            local.routines.collect { _s.value = GuestState(it) }
-        }
-    }
-
+    init { viewModelScope.launch { local.routines.collect { _s.value = GuestState(it) } } }
     fun delete(planId: String) = viewModelScope.launch { local.delete(planId) }
 }
 
-/**
- * Personal wake-ups without an account (doc 02 §9, doc 03 §5 step 2): make this phone ready,
- * set wake-ups that live only here, and sign in when friends should help. Nothing here needs
- * the network.
- */
+/** Local alarms remain account-free. Each editor has its own navigation-owned ViewModel. */
 @Composable
 fun GuestHome(onSignIn: () -> Unit, vm: GuestViewModel = hiltViewModel()) {
     val s by vm.state.collectAsState()
-    var editing by remember { mutableStateOf(false) }
-    if (editing) {
-        Readable { RoutineEditorScreen(ownerId = null, onDone = { editing = false }, guest = true) }
-        return
-    }
-    // Outside the main Scaffold: keep the list clear of the system bars and keyboard itself.
-    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.asPaddingValues()) {
-        fullWidth {
-            Gap()
-            Text("Your wake-ups", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-        }
-        if (s.routines.isEmpty()) {
-            fullWidth { EmptyState("No wake-ups yet") }
-        }
-        items(s.routines, key = { it.first.planId }) { (r, armed) ->
-            val (icon, family) = timeOfDay(r.localTime)
-            WMCard {
-                Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.Top) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                        Text("${r.localTime} · ${daysText(r.recurrence)}", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
-                        if (r.label.isNotBlank()) Supporting(r.label)
-                        if (armed) StatusPill("Ready on this phone", Tone.Success, icon = WMIcon.CheckCircle)
-                        else StatusPill("Not scheduled: allow “Alarms & reminders” below", Tone.Warning, icon = WMIcon.Warning)
+    val stack = rememberNavBackStack(Route.Routines)
+    val close: () -> Unit = { if (stack.size > 1) stack.removeLastOrNull() }
+    NavDisplay(
+        backStack = stack,
+        onBack = close,
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
+        entryProvider = entryProvider<NavKey> {
+            entry<Route.Routines> {
+                GuestAlarmContent(s, onNew = { stack.add(Route.RoutineNew()) },
+                    onReady = { stack.add(Route.Ready) }, onSignIn = onSignIn, onDelete = { vm.delete(it) })
+            }
+            entry<Route.RoutineNew> {
+                Readable { RoutineEditorScreen(ownerId = null, guest = true, onDone = close) }
+            }
+            entry<Route.Ready> {
+                Readable { ReadyScreen(onContinue = close, continueLabel = "Done", onSkip = close, onBack = close) }
+            }
+        },
+    )
+}
+
+/** A quiet, task-first local home; setup and account features are deliberate destinations. */
+@Composable
+fun GuestAlarmContent(
+    state: GuestState,
+    onNew: () -> Unit,
+    onReady: () -> Unit,
+    onSignIn: () -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    var deleting by remember { mutableStateOf<String?>(null) }
+    Scaffold(
+        containerColor = WM.colors.surface,
+        contentWindowInsets = WindowInsets.safeDrawing,
+        bottomBar = {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                PrimaryButton("New wake-up", onClick = onNew, icon = WMIcon.Plus,
+                    modifier = Modifier.widthIn(max = ReadableWidth).navigationBarsPadding().padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceSm))
+            }
+        },
+    ) { padding ->
+        AdaptiveList(Modifier.padding(padding).consumeWindowInsets(padding).padding(horizontal = WakeMeTokens.spaceMd)) {
+            fullWidth {
+                Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                    Gap(WakeMeTokens.spaceSm)
+                    Supporting("ON THIS PHONE")
+                    Text("Your wake-ups", style = MaterialTheme.typography.headlineMedium,
+                        color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+                }
+            }
+            if (state.routines.isEmpty()) fullWidth {
+                HeroCard {
+                    WMIconView(WMIcon.Sun, tint = WM.colors.onHero, size = WakeMeTokens.iconSizeLarge)
+                    Text("A better morning\nstarts tonight.", style = MaterialTheme.typography.headlineLarge, color = WM.colors.onHero)
+                    Text("Choose a time. Make it yours.", style = MaterialTheme.typography.bodyLarge, color = WM.colors.onHeroSecondary)
+                }
+            }
+            items(state.routines, key = { it.first.planId }) { (routine, armed) ->
+                WMCard {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                            Text(routine.localTime, style = MaterialTheme.typography.displaySmall, color = WM.colors.textPrimary)
+                            Supporting(daysText(routine.recurrence) + if (routine.label.isBlank()) "" else " · ${routine.label}")
+                            StatusPill(if (armed) "Scheduled" else "Needs alarm access", if (armed) Tone.Success else Tone.Warning,
+                                icon = if (armed) WMIcon.CheckCircle else WMIcon.Warning)
+                        }
+                        RoundIconButton(WMIcon.Trash, "Delete this wake-up", onClick = { deleting = routine.planId })
                     }
-                    IconChip(icon, family)
                 }
-                QuietButton("Delete this wake-up", onClick = { vm.delete(r.planId) }, icon = WMIcon.Trash)
             }
-        }
-        fullWidth { PrimaryButton("New wake-up", onClick = { editing = true }, icon = WMIcon.Plus) }
-        fullWidth { WMCard { ReadinessSection() } }
-        fullWidth {
-            WMCard {
-                Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
-                    IconChip(WMIcon.Friends, WM.palette.sky)
-                    CardTitle("Wake each other up", Modifier.weight(1f))
+            fullWidth {
+                WMCard(onClick = onReady) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                        IconChip(WMIcon.Phone, WM.palette.lime)
+                        Text("Make this phone ready", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                        WMIconView(WMIcon.ChevronRight, tint = WM.colors.textSecondary)
+                    }
                 }
-                SecondaryButton("Sign in to add friends", onClick = onSignIn, icon = WMIcon.PersonPlus)
             }
+            fullWidth {
+                Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                    Gap(WakeMeTokens.spaceSm)
+                    Text("Better together", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
+                    Supporting("Friends, shared wake-ups, challenges and check-ins live in your account.")
+                    SecondaryButton("Sign in to add friends", onClick = onSignIn, icon = WMIcon.Friends)
+                    Supporting("Your personal alarms stay on this phone.")
+                }
+            }
+            fullWidth { Gap() }
         }
-        fullWidth { Gap(WakeMeTokens.spaceXl) }
+    }
+    deleting?.let { id ->
+        AlertDialog(onDismissRequest = { deleting = null }, title = { Text("Delete this wake-up?") },
+            text = { Text("It will no longer ring on this phone.") },
+            confirmButton = { TextButton(onClick = { onDelete(id); deleting = null }) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Keep wake-up") } })
     }
 }
