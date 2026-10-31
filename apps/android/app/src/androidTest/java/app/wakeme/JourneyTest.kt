@@ -11,6 +11,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -63,7 +64,24 @@ class JourneyTest {
         waitFor("Save wake-up")
         compose.waitForIdle()
         compose.onNodeWithText("Save wake-up").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Name (optional)").performScrollTo().performTextInput("Second morning")
+        val nameField = compose.onNodeWithText("Name (optional)")
+        nameField.performScrollTo()
+        nameField.performTextInput("Second morning")
+        // The OS keyboard animates independently of Compose idleness. Finish that real
+        // entry with Done before scrolling Save into view; issue each action just once.
+        compose.waitUntil(5_000) {
+            compose.runOnIdle {
+                androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+            }
+        }
+        nameField.performImeAction()
+        compose.waitUntil(5_000) {
+            compose.runOnIdle {
+                androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == false
+            }
+        }
         DeviceEvidence.screenshot("26-second-guest-editor")
         tap("Save wake-up")
         waitFor("Weekdays · Second morning", timeout = 30_000)
@@ -108,7 +126,7 @@ class JourneyTest {
         // this phone reported to the server after AlarmManager armed the server version.
         waitFor("07:00", timeout = 30_000)
         // Same real routine card: its time and recurrence now occupy separate visual lines.
-        compose.onNode(hasText("07:00") and hasText("Weekdays", substring = true)).assertExists()
+        compose.onNode(hasText("07:00") and hasText("Weekdays")).assertExists()
         waitFor("Ready on this phone", timeout = 60_000)
         DeviceEvidence.screenshot("26b-moved-to-account")
 
@@ -229,8 +247,8 @@ class JourneyTest {
         waitFor("18:00", substring = true)
         tap("Save wake-up")
         waitInList("18:00")
-        compose.onNode(hasText("18:00") and hasText("Weekdays", substring = true)).assertExists()
-        tap("Study")
+        compose.onNode(hasText("18:00") and hasText("Weekdays · Study")).assertExists()
+        tap("Weekdays · Study")
         tap("Use this routine again")
         waitFor("Study")
         compose.activityRule.scenario.recreate()
@@ -252,8 +270,8 @@ class JourneyTest {
             .put("soundId", "bundled:rise.gentle").put("ringSeconds", 60))
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         tap("Routines")
-        waitInList("Buddy morning")
-        tap("Buddy morning")
+        waitInList("Weekdays · Buddy morning")
+        tap("Weekdays · Buddy morning")
         tap("Accept this version")
         waitFor("Active version")
         val conversationId = (0 until alexFriends.length()).map { alexFriends.getJSONObject(it) }
@@ -281,7 +299,7 @@ class JourneyTest {
         tap("Done")
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         tap("Routines")
-        tap("Study")
+        tap("Weekdays · Study")
         tap("End this routine")
         val ownApi = dagger.hilt.android.EntryPointAccessors.fromApplication(
             InstrumentationRegistry.getInstrumentation().targetContext.applicationContext,

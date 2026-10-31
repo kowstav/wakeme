@@ -1,3 +1,9 @@
+## Daylight native verification follow-up (2026-10-31, Codex)
+
+- Head 26ba0b7 passed general CI, the iOS simulator journey and all 49 Compose preview renders. All three Android emulator jobs passed their widget and real Focus shield/escape journeys, then failed the broader account/routine journey.
+- Android 16/17 reached account migration with both guest alarms intact; the newly split card assertion accidentally selected both 07:00 weekday alarms. Make the original blank-label card exact and navigate named cards by their visible recurrence/name metadata, retaining the same-card time checks.
+- Android 13 failure evidence shows the second editor with its keyboard open and Save below it; OS IME animation can race Compose idleness. The regression now waits for the real keyboard, invokes Done once, waits for it to close, then scrolls/taps Save once. Both saved alarms and the third-editor cancellation still have to pass.
+- The routine list now applies and consumes its remaining safe-drawing insets, including the bottom inset on rail/wide windows. Root top/horizontal consumption is retained. Local build/lint/renders and journey-source compilation passed; fresh source-matched native CI remains required before merge.
 # Wake Me — progress
 
 Last updated: 2026-10-30. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. No production release. The owner has installed the staging build on Android 13; full physical-device verification is still open.

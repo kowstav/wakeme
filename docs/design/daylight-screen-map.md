@@ -46,11 +46,11 @@ Rows marked shared treatment retain their working feature layout; the direct lay
 
 All token foreground/background checks and category-family contrast checks pass. Android's real alarm journey now verifies time and recurrence on the same merged routine card even though they occupy separate visual lines. iOS reads time and recurrence as one native accessibility phrase, with readiness still separate.
 
-Initial Android source, existing instrumented tests and all preview renders compiled successfully. The final candidate adds compact metadata, actual profile-overview previews, initials, increased-contrast variants and version 0.1.2 (3); its full staging build, unit/lint checks and renders are being verified. No fresh iOS compile or physical acceptance is claimed until recorded.
+Initial Android source, existing instrumented tests and all preview renders compiled successfully. The final candidate adds compact metadata, actual profile-overview previews, initials, increased-contrast variants and version 0.1.2 (3); its local staging build, unit/lint checks and renders passed. Commit 26ba0b7 also passed general CI and the full iOS simulator journey. Android account-journey follow-up is recorded below; physical acceptance remains open.
 
 ## Constraints retained
 
-Docs 01–04 and 06 still govern feasibility, trust, scheduling, consent, delivery and OS behavior. A prettier screen does not complete backend provider configuration, physical alarm/audio testing or store policy/release gates. The previously observed API 33 Focus binding flake remains a reliability gate, not a reason to relax the shield assertions.
+Docs 01–04 and 06 still govern feasibility, trust, scheduling, consent, delivery and OS behavior. A prettier screen does not complete backend provider configuration, physical alarm/audio testing or store policy/release gates. The earlier API 33 Focus binding failure was retained as a reliability gate. Commit 26ba0b7 passed the real Focus shield/escape journey on APIs 33, 36 and 37 without changing its assertions.
 
 ## Recorded local result
 
@@ -61,3 +61,9 @@ The final 0.1.2 (3) staging APK passed assembleDebug, lintDebug, compileDebugAnd
 The packaged APK's version, debug package and registered signing certificate were verified. Compiled staging API/Supabase/Google configuration and bundled Manrope were verified; superseded native 3D bitmaps are absent. The font's actual PostScript name, Manrope-ExtraLight, was read from its name table and used for iOS registration/SwiftUI font lookup, with semantic weights applied.
 
 The local review bundle contains the APK, a native contact sheet, all 49 renders and a filterable HTML gallery. These are Compose renders with fixtures, not physical-device or iOS screenshots. Fresh emulator/simulator CI is still required for this new source. No store upload or new physical Google-session result is claimed.
+
+## Source-matched CI follow-up
+
+At 26ba0b7, general CI and the iOS simulator journey passed; Android preview rendering passed. Each Android emulator passed widget repeats and the real Focus journey, then failed the broad account/routine journey. On APIs 36/37 an overly broad card matcher found both real 07:00 weekday alarms. API 33 evidence retained the second editor with the keyboard open and Save below it, during an OS IME transition outside Compose idleness.
+
+The focused follow-up makes the original card matcher exact, addresses named cards by their real compact metadata, and performs the keyboard's Done action once between bounded visible/hidden IME preconditions before Save. Data-preservation, same-card time/recurrence and third-editor cancellation assertions are retained. The routine list also applies/consumes the remaining safe-drawing inset for wide/rail layouts. Local app/lint/renders and final journey-source compilation passed. Fresh native CI is required before merge.

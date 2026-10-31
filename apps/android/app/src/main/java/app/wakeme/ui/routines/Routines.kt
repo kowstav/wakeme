@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -216,7 +217,7 @@ fun RoutinesScreen(onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: 
 fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: () -> Unit) {
     androidx.compose.material3.Scaffold(
         containerColor = WM.colors.surface,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        contentWindowInsets = WindowInsets.safeDrawing,
         floatingActionButton = {
             androidx.compose.material3.FloatingActionButton(
                 onClick = onNew,
@@ -228,7 +229,7 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
             }
         },
     ) { listInsets ->
-    AdaptiveList(Modifier.padding(listInsets).padding(horizontal = WakeMeTokens.spaceMd),
+    AdaptiveList(Modifier.padding(listInsets).consumeWindowInsets(listInsets).padding(horizontal = WakeMeTokens.spaceMd),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)) {
         fullWidth {
             Gap()
