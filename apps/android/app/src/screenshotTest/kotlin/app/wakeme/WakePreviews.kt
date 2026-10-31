@@ -11,7 +11,7 @@ import app.wakeme.core.ChallengeDefinition
 import app.wakeme.core.ChallengeStep
 import app.wakeme.core.Fallback
 import app.wakeme.core.WakeSessionState
-import app.wakeme.designsystem.PrimaryButton
+import app.wakeme.designsystem.SecondaryButton
 import app.wakeme.designsystem.WakeMeTheme
 import com.android.tools.screenshot.PreviewTest
 
@@ -43,7 +43,7 @@ fun WakeQuiz() = WakeMeTheme(dark = true) {
     ChallengeRunner(
         definition(ChallengeStep.MultipleChoice("q", "Which cafe do we call headquarters?", listOf("Bean House", "The long walk home", "The place by the library"), 0)),
         onComplete = {}, onEscape = {}, escapeLabel = "I need to stop",
-        controls = { PrimaryButton("Stop sound now", onClick = {}) },
+        controls = { SecondaryButton("Stop sound now", onClick = {}) },
     )
 }
 

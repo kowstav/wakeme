@@ -1,4 +1,4 @@
-> Current system: Daylight / tokens v4. [Screen map and reviewed references](daylight-screen-map.md) supersede the older Bloom palette, typography and artwork below. Historical notes remain for provenance.
+> Current system: Daylight, refined by first light / tokens v5. [The first light pass](unslop-2026-10-31.md) and ADR 0023 describe the latest changes. [Screen map and reviewed references](daylight-screen-map.md) supersede the older Bloom palette, typography and artwork below. Historical notes remain for provenance.
 
 # Bloom: the Wake Me design system
 

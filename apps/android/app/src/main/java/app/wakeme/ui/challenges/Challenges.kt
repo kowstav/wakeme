@@ -228,10 +228,10 @@ fun ChallengesList(
     canEdit: (ChallengeDto) -> Boolean,
     onEdit: (String) -> Unit,
 ) {
-    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues()) {
+    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.screenMargin), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues()) {
         fullWidth {
             Gap()
-            Text("Challenges", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+            Text("Challenges", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
         }
         // The screen's action leads; its one line of explanation sits under it.
         fullWidth {
@@ -257,7 +257,7 @@ fun ChallengesList(
                 }
             }
         }
-        // Templates are tried with one tap: petal tiles, two to a row, each its own colour.
+        // Templates are tried with one tap: quiet tiles, two to a row, told apart by their icons.
         if (s.templates.isNotEmpty()) fullWidth { SectionTitle("Start from a template") }
         s.templates.chunked(2).forEachIndexed { row, pair ->
             fullWidth {
@@ -274,15 +274,15 @@ fun ChallengesList(
     }
 }
 
-/** Each template tile its own icon and petal, in a fixed order (same order as iOS). */
+/** Each template tile its own icon and colour, in a fixed order (same order as iOS). */
 @Composable
 private fun templateLook(index: Int): Pair<WMIcon, WakeMeFamily> {
     val p = WM.palette
-    val looks = listOf(WMIcon.Sparkle to p.gold, WMIcon.Trophy to p.sky, WMIcon.Book to p.orchid, WMIcon.Focus to p.aqua, WMIcon.Dumbbell to p.apricot, WMIcon.Heart to p.periwinkle)
+    val looks = listOf(WMIcon.Sun to p.gold, WMIcon.Trophy to p.sky, WMIcon.Book to p.orchid, WMIcon.Focus to p.aqua, WMIcon.Dumbbell to p.apricot, WMIcon.Heart to p.periwinkle)
     return looks[index % looks.size]
 }
 
-/** A challenge's petal, stable for its id. */
+/** A challenge's colour, stable for its id. */
 @Composable
 private fun circleOrOwnFamily(id: String): WakeMeFamily {
     val all = WM.palette.avatars
@@ -308,7 +308,7 @@ private fun TryOut(c: ChallengeDto, def: ChallengeDefinition, vm: ChallengesView
         // Back (the bar or the system) leaves without publishing, as "Keep as draft" and "Done" do.
         BackHandler { vm.finishedTrying(publish = false) }
         DetailScreen(onBack = { vm.finishedTrying(publish = false) }) {
-            Text(def.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+            Text(def.title, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             val state by vm.state.collectAsState()
             Body(challengeAudience(c.circleId, state.circles))
             if (draft) {
@@ -368,7 +368,7 @@ fun ChallengeEditorScreen(onDone: () -> Unit, onUpgrade: () -> Unit, editId: Str
         return
     }
     DetailScreen(onBack = onDone) {
-        Text(if (editId != null) "Edit challenge" else "Create a challenge", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+        Text(if (editId != null) "Edit challenge" else "Create a challenge", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
         if (editId != null) {
             StatusPill("Version ${(editing?.latestRevision ?: 0) + 1}", Tone.Neutral, icon = WMIcon.Edit)
         } else FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {

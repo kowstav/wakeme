@@ -17,8 +17,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.wakeme.designsystem.AnswerButton
 import app.wakeme.designsystem.BentoRow
 import app.wakeme.designsystem.BentoTile
+import app.wakeme.designsystem.DawnScene
 import app.wakeme.designsystem.DisplayText
 import app.wakeme.designsystem.HeroCard
 import app.wakeme.designsystem.IconChip
@@ -29,6 +31,7 @@ import app.wakeme.designsystem.WMIcon
 import app.wakeme.designsystem.WMIconView
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.DeliveryTrailView
 import app.wakeme.designsystem.DuckMark
@@ -47,6 +50,7 @@ import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.QuietButton
 import app.wakeme.designsystem.SecondaryButton
 import app.wakeme.designsystem.StatusPill
+import app.wakeme.designsystem.TimeCard
 import app.wakeme.designsystem.Tone
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
@@ -57,7 +61,7 @@ import app.wakeme.ui.grants.TimeDisplay
 import com.android.tools.screenshot.PreviewTest
 
 /**
- * The Bloom design system (docs/design/system.md) on one sheet: the display headline, the duck,
+ * The Daylight design system (docs/design/system.md) on one sheet: the display headline, the duck,
  * avatars in their petal families, the icon set, quick actions, bento tiles, the hero, buttons
  * with icons, chips, status pills, the delivery trail in every evidence state, day toggles and the
  * time hero. Rendered in light, dark, increased contrast and at 2× font size by the CI previews job.
@@ -102,6 +106,12 @@ private fun Sheet() {
             Text("07:00", style = MaterialTheme.typography.displayMedium, color = c.onHero)
             Text("Tomorrow · Work days", style = MaterialTheme.typography.titleMedium, color = c.onHeroSecondary)
         }
+        DawnScene(Modifier.fillMaxWidth().height(200.dp))
+        TimeCard("06:15", listOf("Weekdays · Gym")) { StatusPill("Ready on this phone", Tone.Success, icon = WMIcon.CheckCircle) }
+        TimeCard("12:30", listOf("Sundays · Lunch with Maya")) { StatusPill("Waiting for you to accept", Tone.Info, icon = WMIcon.Info) }
+        TimeCard("18:40", listOf("Weekdays · Study")) { StatusPill("Saved · not yet confirmed on this phone", Tone.Warning, icon = WMIcon.Warning) }
+        TimeCard("23:10", listOf("Every day")) { StatusPill("Paused", Tone.Neutral) }
+        AnswerButton("The place by the library", onClick = {})
         BentoRow {
             BentoTile("Invite a friend", WMIcon.PersonPlus, p.lime, onClick = {}, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "Send a private link")
             BentoTile("Join with a code", WMIcon.Ticket, p.sky, onClick = {}, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "From a friend's invite")

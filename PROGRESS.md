@@ -8,7 +8,26 @@
 - The routine list now applies and consumes its remaining safe-drawing insets, including the bottom inset on rail/wide windows. Root top/horizontal consumption is retained. Local build/lint/renders and journey-source compilation passed; fresh source-matched native CI remains required before merge.
 # Wake Me — progress
 
-Last updated: 2026-10-30. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. No production release. The owner has installed the staging build on Android 13; full physical-device verification is still open.
+Last updated: 2026-10-31. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. No production release. The owner has installed the staging build on Android 13; full physical-device verification is still open.
+
+## First light: unslop pass over Daylight (2026-10-31, Claude)
+
+- **What changed** (audit, direction, coverage: [docs/design/unslop-2026-10-31.md](docs/design/unslop-2026-10-31.md); decision: ADR 0023): uncommitted on branch `design/unslop-polish`, cut from `origin/main` at `c376052`.
+  - Kept Daylight's palette, Manrope and structure. Tokens v5: hero lifted in dark mode, 52 tall buttons with a 14 radius, 20 radius cards, new hero and scene colours with contrast pairs.
+  - New signature on both apps: the dawn arc, a horizon with the sun or moon placed by the alarm's real time. The welcome scene is drawn in code, so both vector scenes left the apps.
+  - The welcome headline is the product's again: "Alert your friends. Wake each other up."
+  - `StatusPill` is a quiet line unless something needs action; tiles are raised surfaces with colour on the chip only.
+  - The alarm's controls are all in thumb reach, with finishing leading and silencing as a separate control. No behaviour changed.
+  - "End focus" is a neutral button on the shield and on Focus; it stays one tap away.
+  - **Bug fixed:** secondary buttons on white cards had no visible fill, on both platforms, since Daylight made cards white.
+  - One screen margin, sentence case, no Bold overrides, no sparkle icon, no trailing periods on short lines. iOS titles now use Manrope, not SF Pro Bold.
+- **Tests actually run** (Windows 11, Node 24.19.0, JDK 22 with JDK 17 toolchain, Android SDK platform 37.0 and build-tools 37.0.0 installed this session with the owner's approval):
+  - `generate.ts` and `--check` (0 contrast failures), secret scan (779 files, 0 findings), 2 tool tests, 119 policy tests.
+  - `:core:test` 28/28, `:app:testDebugUnitTest` 22/22, `:app:lintDebug` 0 errors, 71 warnings, 6 hints, `:app:assembleDebug`, `:app:compileDebugAndroidTestKotlin`, `:app:updateDebugScreenshotTest` (54 renders, 5 new). All passed.
+  - Two strings on the invite screen lost a trailing period after that run; the staging build covers that change.
+  - Renders reviewed at phone, small phone, foldable, tablet, desktop, dark and large text for the screens that have previews.
+- **Not run:** any iOS compile, unit, UI or screenshot job (no macOS here; the Swift was reviewed by hand and is unverified). Any instrumented or journey test (no emulator: virtualisation is unavailable on this PC). Any physical device. Dark, large-text and iOS renders of sign-in, friend page, circle, permissions, messages, routine detail and editor, challenge editor, readiness, Safety, Focus setup, voice sounds, paywall and wake thanks do not exist: those screens were reviewed in code and compiled only. Nobody has seen this on a phone.
+- **Next:** owner review of the board and the staging APK in `.local-tools/unslop`; commit; run CI so iOS compiles and the journeys run; review the emulator screenshots of the screens above.
 
 ## Full native Daylight redesign (2026-10-31, Codex)
 

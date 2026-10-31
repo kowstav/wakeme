@@ -28,7 +28,7 @@ struct WakeSessionView: View {
             } else if loaded {
                 ScrollView {
                     VStack(alignment: .leading, spacing: WMSpacing.md) {
-                        Text("Wake-up").font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary)
+                        Text("Wake-up").font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary)
                         Text("Nothing more to do.").foregroundStyle(WMColor.textSecondary)
                         PrimaryButton(title: "End this wake session") { finish("session_ended") }
                     }

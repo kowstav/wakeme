@@ -1,10 +1,14 @@
 import SwiftUI
 import WakeMeCore
 
-/// True inside a `WMCard` or tile: quiet controls (secondary buttons, icon buttons) sit on white
-/// there by day, and on the page's neutral grey everywhere else, so they never vanish into the
-/// card behind them.
+/// True inside a `WMCard` or tile: quiet controls (secondary buttons, icon buttons) take a fill that
+/// stands off the card there, so they never vanish into it.
 private struct OnCardKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+/// True on an ink card: a status there takes the light colours made for that surface.
+private struct OnHeroKey: EnvironmentKey {
     static let defaultValue = false
 }
 
@@ -13,19 +17,24 @@ extension EnvironmentValues {
         get { self[OnCardKey.self] }
         set { self[OnCardKey.self] = newValue }
     }
+
+    var wmOnHero: Bool {
+        get { self[OnHeroKey.self] }
+        set { self[OnHeroKey.self] = newValue }
+    }
 }
 
-/// The fill of a quiet control: card grey on the page, white on a card by day, a lighter tone by night.
+/// The fill of a quiet control: lavender on the page and on a white card by day, a lighter tone on a
+/// card by night.
 private func quietFill(onCard: Bool, scheme: ColorScheme) -> Color {
-    guard onCard else { return WMColor.surfaceNeutral }
-    return scheme == .dark ? WMColor.surfacePressed : WMColor.surfaceRaised
+    onCard && scheme == .dark ? WMColor.surfacePressed : WMColor.surfaceNeutral
 }
 
 /// `fill` while pressed: 8 % of the text colour over it, so every surface darkens (or lightens at
 /// night) the same way.
 private func pressed(_ fill: Color) -> Color { fill.mix(with: WMColor.textPrimary, by: 0.08) }
 
-/// A Bloom icon (packages/design-tokens/icons) in the current foreground style, scaled with
+/// A Wake Me icon (packages/design-tokens/icons) in the current foreground style, scaled with
 /// Dynamic Type. Always decorative: the words beside it, or the control's label, carry the meaning.
 struct WMIconImage: View {
     let icon: WMIcon
@@ -47,7 +56,7 @@ struct WMIconImage: View {
     }
 }
 
-/// An icon on a petal-coloured circle: rows, settings and tiles use these to tell things apart at a glance.
+/// An icon on a family-coloured circle: rows, settings and tiles use these to tell things apart at a glance.
 struct IconChip: View {
     let icon: WMIcon
     let family: WMFamily
@@ -75,8 +84,8 @@ private struct ButtonLabel: View {
     }
 }
 
-/// One clear primary action per screen: the lime capsule with forest ink, 56 pt tall with a 17 pt
-/// semibold label (both follow Dynamic Type). An `icon` leads the label where it adds recognition
+/// One clear primary action per screen: the violet fill, 52 pt tall with a semibold label (both
+/// follow Dynamic Type). An `icon` leads the label where it adds recognition
 /// (send, invite, add); the words stay. Pressing deepens the fill and settles the button slightly;
 /// with Reduce Motion only the fill changes.
 struct PrimaryButton: View {
@@ -101,9 +110,9 @@ struct PrimaryButton: View {
     }
 }
 
-/// A filled neutral capsule (the reference apps' "Sign in with Apple" button): grey on the page,
-/// white on a card. Same height and label as `PrimaryButton`, so paired actions line up and the
-/// lime fill alone says which one leads. Its words identify it, so it needs no outline.
+/// A filled neutral button in the quiet fill. Same height and label as `PrimaryButton`, so paired
+/// actions line up and the violet fill alone says which one leads. Its
+/// words identify it, so it needs no outline.
 struct SecondaryButton: View {
     let title: String
     var icon: WMIcon? = nil
@@ -140,15 +149,15 @@ struct DangerButton: View {
                 .padding(.horizontal, WMLayout.buttonPaddingX)
                 .padding(.vertical, WMSpacing.xs)
                 .frame(maxWidth: .infinity, minHeight: WMLayout.buttonHeight)
-                .background(WMColor.dangerFill, in: Capsule())
-                .contentShape(Capsule())
+                .background(WMColor.dangerFill, in: RoundedRectangle(cornerRadius: WMRadius.md, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: WMRadius.md, style: .continuous))
         }
         .buttonStyle(.plain)
     }
 }
 
-/// A compact pill (40 pt visual in a 44 pt target) for an inline action: an icon and a short label,
-/// sized to its words (the reference apps' "Invite" and "Play" pills). `primary` makes it lime.
+/// A compact button (40 pt visual in a 44 pt target) for an inline action: an icon and a short
+/// label, sized to its words. `primary` makes it violet.
 struct PillButton: View {
     let title: String
     var icon: WMIcon? = nil
@@ -170,6 +179,29 @@ struct PillButton: View {
         }
         .buttonStyle(WMPressStyle(fill: fill, pressedFill: primary ? WMColor.accentPressed : pressed(fill)))
         .frame(minHeight: WMSize.minTouchTarget)
+    }
+}
+
+/// One choice among a challenge's answers: the words start at the left, where a sleepy eye reads
+/// them first, and long answers wrap instead of shrinking.
+struct AnswerButton: View {
+    let title: String
+    let action: () -> Void
+    @Environment(\.wmOnCard) private var onCard
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let fill = quietFill(onCard: onCard, scheme: scheme)
+        Button(action: action) {
+            Text(title)
+                .font(WMFont.cardTitle)
+                .foregroundStyle(WMColor.textPrimary)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, WMSpacing.md)
+                .padding(.vertical, WMSpacing.sm)
+                .frame(maxWidth: .infinity, minHeight: WMLayout.buttonHeight, alignment: .leading)
+        }
+        .buttonStyle(WMPressStyle(fill: fill, pressedFill: pressed(fill)))
     }
 }
 
@@ -245,9 +277,9 @@ struct QuickAction: View {
     }
 }
 
-/// The inside of a bento tile: its icon top-left and its title at the bottom-left, on the family's
-/// fill (the reference apps' account and category tiles). Tiles of one kind take different
-/// families, like petals of one flower. Wrap it with `.buttonStyle(.tile(family))`, or use `BentoTile`.
+/// The inside of a bento tile: its icon top-left and its title at the bottom-left, on a plain raised
+/// surface. The family colours the icon's chip only, so a grid of tiles stays quiet around the
+/// screen's one bright thing. Wrap it with `.buttonStyle(.tile)`, or use `BentoTile`.
 struct BentoTileLabel: View {
     let title: String
     let icon: WMIcon
@@ -256,13 +288,10 @@ struct BentoTileLabel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WMSpacing.xxs) {
-            WMIconImage(icon)
-                .foregroundStyle(family.ink)
-                .frame(width: WMLayout.iconChip, height: WMLayout.iconChip)
-                .background(family.ink.opacity(0.12), in: Circle())
+            IconChip(icon: icon, family: family)
             Spacer(minLength: WMSpacing.sm)
-            Text(title).font(WMFont.tileTitle).foregroundStyle(family.ink).multilineTextAlignment(.leading)
-            if let supporting { Text(supporting).font(WMFont.supporting).foregroundStyle(family.ink).multilineTextAlignment(.leading) }
+            Text(title).font(WMFont.tileTitle).foregroundStyle(WMColor.textPrimary).multilineTextAlignment(.leading)
+            if let supporting { Text(supporting).font(WMFont.supporting).foregroundStyle(WMColor.textSecondary).multilineTextAlignment(.leading) }
         }
         .padding(WMLayout.cardPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -290,35 +319,35 @@ struct BentoTile: View {
 
     var body: some View {
         Button(action: action) { BentoTileLabel(title: title, icon: icon, family: family, supporting: supporting) }
-            .buttonStyle(.tile(family))
+            .buttonStyle(.tile)
             .accessibilityLabel(title)
             .accessibilityHint(supporting ?? "")
     }
 }
 
 extension ButtonStyle where Self == WMPressStyle {
-    /// A tile's press: its own fill, a touch of its ink while pressed, the tile's corners.
-    static func tile(_ family: WMFamily) -> WMPressStyle {
-        WMPressStyle(fill: family.fill, pressedFill: family.fill.mix(with: family.ink, by: 0.1), shape: AnyShape(RoundedRectangle(cornerRadius: WMRadius.lg, style: .continuous)))
+    /// A tile's press: the raised surface, a touch of text colour while pressed, the tile's corners.
+    static var tile: WMPressStyle {
+        WMPressStyle(fill: WMColor.surfaceRaised, pressedFill: pressed(WMColor.surfaceRaised), shape: AnyShape(RoundedRectangle(cornerRadius: WMRadius.lg, style: .continuous)))
     }
 }
 
-/// The forest hero card (Bloom's one dark-green surface): the next alarm, a routine's time. Text
-/// on it uses `onHero` (lime) and `onHeroSecondary`.
+/// The ink card: the night sky behind a time. It holds the next alarm, a routine's time and who you
+/// are. Text on it uses `onHero` and `onHeroSecondary`; a `StatusPill` adapts by itself.
 struct HeroCard<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: WMSpacing.xs) { content }
+            .environment(\.wmOnHero, true)
             .padding(WMLayout.heroPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(WMColor.heroFill, in: RoundedRectangle(cornerRadius: WMRadius.lg, style: .continuous))
     }
 }
 
-/// The hero headline: SF Pro Condensed Black in capitals (tokens: type.roles.display), in forest by
-/// day and lime by night. It grows with Dynamic Type up to 1.3×; VoiceOver reads the sentence as
-/// written, not letter by letter.
+/// The hero headline in sentence case (tokens: type.roles.display). It grows with Dynamic Type up to
+/// 1.3×; VoiceOver reads the sentence as written.
 struct DisplayText: View {
     let text: String
     let alignment: TextAlignment
@@ -331,7 +360,7 @@ struct DisplayText: View {
 
     var body: some View {
         Text(text)
-            .font(.custom("Manrope-ExtraLight", size: min(size, 34 * 1.3), relativeTo: .largeTitle).weight(.semibold))
+            .font(.custom("Manrope-ExtraLight", size: min(size, 34 * 1.3), relativeTo: .largeTitle).weight(.medium))
             .foregroundStyle(WMColor.brandInk)
             .multilineTextAlignment(alignment)
             .minimumScaleFactor(0.7)
@@ -341,8 +370,8 @@ struct DisplayText: View {
 }
 
 extension View {
-    /// Rows of a grouped list on Bloom's white page: each group takes the card grey, and quiet
-    /// controls inside switch to white so they stay visible. Apply to a `Group` of sections.
+    /// Rows of a grouped list on the lavender page: each group takes the raised surface, and quiet
+    /// controls inside switch to it so they stay visible. Apply to a `Group` of sections.
     func cardRows() -> some View {
         listRowBackground(WMColor.surfaceRaised)
             .environment(\.wmOnCard, true)
@@ -357,8 +386,8 @@ extension View {
     }
 }
 
-/// A flat card: neutral grey on the white page by day, a lighter tonal surface by night; no border,
-/// no shadow (every reviewed app separates cards by fill alone).
+/// A flat card: white on the lavender page by day, a lighter tonal surface by night; no border, no
+/// shadow.
 struct WMCard<Content: View>: View {
     var fill: Color = WMColor.surfaceRaised
     @ViewBuilder let content: Content
@@ -374,14 +403,23 @@ struct WMCard<Content: View>: View {
 
 enum Tone { case neutral, info, success, warning, danger }
 
-/// Status is always words plus a dot (or an icon), never colour alone. The tinted pill makes the
-/// tone visible at a glance; a change crossfades (no movement). With `announce`, VoiceOver speaks
-/// changes, for statuses that change while the person waits (delivery, readiness).
+/// Status is always words plus a dot (or an icon), never colour alone. A status that is fine stays
+/// a quiet line; only a warning or a problem gets a tinted block, so the eye goes where something
+/// needs doing. A change crossfades (no movement). With `announce`, VoiceOver speaks changes, for
+/// statuses that change while the person waits (delivery, readiness).
 struct StatusPill: View {
     let text: String
     var tone: Tone = .neutral
     var announce = false
     var icon: WMIcon? = nil
+    @Environment(\.wmOnHero) private var onHero
+
+    private var flagged: Bool {
+        switch tone {
+        case .warning, .danger: return true
+        case .neutral, .info, .success: return false
+        }
+    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -390,12 +428,12 @@ struct StatusPill: View {
             } else {
                 Circle().fill(dot).frame(width: 8, height: 8).accessibilityHidden(true)
             }
-            Text(text).font(WMFont.label).foregroundStyle(WMColor.textPrimary)
+            Text(text).font(WMFont.label).foregroundStyle(onHero ? WMColor.onHero : WMColor.textPrimary)
                 .contentTransition(.opacity)
         }
-        .padding(.horizontal, WMLayout.statusPillPaddingX)
-        .padding(.vertical, WMLayout.statusPillPaddingY)
-        .background(fill, in: Capsule())
+        .padding(.horizontal, flagged ? WMLayout.statusPillPaddingX : 0)
+        .padding(.vertical, flagged ? WMLayout.statusPillPaddingY : 0)
+        .background(flagged ? fill : Color.clear, in: RoundedRectangle(cornerRadius: WMRadius.sm, style: .continuous))
         .animation(WMMotion.standard, value: text)
         .onChange(of: text) { _, new in
             if announce { UIAccessibility.post(notification: .announcement, argument: new) }
@@ -406,23 +444,25 @@ struct StatusPill: View {
     }
 
     private var dot: Color {
+        if onHero {
+            switch tone {
+            case .success: return WMColor.onHeroSuccess
+            case .warning, .danger: return WMColor.onHeroWarning
+            case .neutral, .info: return WMColor.onHeroMuted
+            }
+        }
         switch tone {
-        case .neutral: WMColor.textSecondary
-        case .info: WMColor.info
-        case .success: WMColor.success
-        case .warning: WMColor.warning
-        case .danger: WMColor.danger
+        case .neutral: return WMColor.textSecondary
+        case .info: return WMColor.info
+        case .success: return WMColor.success
+        case .warning: return WMColor.warning
+        case .danger: return WMColor.danger
         }
     }
 
     private var fill: Color {
-        switch tone {
-        case .neutral: WMColor.textPrimary.opacity(0.08)
-        case .info: WMColor.infoContainer
-        case .success: WMColor.successContainer
-        case .warning: WMColor.warningContainer
-        case .danger: WMColor.dangerContainer
-        }
+        if onHero { return WMColor.onHero.opacity(0.1) }
+        return tone == .danger ? WMColor.dangerContainer : WMColor.warningContainer
     }
 }
 
@@ -473,17 +513,6 @@ func familyFor(_ key: String, offset: Int = 0) -> WMFamily {
     let hash = key.utf16.reduce(Int32(0)) { $0 &* 31 &+ Int32($1) }
     let shifted = Int(hash) + offset
     return families[((shifted % families.count) + families.count) % families.count]
-}
-
-/// A routine's time of day as an icon in its own petal colour: mornings a gold sun, afternoons an
-/// apricot sun, evenings and nights a periwinkle moon. Decorative; the time itself is the text.
-func timeOfDay(_ localTime: String) -> (icon: WMIcon, family: WMFamily) {
-    let hour = Int(localTime.prefix(while: { $0 != ":" })) ?? 7
-    switch hour {
-    case 4...11: return (.sun, WMPalette.gold)
-    case 12...16: return (.sun, WMPalette.apricot)
-    default: return (.moon, WMPalette.periwinkle)
-    }
 }
 
 /// Sent → reached their phone → seen (quack) / rang (wake alarm), as three icon stops on a track

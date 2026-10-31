@@ -7,6 +7,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -61,7 +63,7 @@ class WakeThanksViewModel @Inject constructor(private val api: WakeMeApi, privat
 fun WakeThanksScreen(kind: String, id: String, onDone: () -> Unit, vm: WakeThanksViewModel = hiltViewModel()) {
     LaunchedEffect(kind, id) { vm.load(kind, id) }
     DetailScreen(onBack = onDone) {
-        Text("A little thanks", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
+        Text("A little thanks", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
         Body(vm.message)
         vm.friend?.takeUnless { vm.sent }?.let { friend ->
             WMCard { Body("To ${friend.user.displayName}"); Body("Thanks, ${friend.user.displayName} 🦆") }

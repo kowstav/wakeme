@@ -19,8 +19,8 @@ struct FriendsView: View {
     @Namespace private var friendZoom
 
     var body: some View {
-        // A white page with grey groups (rows take the card grey), a forest hero and petal tiles:
-        // the Bloom home. It stays a List for pull to refresh, native rows and VoiceOver order.
+        // A lavender page with white groups and the ink next-alarm card. It stays a List for pull to
+        // refresh, native rows and VoiceOver order.
         List {
             if app.offline { StatusPill(text: "Offline · showing nothing new. Your alarms still work.", tone: .warning, icon: .warning).bentoRow() }
             // Doc 03 §3: home shows the next alarm on this phone and, at most, one readiness issue.
@@ -36,7 +36,7 @@ struct FriendsView: View {
                 if loaded && friends.isEmpty {
                     Section {
                         VStack {
-                            Image("WakeOrbit").resizable().scaledToFit().frame(height: 240).accessibilityHidden(true)
+                            FriendHuddle()
                             Text("Your people, closer.").font(WMFont.section).foregroundStyle(WMColor.textPrimary)
                         }.frame(maxWidth: .infinity)
                     }
@@ -126,7 +126,7 @@ struct FriendsView: View {
         guard let p = pendingInvite else { return "" }
         if p.ownInvite { return "This is your own invite. Share it with a friend." }
         if p.alreadyConnected { return "You're already connected." }
-        return p.kind == "circle" ? "" : "Next, you choose what they can do."
+        return p.kind == "circle" ? "" : "Next, you choose what they can do"
     }
 
     /// Doc 03 §5 step 4: say who invited you, and what accepting means, before anything happens.
@@ -175,13 +175,11 @@ struct InviteInput: Equatable {
     }
 }
 
-/// The next alarm on this phone as the home's hero: lime time on forest, the day and label under
-/// it, and the one readiness problem that would stop it ringing, with the way to fix it.
+/// The next alarm on this phone as the home's hero: the time and where it sits in the day, the day
+/// and label under it, and the one readiness problem that would stop it ringing, with the fix.
 private struct NextAlarmHero: View {
     let fireAt: Date
     let label: String
-    @ScaledMetric(relativeTo: .largeTitle) private var timeSize: CGFloat = 60
-
     init(fireAt: Date, label: String) {
         self.fireAt = fireAt
         self.label = label
@@ -195,10 +193,16 @@ private struct NextAlarmHero: View {
                 Text("Next alarm on this phone").font(WMFont.label)
             }
             .foregroundStyle(WMColor.onHeroSecondary)
-            Text(parts.last ?? "")
-                .font(.system(size: min(timeSize, 60 * 1.5), weight: .bold))
-                .monospacedDigit()
-                .foregroundStyle(WMColor.onHero)
+            HStack(alignment: .bottom) {
+                Text(parts.last ?? "")
+                    .font(WMFont.timeDisplay)
+                    .monospacedDigit()
+                    .foregroundStyle(WMColor.onHero)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                Spacer(minLength: WMSpacing.sm)
+                DawnArc(localTime: parts.last ?? "", width: WMLayout.dawnArcHeroWidth, height: WMLayout.dawnArcHeroHeight)
+            }
             Text((parts.first ?? "") + (label.isEmpty ? "" : " · \(label)"))
                 .font(WMFont.cardTitle)
                 .foregroundStyle(WMColor.onHeroSecondary)
@@ -273,7 +277,7 @@ struct FriendDetailView: View {
                     // centred on the same axis under them.
                     VStack(spacing: WMSpacing.sm) {
                         FriendAvatar(name: name, key: f.user.id, size: 96)
-                        Text(name).font(.title.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                        Text(name).font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                         quickActions(f).padding(.top, WMSpacing.xs)
                     }
                     .frame(maxWidth: .infinity)

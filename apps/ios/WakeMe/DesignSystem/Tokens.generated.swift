@@ -20,9 +20,18 @@ enum WMColor {
     static let onAccentContainer = Color(light: 0x302470, dark: 0xE1DAFF)
     static let accentText = Color(light: 0x4835A1, dark: 0xD0C6FF, lightHighContrast: 0x302470, darkHighContrast: 0xE3DCFF)
     static let brandInk = Color(light: 0x29233F, dark: 0xD0C6FF, lightHighContrast: 0x211A37, darkHighContrast: 0xE3DCFF)
-    static let heroFill = Color(light: 0x292833, dark: 0x242330)
+    static let heroFill = Color(light: 0x292833, dark: 0x2C2A45)
     static let onHero = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
     static let onHeroSecondary = Color(light: 0xDDD9EF, dark: 0xDDD9EF)
+    static let onHeroLine = Color(light: 0x6E6C86, dark: 0x7C7A9C)
+    static let onHeroSuccess = Color(light: 0xB5ECA0, dark: 0xB5ECA0)
+    static let onHeroWarning = Color(light: 0xFFD09A, dark: 0xFFD09A)
+    static let onHeroMuted = Color(light: 0xBDBAD2, dark: 0xBDBAD2)
+    static let sun = Color(light: 0xFFB56B, dark: 0xFFB56B)
+    static let moon = Color(light: 0xD9D3FF, dark: 0xD9D3FF)
+    static let hillFar = Color(light: 0xC9C2F7, dark: 0x3F3A6E)
+    static let hillNear = Color(light: 0x7A6CE0, dark: 0x5B50CE)
+    static let hillFront = Color(light: 0x4B40B5, dark: 0x332C72)
     static let info = Color(light: 0x2A5E98, dark: 0x95D3E2)
     static let infoContainer = Color(light: 0xDEEFF3, dark: 0x1E3A41)
     static let success = Color(light: 0x2F5711, dark: 0x9FE870)
@@ -80,8 +89,8 @@ enum WMSpacing {
 
 enum WMRadius {
     static let sm: CGFloat = 10
-    static let md: CGFloat = 16
-    static let lg: CGFloat = 22
+    static let md: CGFloat = 14
+    static let lg: CGFloat = 20
     static let xl: CGFloat = 28
     static let pill: CGFloat = 999
 }
@@ -89,16 +98,16 @@ enum WMRadius {
 enum WMSize {
     static let minTouchTarget: CGFloat = 44
     static let alarmControl: CGFloat = 72
-    static let controlHeight: CGFloat = 56
+    static let controlHeight: CGFloat = 52
 }
 
 /// Semantic type roles. Each follows Dynamic Type through its text style; roles with a fixed
 /// design size (iosSize) are for views that scale it with @ScaledMetric(relativeTo:).
 enum WMFont {
     /// Welcome and celebration headline, sentence case
-    static var display: Font { .custom("Manrope-ExtraLight", size: 34, relativeTo: .largeTitle).weight(.semibold) }
+    static var display: Font { .custom("Manrope-ExtraLight", size: 34, relativeTo: .largeTitle).weight(.medium) }
     /// Alarm clock face
-    static var alarmTime: Font { .custom("Manrope-ExtraLight", size: 80, relativeTo: .largeTitle).weight(.bold) }
+    static var alarmTime: Font { .custom("Manrope-ExtraLight", size: 80, relativeTo: .largeTitle).weight(.semibold) }
     /// Routine time on heroes, detail and editor
     static var timeDisplay: Font { .custom("Manrope-ExtraLight", size: 56, relativeTo: .largeTitle).weight(.regular) }
     /// Routine time on cards and lists
@@ -108,7 +117,7 @@ enum WMFont {
     /// Top of a screen
     static var screenTitle: Font { .custom("Manrope-ExtraLight", size: 28, relativeTo: .largeTitle).weight(.semibold) }
     /// Alarm label, challenge title, question
-    static var prominent: Font { .custom("Manrope-ExtraLight", size: 24, relativeTo: .title2).weight(.bold) }
+    static var prominent: Font { .custom("Manrope-ExtraLight", size: 24, relativeTo: .title2).weight(.semibold) }
     /// Header between groups (outside cards); large alarm button labels
     static var section: Font { .custom("Manrope-ExtraLight", size: 19, relativeTo: .title2).weight(.semibold) }
     /// Card and list-row titles, button labels
@@ -141,9 +150,9 @@ enum WMLayout {
     static let controlGap: CGFloat = 12
     static let sectionGap: CGFloat = 28
     static let sectionTopExtra: CGFloat = 8
-    static let buttonHeight: CGFloat = 56
+    static let buttonHeight: CGFloat = 52
     static let alarmButtonHeight: CGFloat = 72
-    static let buttonPaddingX: CGFloat = 24
+    static let buttonPaddingX: CGFloat = 20
     static let compactControlHeight: CGFloat = 40
     static let chipHeight: CGFloat = 36
     static let iconButtonVisual: CGFloat = 44
@@ -154,10 +163,15 @@ enum WMLayout {
     static let iconSizeLarge: CGFloat = 28
     static let avatarRow: CGFloat = 44
     static let avatarHeader: CGFloat = 72
-    static let tileMinHeight: CGFloat = 128
+    static let tileMinHeight: CGFloat = 104
     static let statusPillPaddingX: CGFloat = 12
     static let statusPillPaddingY: CGFloat = 6
     static let dayToggleMax: CGFloat = 44
+    static let dawnArcWidth: CGFloat = 96
+    static let dawnArcHeight: CGFloat = 52
+    static let dawnArcHeroWidth: CGFloat = 132
+    static let dawnArcHeroHeight: CGFloat = 72
+    static let statusDot: CGFloat = 8
 }
 
 enum WMOpacity {

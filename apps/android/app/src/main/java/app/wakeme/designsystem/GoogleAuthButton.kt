@@ -31,8 +31,8 @@ fun GoogleAuthButton(onClick: () -> Unit) {
     val fill = if (dark) Color(0xFF131314) else Color.White
     val ink = if (dark) Color(0xFFE3E3E3) else Color(0xFF1F1F1F)
     val stroke = if (dark) Color(0xFF8E918F) else Color(0xFF747775)
-    OutlinedButton(onClick, modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp),
-        shape = RoundedCornerShape(28.dp), border = BorderStroke(1.dp, stroke),
+    OutlinedButton(onClick, modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = WakeMeTokens.buttonHeight),
+        shape = RoundedCornerShape(WakeMeTokens.radiusMd), border = BorderStroke(1.dp, stroke),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = fill, contentColor = ink),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)) {
         Image(painterResource(R.drawable.google_g), contentDescription = null, modifier = Modifier.size(20.dp))

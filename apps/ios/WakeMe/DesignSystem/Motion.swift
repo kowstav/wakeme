@@ -36,7 +36,7 @@ enum WMHaptic {
 struct WMPressStyle: ButtonStyle {
     var fill: Color = .clear
     var pressedFill: Color = .clear
-    var shape: AnyShape = AnyShape(Capsule())
+    var shape: AnyShape = AnyShape(RoundedRectangle(cornerRadius: WMRadius.md, style: .continuous))
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {

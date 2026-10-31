@@ -16,12 +16,18 @@ struct GuestView: View {
                 Group {
                     if routines.isEmpty {
                         Section {
-                            Image("WakeDaylight").resizable().scaledToFit().frame(height: 220).accessibilityHidden(true)
+                            HeroCard {
+                                HStack(alignment: .bottom) {
+                                    Text("No wake-ups yet").font(WMFont.section).foregroundStyle(WMColor.onHero).accessibilityAddTraits(.isHeader)
+                                    Spacer(minLength: WMSpacing.sm)
+                                    DawnArc(localTime: "07:00", width: WMLayout.dawnArcHeroWidth, height: WMLayout.dawnArcHeroHeight)
+                                }
+                            }
+                            .bentoRow()
                         }
                     } else {
                         Section("On this phone") {
                             ForEach(routines, id: \.planId) { r in
-                                let tod = timeOfDay(r.localTime)
                                 HeroCard {
                                 HStack(alignment: .top, spacing: WMSpacing.sm) {
                                     VStack(alignment: .leading, spacing: WMSpacing.xs) {
@@ -34,7 +40,7 @@ struct GuestView: View {
                                         }
                                     }
                                     Spacer(minLength: 0)
-                                    IconChip(icon: tod.icon, family: tod.family)
+                                    DawnArc(localTime: r.localTime)
                                 }
                                 }
                                 .swipeActions { Button("Delete", role: .destructive) { LocalRoutines.shared.delete(r.planId); reload() } }
@@ -50,10 +56,9 @@ struct GuestView: View {
                     Section {
                         HStack(spacing: WMSpacing.sm) {
                             IconChip(icon: .friends, family: WMPalette.sky)
-                            Text("Better together").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                            Text("Friends, challenges and check-ins").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         }
                         .accessibilityElement(children: .combine)
-                        Text("Friends \u{00b7} Challenges \u{00b7} Check-ins").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
                         SecondaryButton(title: "Sign in", icon: .personPlus) { app.signInFromGuest() }
                     }
                 }

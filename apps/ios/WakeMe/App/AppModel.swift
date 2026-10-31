@@ -246,13 +246,13 @@ func statusText(_ displayStatus: String) -> String {
 /// Why an action isn't available, in words that don't blame or reveal private settings.
 func reasonText(_ name: String, _ reason: String?) -> String {
     switch reason {
-    case "capability_not_granted": "\(name) hasn't turned this on for you."
-    case "grant_paused": "\(name) has paused requests from you."
-    case "outside_allowed_window": "It's outside the hours \(name) chose."
-    case "quiet_hours": "It's \(name)'s quiet time."
-    case "recipient_paused": "\(name) isn't taking requests right now."
-    case "recipient_not_ready": "\(name)'s phone isn't set up for this yet."
-    case "feature_disabled": "This is temporarily unavailable."
-    default: "Not available right now."
+    case "capability_not_granted": "\(name) hasn't turned this on for you"
+    case "grant_paused": "\(name) has paused requests from you"
+    case "outside_allowed_window": "It's outside the hours \(name) chose"
+    case "quiet_hours": "It's \(name)'s quiet time"
+    case "recipient_paused": "\(name) isn't taking requests right now"
+    case "recipient_not_ready": "\(name)'s phone isn't set up for this yet"
+    case "feature_disabled": "This is temporarily unavailable"
+    default: "Not available right now"
     }
 }

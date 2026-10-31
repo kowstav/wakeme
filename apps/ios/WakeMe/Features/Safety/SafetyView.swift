@@ -106,7 +106,7 @@ struct SafetyView: View {
 
     @ViewBuilder private func mySession(_ s: SafetySessionDTO) -> some View {
         VStack(alignment: .leading, spacing: WMSpacing.sm) {
-            Text(title(s.purpose)).font(.title3.bold()).foregroundStyle(WMColor.textPrimary)
+            Text(title(s.purpose)).font(WMFont.section).foregroundStyle(WMColor.textPrimary)
             let viewers = s.viewers.filter { !$0.revoked }.map(\.displayName)
             Text("Visible to \(viewers.isEmpty ? "nobody (all viewers removed)" : viewers.joined(separator: ", ")) until \(time(s.endsAt)).")
                 .foregroundStyle(WMColor.textPrimary)
@@ -149,7 +149,7 @@ struct SafetyView: View {
         VStack(alignment: .leading, spacing: WMSpacing.sm) {
             let name = s.owner.displayName
             Text(s.purpose == "sos" ? "SOS from \(name)" : s.purpose == "checkin" ? "\(name)'s check-in" : "\(name) is sharing location")
-                .font(.title3.bold()).foregroundStyle(WMColor.textPrimary)
+                .font(WMFont.section).foregroundStyle(WMColor.textPrimary)
             if let note = s.message { Text("“\(note)”").foregroundStyle(WMColor.textPrimary) }
             Text("Until \(time(s.endsAt))").foregroundStyle(WMColor.textSecondary)
             if s.purpose == "checkin" {

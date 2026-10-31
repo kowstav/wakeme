@@ -1,40 +1,50 @@
 import SwiftUI
 
-/// Clear account entry and an account-free alarm, with a decorative morning illustration.
+/// The headline on the empty sky, the sun coming up behind the hills, and the two ways in on a
+/// panel the hills run under. The scene gives its height back as text grows, and the whole page
+/// scrolls on short windows.
 struct WelcomeView: View {
     let onInvite: () -> Void
     let onSelfSetup: () -> Void
 
-    @ScaledMetric(relativeTo: .body) private var actionReserve: CGFloat = 390
+    @ScaledMetric(relativeTo: .body) private var reserve: CGFloat = 340
 
     var body: some View {
         GeometryReader { space in
+            let inset = space.safeAreaInsets.bottom
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Your morning.\nYour rhythm.")
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: WMSpacing.xs) {
+                        Text("Alert your friends.\nWake each other up.")
                             .font(WMFont.display).foregroundStyle(WMColor.textPrimary)
                             .accessibilityAddTraits(.isHeader)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("A little nudge. A better day.")
+                        Text("You decide what each friend can do")
                             .font(WMFont.body).foregroundStyle(WMColor.textSecondary)
                     }
-                    Spacer(minLength: 24)
-                    Image("WakeDaylight").resizable().scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: min(280, max(100, space.size.height - actionReserve)))
-                        .accessibilityHidden(true)
-                    Spacer(minLength: 24)
-                    VStack(spacing: 16) {
+                    .padding(.horizontal, WMLayout.screenMargin)
+                    .padding(.top, WMSpacing.lg)
+                    .frame(maxWidth: WMLayout.readableWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+                    Spacer(minLength: WMSpacing.md)
+                    DawnScene()
+                        .frame(height: min(480, max(140, space.size.height - reserve)))
+                        .clipped()
+                        .padding(.bottom, -WMRadius.xl)
+                    VStack(spacing: WMSpacing.sm) {
                         PrimaryButton(title: "Sign in", icon: .personPlus, action: onInvite)
                         SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
                     }
+                    .padding(.horizontal, WMLayout.screenMargin)
+                    .padding(.top, WMSpacing.lg)
+                    .padding(.bottom, WMSpacing.md + inset)
+                    .frame(maxWidth: WMLayout.readableWidth)
+                    .frame(maxWidth: .infinity)
+                    .background(WMColor.surfaceRaised, in: UnevenRoundedRectangle(topLeadingRadius: WMRadius.xl, topTrailingRadius: WMRadius.xl, style: .continuous))
                 }
-                .frame(minHeight: max(0, space.size.height - 48), alignment: .top)
-                .padding(24)
-                .frame(maxWidth: WMLayout.readableWidth, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .top)
+                .frame(minHeight: space.size.height + inset)
             }
+            .ignoresSafeArea(.container, edges: .bottom)
             .background(WMColor.surface)
         }
     }

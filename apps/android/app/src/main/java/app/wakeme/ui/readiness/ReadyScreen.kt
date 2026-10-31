@@ -163,7 +163,7 @@ fun ReadyScreen(onContinue: () -> Unit, continueLabel: String = "Set my first wa
     val s by vm.state.collectAsState()
     // Opened from Routines it is a pushed screen with a back bar; during setup it has none.
     DetailScreen(onBack = onBack) {
-        Text("Let's make sure your alarm rings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+        Text("Let's make sure your alarm rings", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
         // Two steps (the required permissions, then hearing it once); the bar fills as each is done.
         StepProgress(total = 2, done = if (!s.readiness.readyForWake) 0 else if (!s.testPlayed) 1 else 2)
         WMCard { ReadinessSection(vm, showTitle = false) }

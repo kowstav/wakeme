@@ -97,8 +97,8 @@ fun WakeMeRoot(app: AppViewModel) {
                 CircularProgressIndicator(Modifier.size(24.dp), color = WM.colors.accentText, strokeWidth = 2.5.dp)
             }
         }
-        Gate.Welcome -> Readable { WelcomeScreen(onInvite = app::chooseInviteFlow, onSelf = app::chooseSelfSetup,
-            signInAction = if (AppConfig.googleServerClientId.isNotBlank()) { { GoogleSignInButton(app) } } else null) }
+        Gate.Welcome -> WelcomeScreen(onInvite = app::chooseInviteFlow, onSelf = app::chooseSelfSetup,
+            signInAction = if (AppConfig.googleServerClientId.isNotBlank()) { { GoogleSignInButton(app) } } else null)
         Gate.SignIn -> Readable { SignInScreen(app) }
         Gate.Profile -> Readable { ProfileScreen(onCreate = app::createProfile) }
         is Gate.Invite -> Readable { InviteScreen(g.preview, onAccept = { app.acceptInvite(g.token) }, onDecline = app::declineInvite) }
@@ -116,7 +116,7 @@ fun WakeMeRoot(app: AppViewModel) {
     }
 }
 
-/** Bloom icons with their words: tab bars keep visible labels (Material and Apple guidance), and the selected tab sits in the lime indicator. */
+/** Icons with their words: tab bars keep visible labels (Material and Apple guidance), and the selected tab sits in a quiet violet tint. */
 private data class Tab(val route: Route, val label: Int, val icon: WMIcon)
 
 private val tabs = listOf(

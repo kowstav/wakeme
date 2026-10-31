@@ -140,7 +140,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
     }
     val state = session?.let { focusState(it, now) }
     DetailScreen(onBack = onBack) {
-        Text("Focus", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+        Text("Focus", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
         if (!vm.available) {
             StatusPill("Focus isn't available in this build yet.", Tone.Neutral)
             return@DetailScreen
@@ -162,7 +162,7 @@ fun FocusScreen(onBack: (() -> Unit)? = null, vm: FocusViewModel = hiltViewModel
                 }
                 Text("Focusing" + (s.friendName?.let { " with $it" } ?: "") + " · ${(left + 59_999) / 60_000} min left", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                 if (state is FocusState.OnBreak) StatusPill("On a break for ${(state.breakRemainingMs + 59_999) / 60_000} min", Tone.Info)
-                DangerButton("End focus", onClick = { vm.store.end() }, icon = WMIcon.Stop)
+                SecondaryButton("End focus", onClick = { vm.store.end() }, icon = WMIcon.Stop)
             }
         } else {
             WMCard {

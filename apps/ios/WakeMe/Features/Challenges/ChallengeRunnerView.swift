@@ -59,7 +59,7 @@ struct ChallengeRunnerView: View {
                     }
                 }
             }
-            .padding(WMSpacing.lg).frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.lg).frame(maxWidth: 640).frame(maxWidth: .infinity)
             .animation(WMMotion.respecting(reduceMotion, WMMotion.smooth), value: run.index)
             .animation(WMMotion.standard, value: run.retry)
         }
@@ -74,7 +74,7 @@ struct ChallengeRunnerView: View {
                 }
                 SecondaryButton(title: escapeLabel, action: onEscape)
             }
-            .padding(.horizontal, WMSpacing.lg).padding(.vertical, WMSpacing.sm)
+            .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.sm)
             .frame(maxWidth: 640).frame(maxWidth: .infinity)
             .background(WMColor.surface)
             .overlay(alignment: .top) { Rectangle().fill(WMColor.border).frame(height: 1) }
@@ -94,7 +94,7 @@ private struct StepView: View {
         case let .multipleChoice(_, prompt, options, _):
             Prompt(prompt)
             ForEach(Array(options.enumerated()), id: \.offset) { i, option in
-                SecondaryButton(title: option) { onAnswer(.index(i)) }
+                AnswerButton(title: option) { onAnswer(.index(i)) }
             }
         case let .shortAnswer(_, prompt, _):
             TextAnswer(prompt: prompt, keyboard: .default) { onAnswer(.text($0)) }
@@ -127,7 +127,7 @@ private struct StepView: View {
 private struct Prompt: View {
     let text: String
     init(_ text: String) { self.text = text }
-    var body: some View { Text(text).font(.title3).foregroundStyle(WMColor.textPrimary) }
+    var body: some View { Text(text).font(WMFont.section).foregroundStyle(WMColor.textPrimary) }
 }
 
 private struct TextAnswer: View {

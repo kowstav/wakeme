@@ -30,7 +30,7 @@ fun ProfileOverview(name: String, personKey: String, timeZone: String, plus: Boo
         }
         BentoRow {
             BentoTile("Voice sounds", WMIcon.Mic, palette.apricot, onClick = onVoiceSounds, modifier = Modifier.weight(1f).fillMaxHeight())
-            BentoTile("Wake Me Plus", WMIcon.Sparkle, palette.gold, onClick = onPaywall, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = if (plus) "Manage subscription" else "See what's included")
+            BentoTile("Wake Me Plus", WMIcon.Plus, palette.gold, onClick = onPaywall, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = if (plus) "Manage subscription" else "See what's included")
         }
     }
 }

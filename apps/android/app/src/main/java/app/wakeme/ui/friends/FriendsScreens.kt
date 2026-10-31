@@ -62,9 +62,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
-import app.wakeme.designsystem.ConnectionArtwork
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.CardTitle
+import app.wakeme.designsystem.DawnArc
 import app.wakeme.designsystem.DeliveryTrailView
 import app.wakeme.designsystem.DetailTopBar
 import app.wakeme.designsystem.EmptyState
@@ -98,6 +98,7 @@ import app.wakeme.ui.permissions.rememberNotificationAsk
 import app.wakeme.ui.soundName
 import app.wakeme.ui.AnimalSounds
 import app.wakeme.ui.AnimalSoundRow
+import app.wakeme.ui.FriendHuddle
 import androidx.compose.foundation.layout.width
 
 @Composable
@@ -148,8 +149,8 @@ fun FriendsScreen(onOpen: (String) -> Unit, onOpenCircle: (String) -> Unit = {},
 
 /**
  * The Friends tab's content without its ViewModel (the screenshot tests render it with sample
- * data): the next alarm as a forest hero, invite and join as two petal tiles, then friends and
- * circles. Bento proportions follow the reference apps: one wide hero, then a row of two.
+ * data): the next alarm on its ink card, invite and join as two quiet buttons, then friends and
+ * circles.
  */
 @Composable
 fun FriendsList(
@@ -177,14 +178,14 @@ fun FriendsList(
         s.nextAlarm?.let { next -> fullWidth { NextAlarmHero(next.fireAt, next.label, s.readinessIssue, onFixReadiness) } }
         fullWidth {
             BentoRow {
-                SecondaryButton("Invite", onClick = onInvite, modifier = Modifier.weight(1f).semantics { contentDescription = "Invite a friend" }, icon = WMIcon.PersonPlus)
-                SecondaryButton("Join", onClick = { joining = true }, modifier = Modifier.weight(1f).semantics { contentDescription = "Join with a code" }, icon = WMIcon.Ticket)
+                SecondaryButton("Invite", onClick = onInvite, modifier = Modifier.weight(1f).semantics { contentDescription = "Invite a friend" }, height = WakeMeTokens.minTouchTarget, icon = WMIcon.PersonPlus)
+                SecondaryButton("Join", onClick = { joining = true }, modifier = Modifier.weight(1f).semantics { contentDescription = "Join with a code" }, height = WakeMeTokens.minTouchTarget, icon = WMIcon.Ticket)
             }
         }
         if (!s.loading && s.friends.isEmpty()) {
             fullWidth {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    ConnectionArtwork(Modifier.fillMaxWidth().height(240.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+                    FriendHuddle()
                     Text("Your people, closer.", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
                 }
             }
@@ -194,7 +195,7 @@ fun FriendsList(
                 WMCard {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                         IconChip(WMIcon.Bell, palette.apricot)
-                        Body("Notifications are off.", color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+                        Body("Notifications are off", color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
                     }
                     SecondaryButton("Turn on notifications", onClick = onTurnOnNotifications, icon = WMIcon.Bell)
                 }
@@ -209,8 +210,8 @@ fun FriendsList(
 }
 
 /**
- * The next alarm on this phone, as the screen's hero: lime time on forest, the day and label under
- * it, and at most one readiness problem with the way to fix it.
+ * The next alarm on this phone, as the screen's one bright thing: the time and where it sits in the
+ * day, the day and label under it, and at most one readiness problem with the way to fix it.
  */
 @Composable
 private fun NextAlarmHero(fireAt: Long, label: String, issue: ReadinessItem?, onFixReadiness: (ReadinessItem) -> Unit) {
@@ -221,7 +222,10 @@ private fun NextAlarmHero(fireAt: Long, label: String, issue: ReadinessItem?, on
             WMIconView(WMIcon.Alarm, tint = c.onHeroSecondary, size = WakeMeTokens.iconSizeSmall)
             Text("Next alarm on this phone", style = MaterialTheme.typography.labelLarge, color = c.onHeroSecondary)
         }
-        Text(time, style = TimeDisplayStyle, color = c.onHero)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(time, style = TimeDisplayStyle, color = c.onHero, maxLines = 1, modifier = Modifier.weight(1f))
+            DawnArc(time, width = WakeMeTokens.dawnArcHeroWidth, height = WakeMeTokens.dawnArcHeroHeight)
+        }
         Text(day + if (label.isNotBlank()) " · $label" else "", style = MaterialTheme.typography.titleMedium, color = c.onHeroSecondary)
         issue?.let {
             Gap(WakeMeTokens.spaceXxs)
@@ -270,7 +274,7 @@ internal fun InviteDialogBody(code: String) {
                 // Its own paragraph with a line height for 28 sp: inside the 14 sp style's lines
                 // the code overlapped the words above it (android-device run 89).
                 withStyle(ParagraphStyle(lineHeight = 36.sp)) {
-                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 28.sp, color = ink)) { append(code) }
+                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, fontSize = 28.sp, color = ink)) { append(code) }
                 }
             },
             style = MaterialTheme.typography.bodyMedium,
@@ -475,7 +479,7 @@ fun FriendDetailScreen(
                     CardTitle("What $name can do on your phone", Modifier.weight(1f))
                 }
                 val mine = f.iAllowThem
-                Body(if (mine == null) "Nothing yet." else "$name can " + wordList(mine.capabilities.map(::capabilityLabel)) + "." + if (mine.paused) " Paused for now." else "")
+                Body(if (mine == null) "Nothing yet" else "$name can " + wordList(mine.capabilities.map(::capabilityLabel)) + "." + if (mine.paused) " Paused for now." else "")
                 // One lime button per screen: this one leads only when there's no quack to send.
                 if (mine == null && quack?.availableNow == true) SecondaryButton("Choose what $name can do", onClick = { onEditPermissions(friendshipId) }, icon = WMIcon.Key)
                 else if (mine == null) PrimaryButton("Choose what $name can do", onClick = { onEditPermissions(friendshipId) }, icon = WMIcon.Key)

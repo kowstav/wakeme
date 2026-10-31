@@ -43,7 +43,7 @@ struct YouView: View {
                 .bentoRow()
                 BentoRow {
                     BentoTile(title: "Make this phone ready", icon: .phone, family: WMPalette.lime, supporting: "Alarm access and sound") { showReady = true }
-                    BentoTile(title: me.billing.plan == "plus" ? "Manage Plus" : "Wake Me Plus", icon: .sparkle, family: WMPalette.gold, supporting: me.billing.plan == "plus" ? "Your subscription" : "See what's included") { showPlus = true }
+                    BentoTile(title: me.billing.plan == "plus" ? "Manage Plus" : "Wake Me Plus", icon: .plus, family: WMPalette.gold, supporting: me.billing.plan == "plus" ? "Your subscription" : "See what's included") { showPlus = true }
                 }
                 .bentoRow()
                 Group {

@@ -25,6 +25,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -192,7 +194,7 @@ fun VoiceSoundsScreen(onBack: (() -> Unit)? = null, vm: VoiceSoundsViewModel = h
     }
     LaunchedEffect(s.hasDraft) { rights = false }
     DetailScreen(onBack = onBack) {
-        Text("Voice sounds", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
+        Text("Voice sounds", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
         Body("Up to 30 seconds.")
         if (s.recording) {
             StatusPill("Microphone is recording · stops at 30 seconds", Tone.Warning)

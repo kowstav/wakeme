@@ -87,26 +87,32 @@ fun GuestAlarmContent(
             }
         },
     ) { padding ->
-        AdaptiveList(Modifier.padding(padding).consumeWindowInsets(padding).padding(horizontal = WakeMeTokens.spaceMd)) {
+        AdaptiveList(Modifier.padding(padding).consumeWindowInsets(padding).padding(horizontal = WakeMeTokens.screenMargin)) {
             fullWidth {
-                Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
                     Gap(WakeMeTokens.spaceSm)
-                    Supporting("ON THIS PHONE")
+                    Supporting("On this phone")
                     Text("Your wake-ups", style = MaterialTheme.typography.headlineMedium,
                         color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
                 }
             }
-            if (state.routines.isEmpty()) fullWidth { MorningArtwork(Modifier.fillMaxWidth().height(180.dp)) }
+            if (state.routines.isEmpty()) fullWidth {
+                HeroCard {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text("No wake-ups yet", style = MaterialTheme.typography.titleLarge, color = WM.colors.onHero, modifier = Modifier.weight(1f).semantics { heading() })
+                        DawnArc("07:00", width = WakeMeTokens.dawnArcHeroWidth, height = WakeMeTokens.dawnArcHeroHeight)
+                    }
+                }
+            }
             items(state.routines, key = { it.first.planId }) { (routine, armed) ->
-                WMCard(container = WM.colors.heroFill) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                            Text(routine.localTime, style = MaterialTheme.typography.displaySmall, color = WM.colors.onHero)
-                            Supporting(daysText(routine.recurrence) + if (routine.label.isBlank()) "" else " · ${routine.label}", color = WM.colors.onHeroSecondary)
+                TimeCard(routine.localTime, listOf(daysText(routine.recurrence) + if (routine.label.isBlank()) "" else " · ${routine.label}")) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) {
                             StatusPill(if (armed) "Scheduled" else "Needs alarm access", if (armed) Tone.Success else Tone.Warning,
                                 icon = if (armed) WMIcon.CheckCircle else WMIcon.Warning)
                         }
-                        RoundIconButton(WMIcon.Trash, "Delete this wake-up", onClick = { deleting = routine.planId })
+                        RoundIconButton(WMIcon.Trash, "Delete this wake-up", onClick = { deleting = routine.planId },
+                            container = WM.colors.onHero.copy(alpha = 0.1f), tint = WM.colors.onHero)
                     }
                 }
             }
@@ -120,15 +126,13 @@ fun GuestAlarmContent(
                 }
             }
             fullWidth {
-                Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                WMCard {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-                        ConnectionArtwork(Modifier.size(96.dp))
-                        Column {
-                            Text("Better together", style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
-                            Supporting("Friends \u00b7 Challenges \u00b7 Check-ins")
-                        }
+                        IconChip(WMIcon.Friends, WM.palette.sky)
+                        Text("Friends, challenges and check-ins", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
                     }
-                    SecondaryButton("Sign in", onClick = onSignIn, icon = WMIcon.Friends)
+                    Gap(WakeMeTokens.spaceXxs)
+                    SecondaryButton("Sign in", onClick = onSignIn)
                 }
             }
             fullWidth { Gap() }

@@ -142,7 +142,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
         val admin = d.circle.role == "owner" || d.circle.role == "admin"
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
             IconChip(WMIcon.Circles, circleFamily(d.circle.id), size = WakeMeTokens.avatarHeader)
-            Text(d.circle.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
+            Text(d.circle.name, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
         }
         // Quick actions: the words stay visible ("Invite" is read as "Invite to this circle").
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
@@ -212,7 +212,7 @@ fun CircleScreen(circleId: String, onMessages: (String) -> Unit, onBack: () -> U
     s.message?.let { AlertDialog(onDismissRequest = vm::dismiss, confirmButton = { TextButton(onClick = vm::dismiss) { Text("OK") } }, text = { Text(it) }) }
 }
 
-/** A circle's petal colour, stable for its id (the same family on every screen). */
+/** A circle's colour, stable for its id (the same family on every screen). */
 @Composable
 internal fun circleFamily(id: String): WakeMeFamily {
     val all = WM.palette.avatars

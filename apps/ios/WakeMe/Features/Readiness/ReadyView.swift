@@ -12,7 +12,7 @@ struct ReadyView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
                 Text("Let's make sure your alarm rings")
-                    .font(.largeTitle.bold())
+                    .font(WMFont.screenTitle)
                     .foregroundStyle(WMColor.textPrimary)
                     .accessibilityAddTraits(.isHeader)
                 // Two steps, and the bar shows how close you are (it fills as each one is done).

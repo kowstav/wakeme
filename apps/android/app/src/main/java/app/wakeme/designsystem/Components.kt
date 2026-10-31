@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -81,16 +82,21 @@ import app.wakeme.core.TrailState
 
 /**
  * True inside a [WMCard] or tile. Quiet controls (secondary buttons, icon buttons, unselected
- * chips) sit on white there by day, and on the page's neutral grey everywhere else, so they never
- * vanish into the card behind them.
+ * chips) take a fill that stands off the card there, so they never vanish into it.
  */
 val LocalOnCard = staticCompositionLocalOf { false }
 
-/** The fill of a quiet control: card grey on the page, white on a card by day, a lighter tone by night. */
+/** True on an ink card: a [StatusPill] there takes the light colours made for that surface. */
+val LocalOnHero = staticCompositionLocalOf { false }
+
+/** The corners of a full-width action: the alarm's taller controls take the card radius. */
+private fun buttonShape(height: Dp) = RoundedCornerShape(if (height >= WakeMeTokens.alarmButtonHeight) WakeMeTokens.radiusLg else WakeMeTokens.radiusMd)
+
+/** The fill of a quiet control: lavender on the page and on a white card by day, a lighter tone on a card by night. */
 @Composable
 internal fun quietFill(): Color {
     val c = WM.colors
-    return if (!LocalOnCard.current) c.surfaceNeutral else if (WM.dark) c.surfacePressed else c.surfaceRaised
+    return if (LocalOnCard.current && WM.dark) c.surfacePressed else c.surfaceNeutral
 }
 
 /** [fill] while pressed: 8 % of the text colour over it, so every surface darkens (or lightens at night) the same way. */
@@ -98,7 +104,7 @@ internal fun quietFill(): Color {
 private fun pressedOf(fill: Color): Color = lerp(fill, WM.colors.textPrimary, 0.08f)
 
 /**
- * A Bloom icon (packages/design-tokens/icons), tinted. Decorative unless [contentDescription] is
+ * A Wake Me icon (packages/design-tokens/icons), tinted. Decorative unless [contentDescription] is
  * given: the words next to an icon are what TalkBack reads.
  */
 @Composable
@@ -106,7 +112,7 @@ fun WMIconView(icon: WMIcon, modifier: Modifier = Modifier, tint: Color = WM.col
     Icon(painterResource(icon.res), contentDescription = contentDescription, tint = tint, modifier = modifier.size(size))
 }
 
-/** An icon on a petal-coloured circle: rows, settings and tiles use these to tell things apart at a glance. */
+/** An icon on a family-coloured circle: rows, settings and tiles use these to tell things apart at a glance. */
 @Composable
 fun IconChip(icon: WMIcon, family: WakeMeFamily, modifier: Modifier = Modifier, size: Dp = WakeMeTokens.iconChip) {
     Box(modifier.size(size).background(family.fill, CircleShape), contentAlignment = Alignment.Center) {
@@ -115,10 +121,10 @@ fun IconChip(icon: WMIcon, family: WakeMeFamily, modifier: Modifier = Modifier, 
 }
 
 /**
- * One clear primary action per screen: the lime pill with forest ink, 56 dp tall with a 17 sp
- * label (Bloom keeps green for actions). An [icon] leads the label where it adds recognition
- * (send, invite, add); the words stay. Alarm controls (72 dp) carry a 22 sp label. Pressing deepens
- * the fill and settles the button slightly; with Remove animations on, only the colour changes.
+ * One clear primary action per screen: the violet fill, 52 dp tall. An [icon] leads the label
+ * where it adds recognition (send, invite, add); the words stay. Alarm controls (72 dp) carry a
+ * larger label. Pressing deepens the fill and settles the button slightly; with Remove animations
+ * on, only the colour changes.
  */
 @Composable
 fun PrimaryButton(
@@ -139,7 +145,7 @@ fun PrimaryButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = height).graphicsLayer { val s = scale.value; scaleX = s; scaleY = s },
-        shape = CircleShape,
+        shape = buttonShape(height),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (pressed) c.accentPressed else c.accent,
             contentColor = c.textOnAccent,
@@ -156,23 +162,25 @@ fun PrimaryButton(
 
 @Composable
 private fun ButtonLabel(text: String, style: androidx.compose.ui.text.TextStyle, icon: WMIcon?, leading: (@Composable () -> Unit)? = null) {
+    // At very large text a label wraps and takes the row, which would strand its icon at the edge.
+    val roomForIcon = LocalDensity.current.fontScale < 1.5f
     when {
         leading != null -> { leading(); Spacer(Modifier.width(WakeMeTokens.spaceXs)) }
-        icon != null -> { WMIconView(icon, tint = LocalContentColor.current, size = WakeMeTokens.iconSizeSmall); Spacer(Modifier.width(WakeMeTokens.spaceXs)) }
+        icon != null && roomForIcon -> { WMIconView(icon, tint = LocalContentColor.current, size = WakeMeTokens.iconSizeSmall); Spacer(Modifier.width(WakeMeTokens.spaceXs)) }
     }
     Text(text, style = style, textAlign = TextAlign.Center)
 }
 
 /**
- * A filled neutral pill (the reference apps' "Sign in with Apple" button): grey on the page, white
- * on a card. Same height and label as [PrimaryButton], so stacked or paired actions line up and the
- * lime fill alone says which one leads. Its words identify it, so it needs no outline (WCAG 1.4.11
- * applies to boundaries a control needs to be recognised).
+ * A filled neutral button in the quiet fill. Same height and label as [PrimaryButton], so stacked or paired actions line up and the violet fill alone says which one
+ * leads. Its words identify it, so it needs no outline (WCAG 1.4.11 applies to boundaries a control
+ * needs to be recognised).
  */
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, height: Dp = WakeMeTokens.buttonHeight, icon: WMIcon? = null) {
     val c = WM.colors
     val fill = quietFill()
+    val labelStyle = if (height >= WakeMeTokens.alarmButtonHeight) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale = rememberPressScale(interaction, enabled)
@@ -180,7 +188,7 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = height).graphicsLayer { val s = scale.value; scaleX = s; scaleY = s },
-        shape = CircleShape,
+        shape = buttonShape(height),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (pressed) pressedOf(fill) else fill,
             contentColor = c.textPrimary,
@@ -191,7 +199,7 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         contentPadding = PaddingValues(horizontal = WakeMeTokens.buttonPaddingX, vertical = WakeMeTokens.spaceSm),
         interactionSource = interaction,
     ) {
-        ButtonLabel(text, MaterialTheme.typography.titleMedium, icon)
+        ButtonLabel(text, labelStyle, icon)
     }
 }
 
@@ -201,7 +209,7 @@ fun DangerButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
     Button(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = WakeMeTokens.buttonHeight),
-        shape = CircleShape,
+        shape = buttonShape(WakeMeTokens.buttonHeight),
         colors = ButtonDefaults.buttonColors(containerColor = WM.colors.dangerFill, contentColor = WM.colors.textOnDanger),
         contentPadding = PaddingValues(horizontal = WakeMeTokens.buttonPaddingX, vertical = WakeMeTokens.spaceSm),
     ) { ButtonLabel(text, MaterialTheme.typography.titleMedium, icon) }
@@ -233,8 +241,8 @@ fun QuietButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
 }
 
 /**
- * A compact pill (40 dp visual in a 48 dp target) for an inline action: an icon and a short label,
- * sized to its words (the reference apps' "Invite" and "Play" pills). [primary] makes it lime.
+ * A compact button (40 dp visual in a 48 dp target) for an inline action: an icon and a short
+ * label, sized to its words. [primary] makes it violet.
  */
 @Composable
 fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: WMIcon? = null, primary: Boolean = false, enabled: Boolean = true) {
@@ -254,7 +262,7 @@ fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
             Modifier
                 .heightIn(min = WakeMeTokens.compactControlHeight)
                 .graphicsLayer { val s = scale.value; scaleX = s; scaleY = s }
-                .background(if (pressed && primary) c.accentPressed else if (pressed) pressedOf(fill) else fill, CircleShape)
+                .background(if (pressed && primary) c.accentPressed else if (pressed) pressedOf(fill) else fill, RoundedCornerShape(WakeMeTokens.radiusSm))
                 .padding(horizontal = WakeMeTokens.spaceMd),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -262,6 +270,32 @@ fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
             if (icon != null) WMIconView(icon, tint = ink, size = 18.dp)
             Text(text, style = MaterialTheme.typography.labelLarge, color = ink)
         }
+    }
+}
+
+/**
+ * One choice among a challenge's answers: the words start at the left, where a sleepy eye reads
+ * them first, and long answers wrap instead of shrinking.
+ */
+@Composable
+fun AnswerButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val fill = quietFill()
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale = rememberPressScale(interaction)
+    val shape = RoundedCornerShape(WakeMeTokens.radiusMd)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = WakeMeTokens.buttonHeight)
+            .graphicsLayer { val s = scale.value; scaleX = s; scaleY = s }
+            .clip(shape)
+            .background(if (pressed) pressedOf(fill) else fill)
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
+            .padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceSm),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(text, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
     }
 }
 
@@ -305,9 +339,9 @@ fun RoundIconButton(
 }
 
 /**
- * A quick action (the reference apps' row of round buttons): a 56 dp circle with an icon and one
- * short word under it. [primary] is the lime action; [family] colours a circle by kind; otherwise
- * it is quiet grey. The word is always visible and is what TalkBack reads with [onClickLabel].
+ * A quick action: a 56 dp circle with an icon and one short word under it. [primary] is the violet
+ * action; [family] colours a circle by kind; otherwise it is quiet. The word is always visible and
+ * is what TalkBack reads with [onClickLabel].
  */
 @Composable
 fun QuickAction(
@@ -323,7 +357,7 @@ fun QuickAction(
     val c = WM.colors
     val fill = when {
         primary -> c.accent
-        // A family colour at half strength: the row reads as soft petals under the face and name.
+        // A family colour at half strength: the row stays soft under the face and name.
         family != null -> family.fill.copy(alpha = 0.5f)
         else -> quietFill()
     }
@@ -356,9 +390,9 @@ fun QuickAction(
 }
 
 /**
- * A flat card: neutral grey on the white page by day, a lighter tonal surface by night; no border,
- * no shadow (every reviewed app separates cards by fill alone). With [onClick] the whole card is one
- * target with press feedback; [onClickLabel] tells TalkBack what a tap does ("Open Maya").
+ * A flat card: white on the lavender page by day, a lighter tonal surface by night; no border, no
+ * shadow. With [onClick] the whole card is one target with press feedback; [onClickLabel] tells
+ * TalkBack what a tap does ("Open Maya").
  */
 @Composable
 fun WMCard(
@@ -390,8 +424,8 @@ fun WMCard(
 }
 
 /**
- * The forest hero card (Bloom's one dark-green surface by day): the next alarm, a routine's time.
- * Text on it uses onHero (lime) and onHeroSecondary; a lime button on it still reads as the action.
+ * The ink card: the night sky behind a time. It holds the next alarm, a routine's time and who you
+ * are. Text on it uses onHero and onHeroSecondary; a [StatusPill] adapts by itself.
  */
 @Composable
 fun HeroCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, onClickLabel: String? = null, content: @Composable ColumnScope.() -> Unit) {
@@ -407,14 +441,42 @@ fun HeroCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, onCli
             .then(if (onClick != null) Modifier.clickable(interactionSource = interaction, indication = ripple(), onClickLabel = onClickLabel, role = Role.Button, onClick = onClick) else Modifier)
             .padding(WakeMeTokens.layoutHeroPadding),
         verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs),
-        content = content,
-    )
+    ) {
+        CompositionLocalProvider(LocalOnHero provides true) { content() }
+    }
 }
 
 /**
- * A bento tile: a petal-coloured block with its icon top-left and its title at the bottom-left
- * (the reference apps' account and category tiles). Tiles of one kind take different families,
- * like petals of one flower. Place two in a [BentoRow]; the whole tile is one target.
+ * A time on an ink card with its place in the day beside it: the time and the lines under it on
+ * the left, the [DawnArc] on the right. The one card every alarm surface shares. [status] and
+ * [footer] sit underneath, across the full width.
+ */
+@Composable
+fun TimeCard(
+    time: String,
+    lines: List<String>,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    status: (@Composable ColumnScope.() -> Unit)? = null,
+) {
+    HeroCard(modifier, onClick = onClick, onClickLabel = onClickLabel) {
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
+                Text(time, style = MaterialTheme.typography.displaySmall, color = WM.colors.onHero)
+                lines.forEach { Supporting(it, color = WM.colors.onHeroSecondary) }
+            }
+            if (trailing != null) trailing() else DawnArc(time)
+        }
+        status?.invoke(this)
+    }
+}
+
+/**
+ * A bento tile: a raised surface with its icon top-left and its title at the bottom-left. The
+ * family colours the icon's chip only, so a grid of tiles stays quiet around the screen's one
+ * bright thing. Place two in a [BentoRow]; the whole tile is one target.
  */
 @Composable
 fun BentoTile(
@@ -434,17 +496,15 @@ fun BentoTile(
             .heightIn(min = WakeMeTokens.tileMinHeight)
             .graphicsLayer { val s = scale.value; scaleX = s; scaleY = s }
             .clip(shape)
-            .background(family.fill)
-            .clickable(interactionSource = interaction, indication = ripple(color = family.ink), onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
+            .background(WM.colors.surfaceRaised)
+            .clickable(interactionSource = interaction, indication = ripple(), onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
             .padding(WakeMeTokens.layoutCardPadding),
         verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs),
     ) {
-        Box(Modifier.size(WakeMeTokens.iconChip).background(family.ink.copy(alpha = 0.12f), CircleShape), contentAlignment = Alignment.Center) {
-            WMIconView(icon, tint = family.ink, size = WakeMeTokens.iconSize)
-        }
+        IconChip(icon, family)
         Spacer(Modifier.weight(1f).heightIn(min = WakeMeTokens.spaceSm))
-        Text(title, style = WakeMeType.tileTitle, color = family.ink)
-        supporting?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = family.ink) }
+        Text(title, style = WakeMeType.tileTitle, color = WM.colors.textPrimary)
+        supporting?.let { Supporting(it) }
     }
 }
 
@@ -491,39 +551,49 @@ fun ListRow(
 enum class Tone { Neutral, Info, Success, Warning, Danger }
 
 /**
- * Status is always words plus a dot (or an icon), never colour alone. The tinted pill makes the
- * tone visible at a glance; a change crossfades (no movement). With [announce], TalkBack reads
- * changes politely, for statuses that change while the person waits (delivery, readiness).
+ * Status is always words plus a dot (or an icon), never colour alone. A status that is fine stays
+ * a quiet line; only a warning or a problem gets a tinted block, so the eye goes where something
+ * needs doing. A change crossfades (no movement). With [announce], TalkBack reads changes politely,
+ * for statuses that change while the person waits (delivery, readiness). On an ink card it takes
+ * that surface's own colours.
  */
 @Composable
 fun StatusPill(text: String, tone: Tone = Tone.Neutral, modifier: Modifier = Modifier, announce: Boolean = false, icon: WMIcon? = null) {
     val c = WM.colors
-    val (dot, fill) = when (tone) {
-        Tone.Neutral -> c.textSecondary to c.textPrimary.copy(alpha = 0.08f)
-        Tone.Info -> c.info to c.infoContainer
-        Tone.Success -> c.success to c.successContainer
-        Tone.Warning -> c.warning to c.warningContainer
-        Tone.Danger -> c.danger to c.dangerContainer
+    val onHero = LocalOnHero.current
+    val flagged = tone == Tone.Warning || tone == Tone.Danger
+    val dot = when (tone) {
+        Tone.Neutral -> if (onHero) c.onHeroMuted else c.textSecondary
+        Tone.Info -> if (onHero) c.onHeroMuted else c.info
+        Tone.Success -> if (onHero) c.onHeroSuccess else c.success
+        Tone.Warning -> if (onHero) c.onHeroWarning else c.warning
+        Tone.Danger -> if (onHero) c.onHeroWarning else c.danger
+    }
+    val fill = when {
+        !flagged -> Color.Transparent
+        onHero -> c.onHero.copy(alpha = 0.1f)
+        tone == Tone.Danger -> c.dangerContainer
+        else -> c.warningContainer
     }
     val fillColor by animateColorAsState(fill, WMMotion.standard(), label = "pillFill")
     val dotColor by animateColorAsState(dot, WMMotion.standard(), label = "pillDot")
     Row(
         modifier
-            .background(fillColor, RoundedCornerShape(WakeMeTokens.radiusPill))
-            .padding(horizontal = WakeMeTokens.spaceSm, vertical = 6.dp)
+            .background(fillColor, RoundedCornerShape(WakeMeTokens.radiusSm))
+            .padding(horizontal = if (flagged) WakeMeTokens.statusPillPaddingX else 0.dp, vertical = if (flagged) WakeMeTokens.statusPillPaddingY else 0.dp)
             .semantics { if (announce) liveRegion = LiveRegionMode.Polite },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) WMIconView(icon, tint = dotColor, size = 16.dp) else Box(Modifier.size(8.dp).background(dotColor, CircleShape))
+        if (icon != null) WMIconView(icon, tint = dotColor, size = 16.dp) else Box(Modifier.size(WakeMeTokens.statusDot).background(dotColor, CircleShape))
         Spacer(Modifier.size(6.dp))
         AnimatedContent(targetState = text, transitionSpec = { WMMotion.fadeThrough() }, label = "pillText") { t ->
-            Text(t, style = MaterialTheme.typography.labelLarge, color = c.textPrimary)
+            Text(t, style = MaterialTheme.typography.labelLarge, color = if (onHero) c.onHero else c.textPrimary)
         }
     }
 }
 
 /**
- * A header between groups of content, outside cards (22 sp Bold). It carries extra space above
+ * A header between groups of content, outside cards (19 sp SemiBold). It carries extra space above
  * so it belongs to what follows, not to what came before.
  */
 @Composable
@@ -541,8 +611,8 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: (@Compos
 }
 
 /**
- * The hero headline: sentence case and system typography (tokens: type.roles.display), in forest by
- * day and lime by night. TalkBack reads the sentence as written, not letter by letter.
+ * The hero headline: sentence case (tokens: type.roles.display). TalkBack reads the sentence as
+ * written, not letter by letter.
  */
 @Composable
 fun DisplayText(text: String, modifier: Modifier = Modifier, color: Color = WM.colors.brandInk, textAlign: TextAlign = TextAlign.Start) {
@@ -555,7 +625,7 @@ fun DisplayText(text: String, modifier: Modifier = Modifier, color: Color = WM.c
     )
 }
 
-/** The title of a card or list row (17 sp SemiBold), the same size as button labels. */
+/** The title of a card or list row (16 sp SemiBold), the same size as button labels. */
 @Composable
 fun CardTitle(text: String, modifier: Modifier = Modifier) {
     Text(text, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary, modifier = modifier.semantics { heading() })
@@ -658,8 +728,8 @@ fun Stepper(label: String, value: Int, min: Int, max: Int, onChange: (Int) -> Un
 }
 
 /**
- * A single choice among a few (sounds, ring length, presets). Selected chips are lime with a check
- * mark, so the state never depends on colour alone; unselected chips are quiet grey (white on a
+ * A single choice among a few (sounds, ring length, presets). Selected chips are violet with a
+ * check mark, so the state never depends on colour alone; unselected chips are quiet (white on a
  * card) and may lead with an [icon]. A light selection haptic confirms the change.
  */
 @Composable
@@ -677,7 +747,7 @@ fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: 
             icon != null -> { { WMIconView(icon, tint = c.textPrimary, size = FilterChipDefaults.IconSize) } }
             else -> null
         },
-        shape = CircleShape,
+        shape = RoundedCornerShape(WakeMeTokens.radiusSm),
         colors = FilterChipDefaults.filterChipColors(
             containerColor = quietFill(),
             labelColor = c.textPrimary,
@@ -836,7 +906,7 @@ fun DisclosureGroup(label: String, summary: String, content: @Composable ColumnS
                 Text(label, style = MaterialTheme.typography.titleMedium)
                 Text(summary, style = MaterialTheme.typography.bodyMedium, color = WM.colors.textSecondary)
             }
-            Text(if (expanded) "Hide" else "Edit", style = MaterialTheme.typography.labelLarge)
+            WMIconView(if (expanded) WMIcon.ChevronDown else WMIcon.ChevronRight, tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
         }
         if (expanded) Column(Modifier.padding(WakeMeTokens.spaceSm), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd), content = content)
     }

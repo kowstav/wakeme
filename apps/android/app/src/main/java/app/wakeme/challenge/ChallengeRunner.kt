@@ -63,6 +63,7 @@ import app.wakeme.core.ChallengeDefinition
 import app.wakeme.core.ChallengeStep
 import app.wakeme.core.StepResponse
 import app.wakeme.core.verifyStep
+import app.wakeme.designsystem.AnswerButton
 import app.wakeme.designsystem.Body
 import app.wakeme.designsystem.PrimaryButton
 import app.wakeme.designsystem.ReadableWidth
@@ -150,10 +151,10 @@ private fun ChallengeContent(
     Box(modifier.fillMaxSize().background(WM.colors.surface).safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.widthIn(max = ReadableWidth).fillMaxSize()) {
             Column(
-                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg),
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = WakeMeTokens.screenMargin, vertical = WakeMeTokens.spaceLg),
                 verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
             ) {
-                Text(definition.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+                Text(definition.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
                 if (timedOut) Body("Time's up. Use the simple check-in or end this session.")
                 else Body("Step ${index + 1} of ${definition.steps.size}")
                 StepProgress(done = if (finished) definition.steps.size else index, total = definition.steps.size)
@@ -191,7 +192,11 @@ private fun ChallengeContent(
             }
             // Kept outside the scrolling puzzle. Bars and the IME are consumed above, so these
             // controls remain reachable on small windows and with a long quiz or chess board.
-            Column(Modifier.padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceSm)) {
+            Column(
+                Modifier.padding(horizontal = WakeMeTokens.screenMargin, vertical = WakeMeTokens.spaceSm),
+                verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 controls()
                 if (!fallback && step != null) QuietButton("Use the simple check-in instead", onClick = { fallback = true })
                 SecondaryButton(escapeLabel, onClick = onEscape)
@@ -210,7 +215,7 @@ private fun symbol(op: String) = when (op) {
 @Composable
 private fun MultipleChoice(step: ChallengeStep.MultipleChoice, onPick: (Int) -> Unit) {
     Text(step.prompt, style = MaterialTheme.typography.titleLarge, color = WM.colors.textPrimary)
-    step.options.forEachIndexed { i, option -> SecondaryButton(option, onClick = { onPick(i) }) }
+    step.options.forEachIndexed { i, option -> AnswerButton(option, onClick = { onPick(i) }) }
 }
 
 @Composable

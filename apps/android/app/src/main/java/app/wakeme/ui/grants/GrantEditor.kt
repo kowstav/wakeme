@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import app.wakeme.designsystem.ChoiceChip
 import app.wakeme.designsystem.FieldGroup
 import app.wakeme.designsystem.HeroCard
+import app.wakeme.designsystem.DawnArc
 import app.wakeme.designsystem.WMIcon
 import app.wakeme.designsystem.WMIconView
 import app.wakeme.designsystem.quietFill
@@ -203,7 +204,7 @@ fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorV
     val name = f.user.displayName
     val d = s.draft
     DetailScreen(onBack = onDone) {
-        Text("What can $name do?", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+        Text("What can $name do?", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
         f.iAllowThem?.let { g ->
             val day = DateTimeFormatter.ofPattern("d MMM yyyy").withZone(ZoneId.systemDefault())
             fun fmt(iso: String?) = iso?.let { runCatching { day.format(Instant.parse(it)) }.getOrNull() }
@@ -324,8 +325,8 @@ private fun SoundPicker(selected: List<String>, custom: List<String>, onChange: 
 /**
  * Seven day toggles in one row, Monday first; at least one stays selected. Each is a 48 dp-tall
  * target sharing the row's width (about 43 dp wide on a 360 dp phone), read as "Monday, checked".
- * A chosen day is lime with a bold forest letter, like every selection in Bloom; an open day keeps
- * an outline, so the state isn't colour alone.
+ * A chosen day is violet, like every selection; an open day keeps an outline, so the state isn't
+ * colour alone.
  */
 @Composable
 fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
@@ -355,7 +356,7 @@ fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
                         .border(1.dp, if (on) Color.Transparent else c.outline, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(names[day - 1], style = MaterialTheme.typography.titleMedium, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, color = if (on) c.textOnAccent else c.textPrimary)
+                    Text(names[day - 1], style = MaterialTheme.typography.titleMedium, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) c.textOnAccent else c.textPrimary)
                 }
             }
         }
@@ -363,9 +364,9 @@ fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
 }
 
 /**
- * The routine's time as the biggest thing on screen, lime on the forest hero card (tabular, so it
- * doesn't shift while it changes), with an edit icon saying it can change. Tapping it opens the
- * system time picker; TalkBack reads "Rings at 07:00, change time".
+ * The routine's time as the biggest thing on screen, on the ink card (tabular, so it doesn't shift
+ * while it changes), with an edit icon saying it can change and the sun moving to where the new
+ * time sits. Tapping it opens the system time picker; TalkBack reads "Rings at 07:00, change time".
  */
 @Composable
 fun TimeDisplay(label: String, time: String, onPick: (String) -> Unit) {
@@ -375,14 +376,17 @@ fun TimeDisplay(label: String, time: String, onPick: (String) -> Unit) {
         val (h, m) = time.split(":").map { it.toInt() }
         TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
     }) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.labelLarge, color = c.onHeroSecondary)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = c.onHeroSecondary)
+                    WMIconView(WMIcon.Edit, tint = c.onHeroSecondary, size = 16.dp)
+                }
                 AnimatedContent(targetState = time, transitionSpec = { WMMotion.fadeThrough() }, label = "time") { t ->
-                    Text(t, style = TimeDisplayStyle, color = c.onHero)
+                    Text(t, style = TimeDisplayStyle, color = c.onHero, maxLines = 1)
                 }
             }
-            WMIconView(WMIcon.Edit, tint = c.onHero)
+            DawnArc(time, width = WakeMeTokens.dawnArcHeroWidth, height = WakeMeTokens.dawnArcHeroHeight)
         }
     }
 }

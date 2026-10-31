@@ -193,7 +193,7 @@ fun ConversationScreen(conversationId: String, onBack: (() -> Unit)? = null, vm:
     }
 
     // Bottom: the navigation bar or, when typing, the keyboard (the shell handles top and sides).
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = WakeMeTokens.spaceMd)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = WakeMeTokens.screenMargin)) {
         if (onBack != null) DetailTopBar(onBack = onBack, title = s.title, modifier = Modifier.offset(x = -WakeMeTokens.spaceSm))
         else Text(s.title, style = MaterialTheme.typography.headlineSmall, color = WM.colors.textPrimary, modifier = Modifier.padding(vertical = WakeMeTokens.spaceSm))
         if (s.offline) StatusPill("You're offline. Showing messages loaded earlier.", Tone.Warning)
@@ -276,7 +276,7 @@ private fun Bubble(m: MessageDto, mine: Boolean, onLongPress: () -> Unit, modifi
         else -> m.body.orEmpty()
     }
     val time = runCatching { timeFmt.format(Instant.parse(m.createdAt)) }.getOrDefault("")
-    // Your messages are light lime with a small corner toward you; theirs sit on the card grey.
+    // Your messages are the light violet tint with a small corner toward you; theirs sit on the quiet fill.
     val big = 18.dp
     val small = 6.dp
     val shape = RoundedCornerShape(topStart = big, topEnd = big, bottomStart = if (mine) big else small, bottomEnd = if (mine) small else big)

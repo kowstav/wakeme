@@ -117,7 +117,7 @@ struct ChallengeDemoView: View {
 
     var body: some View {
         if done {
-            Text("Challenge complete").font(.largeTitle.bold()).frame(maxWidth: .infinity, maxHeight: .infinity).background(WMColor.surface)
+            Text("Challenge complete").font(WMFont.screenTitle).frame(maxWidth: .infinity, maxHeight: .infinity).background(WMColor.surface)
         } else if let definition = Self.definition {
             ChallengeRunnerView(definition: definition, escapeLabel: "End this wake session", onComplete: { _ in done = true }, onEscape: { done = true })
         }
@@ -147,7 +147,7 @@ struct DeletionPendingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
-                Text("Your account is set to be deleted").font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                Text("Your account is set to be deleted").font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                 if let when = app.me?.deletionScheduledFor.flatMap({ try? Instant.parse($0) }) {
                     Text("It will be permanently deleted on \(when.formatted(date: .long, time: .omitted)).").foregroundStyle(WMColor.textSecondary)
                 }
@@ -180,7 +180,7 @@ struct SuspendedView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
-                Text("This account is suspended").font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                Text("This account is suspended").font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                 Text("Friends can't send you requests and you can't send any. If you think this is a mistake, contact support@wakeme.app.")
                     .foregroundStyle(WMColor.textSecondary)
                 SecondaryButton(title: "Sign out") { Task { await app.signOut() } }
@@ -196,7 +196,7 @@ struct PlaceholderView: View {
     let message: String
     var body: some View {
         VStack(spacing: WMSpacing.md) {
-            Text(title).font(.title.bold()).foregroundStyle(WMColor.textPrimary)
+            Text(title).font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary)
             Text(message).foregroundStyle(WMColor.textSecondary).multilineTextAlignment(.center)
         }
         .padding(WMSpacing.md)

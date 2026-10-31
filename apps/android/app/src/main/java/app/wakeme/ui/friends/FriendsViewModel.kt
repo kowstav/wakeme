@@ -68,14 +68,14 @@ data class InviteInput(val token: String?, val code: String?) {
 }
 
 fun reasonText(name: String, reason: String?): String = when (reason) {
-    "capability_not_granted" -> "$name hasn't turned this on for you."
-    "grant_paused" -> "$name has paused requests from you."
-    "outside_allowed_window" -> "It's outside the hours $name chose."
-    "quiet_hours" -> "It's $name's quiet time."
-    "recipient_paused" -> "$name isn't taking requests right now."
-    "recipient_not_ready" -> "$name's phone isn't set up for this yet."
-    "feature_disabled" -> "This is temporarily unavailable."
-    else -> "Not available right now."
+    "capability_not_granted" -> "$name hasn't turned this on for you"
+    "grant_paused" -> "$name has paused requests from you"
+    "outside_allowed_window" -> "It's outside the hours $name chose"
+    "quiet_hours" -> "It's $name's quiet time"
+    "recipient_paused" -> "$name isn't taking requests right now"
+    "recipient_not_ready" -> "$name's phone isn't set up for this yet"
+    "feature_disabled" -> "This is temporarily unavailable"
+    else -> "Not available right now"
 }
 
 data class FriendsState(

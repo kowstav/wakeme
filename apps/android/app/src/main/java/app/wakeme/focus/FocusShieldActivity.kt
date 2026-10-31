@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
@@ -27,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import app.wakeme.challenge.ChallengeRunner
 import app.wakeme.core.ChallengeDefinition
 import app.wakeme.core.ChallengeStep
@@ -38,8 +38,8 @@ import app.wakeme.core.FocusState
 import app.wakeme.core.focusState
 import app.wakeme.core.WakeMeJson
 import app.wakeme.designsystem.Body
-import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.PrimaryButton
+import app.wakeme.designsystem.Readable
 import app.wakeme.designsystem.SecondaryButton
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WakeMeTheme
@@ -99,26 +99,40 @@ private fun Shield(store: FocusStore, onLeave: () -> Unit, onDone: () -> Unit) {
             onEscape = { earning = false },
             escapeLabel = "Back",
             sessionKey = "${s.id}:${s.breaksTaken}",
-            controls = { DangerButton("End focus", onClick = { store.end(); onDone() }) },
+            controls = { SecondaryButton("End focus", onClick = { store.end(); onDone() }) },
         )
         return
     }
-    val minutesLeft = (state.remainingMs + 59_999) / 60_000
-    val breaksLeft = FOCUS_MAX_BREAKS - s.breaksTaken
-    Column(
-        Modifier.fillMaxSize().background(WM.colors.surface).safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg),
-        verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
-    ) {
-        Text(if (s.friendName != null) "Focusing with ${s.friendName}" else "You're focusing", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-        Body("$minutesLeft min left.", color = WM.colors.textPrimary)
-        PrimaryButton("Back to what I was doing", onClick = onLeave)
-        if (breaksLeft > 0) {
-            SecondaryButton("Take a $FOCUS_BREAK_MINUTES-minute break", onClick = { earning = true })
-            Body("$breaksLeft break${if (breaksLeft == 1) "" else "s"} left.")
-        } else {
-            Body("No breaks left this session.")
+    ShieldContent(
+        friendName = s.friendName,
+        minutesLeft = (state.remainingMs + 59_999) / 60_000,
+        breaksLeft = FOCUS_MAX_BREAKS - s.breaksTaken,
+        onLeave = onLeave,
+        onBreak = { earning = true },
+        onEnd = { store.end(); onDone() },
+    )
+}
+
+/** The shield's words and ways on, without its store (the screenshot tests render it). */
+@Composable
+fun ShieldContent(friendName: String?, minutesLeft: Long, breaksLeft: Int, onLeave: () -> Unit, onBreak: () -> Unit, onEnd: () -> Unit) {
+    Readable(modifier = Modifier.background(WM.colors.surface)) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+            Column(
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = WakeMeTokens.screenMargin, vertical = WakeMeTokens.spaceLg),
+                verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs),
+            ) {
+                Text(if (friendName != null) "Focusing with $friendName" else "You're focusing", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+                Text("$minutesLeft min left", style = MaterialTheme.typography.displaySmall, color = WM.colors.textPrimary)
+                Body(if (breaksLeft > 0) "$breaksLeft break${if (breaksLeft == 1) "" else "s"} left" else "No breaks left this session")
+            }
+            // Ending is always one tap away, and it isn't dressed as a failure.
+            Column(Modifier.padding(horizontal = WakeMeTokens.screenMargin, vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+                PrimaryButton("Back to what I was doing", onClick = onLeave)
+                if (breaksLeft > 0) SecondaryButton("Take a $FOCUS_BREAK_MINUTES-minute break", onClick = onBreak)
+                SecondaryButton("End focus", onClick = onEnd)
+            }
         }
-        DangerButton("End focus", onClick = { store.end(); onDone() })
     }
 }
 

@@ -68,11 +68,11 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DawnArc
 import app.wakeme.designsystem.HeroCard
-import app.wakeme.designsystem.IconChip
+import app.wakeme.designsystem.TimeCard
 import app.wakeme.designsystem.WMIcon
 import app.wakeme.designsystem.WMIconView
-import app.wakeme.designsystem.WakeMeFamily
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -226,7 +226,7 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
         floatingActionButton = {
             androidx.compose.material3.FloatingActionButton(
                 onClick = onNew,
-                shape = androidx.compose.foundation.shape.CircleShape,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(WakeMeTokens.radiusLg),
                 containerColor = WM.colors.accent,
                 contentColor = WM.colors.textOnAccent,
             ) {
@@ -234,11 +234,11 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
             }
         },
     ) { listInsets ->
-    AdaptiveList(Modifier.padding(listInsets).consumeWindowInsets(listInsets).padding(horizontal = WakeMeTokens.spaceMd),
+    AdaptiveList(Modifier.padding(listInsets).consumeWindowInsets(listInsets).padding(horizontal = WakeMeTokens.screenMargin),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)) {
         fullWidth {
             Gap()
-            Text("Routines", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+            Text("Routines", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             if (!s.exactAlarmsOk) {
                 Gap(WakeMeTokens.spaceXs)
                 StatusPill("Alarms aren't allowed to ring on time yet", Tone.Warning, icon = WMIcon.Warning)
@@ -267,32 +267,12 @@ private fun PlanCard(p: PlanDto, myId: String?, onOpen: (String) -> Unit, modifi
     val v = p.accepted ?: p.pending ?: return
     val mine = p.owner.id == myId
     val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
-    WMCard(modifier, onClick = { onOpen(p.id) }, onClickLabel = "Open routine", container = WM.colors.heroFill) {
-        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
-                Text(v.localTime, style = MaterialTheme.typography.displaySmall, color = WM.colors.onHero)
-                Supporting(daysText(v.recurrence) + if (v.label.isBlank()) "" else " · ${v.label}", color = WM.colors.onHeroSecondary)
-                if (!mine) Supporting("For ${p.owner.displayName}", color = WM.colors.onHeroSecondary) else if (p.creator.id != myId) Supporting("Suggested by ${p.creator.displayName}", color = WM.colors.onHeroSecondary)
-            }
-            val (icon, family) = timeOfDay(v.localTime)
-            IconChip(icon, family, size = 48.dp)
-        }
-        StatusPill(label, tone, announce = true, icon = toneIcon(tone))
+    val lines = buildList {
+        add(daysText(v.recurrence) + if (v.label.isBlank()) "" else " · ${v.label}")
+        if (!mine) add("For ${p.owner.displayName}") else if (p.creator.id != myId) add("Suggested by ${p.creator.displayName}")
     }
-}
-
-/**
- * A routine's time of day as an icon in its own petal colour: mornings are a gold sun, afternoons
- * an apricot sun, evenings and nights a periwinkle moon. Decorative; the time itself is the text.
- */
-@Composable
-internal fun timeOfDay(localTime: String): Pair<WMIcon, WakeMeFamily> {
-    val hour = localTime.substringBefore(':').toIntOrNull() ?: 7
-    val p = WM.palette
-    return when (hour) {
-        in 4..11 -> WMIcon.Sun to p.gold
-        in 12..16 -> WMIcon.Sun to p.apricot
-        else -> WMIcon.Moon to p.periwinkle
+    TimeCard(v.localTime, lines, modifier, onClick = { onOpen(p.id) }, onClickLabel = "Open routine") {
+        StatusPill(label, tone, announce = true, icon = toneIcon(tone))
     }
 }
 
@@ -324,15 +304,15 @@ fun RoutineDetailScreen(planId: String, onBack: () -> Unit, onReuse: () -> Unit 
     val p = (s.mine + s.helping).firstOrNull { it.id == planId } ?: run { Loading(); return }
     val mine = p.owner.id == s.myId
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-        DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXxs))
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = WakeMeTokens.spaceMd).padding(bottom = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+        DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXs))
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = WakeMeTokens.screenMargin).padding(bottom = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
             val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
             Text("Wake-up routine", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
             (p.accepted ?: p.pending)?.let { v ->
                 HeroCard(Modifier.semantics(mergeDescendants = true) { }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(v.localTime, style = TimeDisplayStyle, color = WM.colors.onHero, modifier = Modifier.weight(1f))
-                        WMIconView(timeOfDay(v.localTime).first, tint = WM.colors.onHero, size = WakeMeTokens.iconSizeLarge)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(v.localTime, style = TimeDisplayStyle, color = WM.colors.onHero, maxLines = 1, modifier = Modifier.weight(1f))
+                        DawnArc(v.localTime, width = WakeMeTokens.dawnArcHeroWidth, height = WakeMeTokens.dawnArcHeroHeight)
                     }
                     Text(daysText(v.recurrence) + if (v.label.isNotBlank()) " · ${v.label}" else "", style = MaterialTheme.typography.titleMedium, color = WM.colors.onHeroSecondary)
                 }

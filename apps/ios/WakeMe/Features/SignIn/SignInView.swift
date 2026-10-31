@@ -16,7 +16,7 @@ struct SignInView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
-                Text("Sign in").font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                Text("Sign in").font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                 if AppConfig.supabaseConfigured {
                     // Doc 02 §9: Apple, then email; never a phone number.
                     SignInWithAppleButton(.continue) { request in
@@ -76,7 +76,7 @@ struct ProfileView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
-                Text("About you").font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                Text("About you").font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                 TextField("Display name", text: $name)
                     .textContentType(.nickname)
                     .padding(WMSpacing.sm).background(WMColor.surfaceSunken, in: RoundedRectangle(cornerRadius: WMRadius.sm))

@@ -30,6 +30,15 @@ data class WakeMeColors(
     val heroFill: Color,
     val onHero: Color,
     val onHeroSecondary: Color,
+    val onHeroLine: Color,
+    val onHeroSuccess: Color,
+    val onHeroWarning: Color,
+    val onHeroMuted: Color,
+    val sun: Color,
+    val moon: Color,
+    val hillFar: Color,
+    val hillNear: Color,
+    val hillFront: Color,
     val info: Color,
     val infoContainer: Color,
     val success: Color,
@@ -89,6 +98,15 @@ object WakeMeTokens {
         heroFill = Color(0xFF292833),
         onHero = Color(0xFFFFFFFF),
         onHeroSecondary = Color(0xFFDDD9EF),
+        onHeroLine = Color(0xFF6E6C86),
+        onHeroSuccess = Color(0xFFB5ECA0),
+        onHeroWarning = Color(0xFFFFD09A),
+        onHeroMuted = Color(0xFFBDBAD2),
+        sun = Color(0xFFFFB56B),
+        moon = Color(0xFFD9D3FF),
+        hillFar = Color(0xFFC9C2F7),
+        hillNear = Color(0xFF7A6CE0),
+        hillFront = Color(0xFF4B40B5),
         info = Color(0xFF2A5E98),
         infoContainer = Color(0xFFDEEFF3),
         success = Color(0xFF2F5711),
@@ -121,9 +139,18 @@ object WakeMeTokens {
         onAccentContainer = Color(0xFFE1DAFF),
         accentText = Color(0xFFD0C6FF),
         brandInk = Color(0xFFD0C6FF),
-        heroFill = Color(0xFF242330),
+        heroFill = Color(0xFF2C2A45),
         onHero = Color(0xFFFFFFFF),
         onHeroSecondary = Color(0xFFDDD9EF),
+        onHeroLine = Color(0xFF7C7A9C),
+        onHeroSuccess = Color(0xFFB5ECA0),
+        onHeroWarning = Color(0xFFFFD09A),
+        onHeroMuted = Color(0xFFBDBAD2),
+        sun = Color(0xFFFFB56B),
+        moon = Color(0xFFD9D3FF),
+        hillFar = Color(0xFF3F3A6E),
+        hillNear = Color(0xFF5B50CE),
+        hillFront = Color(0xFF332C72),
         info = Color(0xFF95D3E2),
         infoContainer = Color(0xFF1E3A41),
         success = Color(0xFF9FE870),
@@ -160,6 +187,15 @@ object WakeMeTokens {
         heroFill = Color(0xFF292833),
         onHero = Color(0xFFFFFFFF),
         onHeroSecondary = Color(0xFFDDD9EF),
+        onHeroLine = Color(0xFF6E6C86),
+        onHeroSuccess = Color(0xFFB5ECA0),
+        onHeroWarning = Color(0xFFFFD09A),
+        onHeroMuted = Color(0xFFBDBAD2),
+        sun = Color(0xFFFFB56B),
+        moon = Color(0xFFD9D3FF),
+        hillFar = Color(0xFFC9C2F7),
+        hillNear = Color(0xFF7A6CE0),
+        hillFront = Color(0xFF4B40B5),
         info = Color(0xFF2A5E98),
         infoContainer = Color(0xFFDEEFF3),
         success = Color(0xFF2F5711),
@@ -192,9 +228,18 @@ object WakeMeTokens {
         onAccentContainer = Color(0xFFE1DAFF),
         accentText = Color(0xFFE3DCFF),
         brandInk = Color(0xFFE3DCFF),
-        heroFill = Color(0xFF242330),
+        heroFill = Color(0xFF2C2A45),
         onHero = Color(0xFFFFFFFF),
         onHeroSecondary = Color(0xFFDDD9EF),
+        onHeroLine = Color(0xFF7C7A9C),
+        onHeroSuccess = Color(0xFFB5ECA0),
+        onHeroWarning = Color(0xFFFFD09A),
+        onHeroMuted = Color(0xFFBDBAD2),
+        sun = Color(0xFFFFB56B),
+        moon = Color(0xFFD9D3FF),
+        hillFar = Color(0xFF3F3A6E),
+        hillNear = Color(0xFF5B50CE),
+        hillFront = Color(0xFF332C72),
         info = Color(0xFF95D3E2),
         infoContainer = Color(0xFF1E3A41),
         success = Color(0xFF9FE870),
@@ -243,13 +288,13 @@ object WakeMeTokens {
     val spaceXl = 32.dp
     val spaceXxl = 48.dp
     val radiusSm = 10.dp
-    val radiusMd = 16.dp
-    val radiusLg = 22.dp
+    val radiusMd = 14.dp
+    val radiusLg = 20.dp
     val radiusXl = 28.dp
     val radiusPill = 999.dp
     val minTouchTarget = 48.dp
     val alarmControl = 72.dp
-    val controlHeight = 56.dp
+    val controlHeight = 52.dp
     const val opacityDisabled = 0.38f
     const val opacityPressedOverlay = 0.1f
     const val opacityScrim = 0.45f
@@ -280,9 +325,9 @@ object WakeMeTokens {
     val layoutControlGap = 12.dp
     val layoutSectionGap = 28.dp
     val layoutSectionTopExtra = 8.dp
-    val buttonHeight = 56.dp
+    val buttonHeight = 52.dp
     val alarmButtonHeight = 72.dp
-    val buttonPaddingX = 24.dp
+    val buttonPaddingX = 20.dp
     val compactControlHeight = 40.dp
     val chipHeight = 36.dp
     val iconButtonVisual = 44.dp
@@ -293,10 +338,15 @@ object WakeMeTokens {
     val iconSizeLarge = 28.dp
     val avatarRow = 44.dp
     val avatarHeader = 72.dp
-    val tileMinHeight = 128.dp
+    val tileMinHeight = 104.dp
     val statusPillPaddingX = 12.dp
     val statusPillPaddingY = 6.dp
     val dayToggleMax = 44.dp
+    val dawnArcWidth = 96.dp
+    val dawnArcHeight = 52.dp
+    val dawnArcHeroWidth = 132.dp
+    val dawnArcHeroHeight = 72.dp
+    val statusDot = 8.dp
     const val staggerMs = 40
     const val staggerMaxItems = 5
 }
@@ -304,21 +354,21 @@ object WakeMeTokens {
 /** Semantic type roles (sp, so they follow font scale). Figures are tabular in every role. */
 object WakeMeType {
     /** Welcome and celebration headline, sentence case */
-    val display = TextStyle(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.W600, letterSpacing = -0.34.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
+    val display = TextStyle(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.W500, letterSpacing = -0.51.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Alarm clock face */
-    val alarmTime = TextStyle(fontSize = 80.sp, lineHeight = 84.sp, fontWeight = FontWeight.W700, letterSpacing = -1.60.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
+    val alarmTime = TextStyle(fontSize = 80.sp, lineHeight = 84.sp, fontWeight = FontWeight.W600, letterSpacing = -1.60.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Routine time on heroes, detail and editor */
     val timeDisplay = TextStyle(fontSize = 56.sp, lineHeight = 64.sp, fontWeight = FontWeight.W400, letterSpacing = -1.12.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Routine time on cards and lists */
     val timeInline = TextStyle(fontSize = 38.sp, lineHeight = 44.sp, fontWeight = FontWeight.W500, letterSpacing = -0.38.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Large headings on full-screen states */
-    val hero = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.W600, letterSpacing = -0.42.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
+    val hero = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.W600, letterSpacing = -0.28.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Top of a screen */
-    val screenTitle = TextStyle(fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.W600, letterSpacing = -0.56.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
+    val screenTitle = TextStyle(fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.W600, letterSpacing = -0.28.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Alarm label, challenge title, question */
-    val prominent = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.W700, letterSpacing = -0.24.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
+    val prominent = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.W600, letterSpacing = -0.24.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Header between groups (outside cards); large alarm button labels */
-    val section = TextStyle(fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.W600, letterSpacing = -0.19.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
+    val section = TextStyle(fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.W600, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Card and list-row titles, button labels */
     val cardTitle = TextStyle(fontSize = 16.sp, lineHeight = 23.sp, fontWeight = FontWeight.W600, letterSpacing = 0.00.sp, fontFeatureSettings = "tnum", fontFamily = BrandFontFamily)
     /** Bento tile titles */

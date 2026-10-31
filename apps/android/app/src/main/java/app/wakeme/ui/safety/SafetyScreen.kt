@@ -213,8 +213,8 @@ fun SafetyScreen(focusSessionId: String? = null, onBack: (() -> Unit)? = null, v
     LaunchedEffect(focusSessionId) { if (focusSessionId != null) vm.load() }
 
     androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
-    if (onBack != null) DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXxs))
-    LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+    if (onBack != null) DetailTopBar(onBack = onBack, modifier = Modifier.padding(horizontal = WakeMeTokens.spaceXs))
+    LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal = WakeMeTokens.screenMargin), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues(), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
             if (onBack == null) Gap()
             Text("Safety", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
@@ -303,7 +303,7 @@ private fun ViewerSession(v: SafetySessionDto, loc: LatestLocationDto?, highligh
     WMCard {
         Text(
             when (v.purpose) { "sos" -> "SOS from ${v.owner.displayName}"; "checkin" -> "${v.owner.displayName}'s check-in"; else -> "${v.owner.displayName} is sharing location" },
-            style = MaterialTheme.typography.titleLarge, fontWeight = if (highlight || v.purpose == "sos") FontWeight.Bold else FontWeight.Normal, color = WM.colors.textPrimary,
+            style = MaterialTheme.typography.titleLarge, fontWeight = if (highlight || v.purpose == "sos") FontWeight.SemiBold else FontWeight.Normal, color = WM.colors.textPrimary,
         )
         v.message?.let { Body("“$it”") }
         Body("Until ${timeText(v.endsAt)}")

@@ -159,7 +159,7 @@ fun ChallengesTab() = Shell(2) {
 @Preview(name = "Small phone", widthDp = 320, heightDp = 640)
 @Preview(name = "Large text", widthDp = 360, heightDp = 800, fontScale = 1.6f)
 @Preview(name = "Dark", device = Devices.PHONE, uiMode = Configuration.UI_MODE_NIGHT_YES)
-fun Welcome() = WakeMeTheme { Readable { WelcomeScreen(onInvite = {}, onSelf = {}, signInAction = { GoogleAuthButton(onClick = {}) }) } }
+fun Welcome() = WakeMeTheme { WelcomeScreen(onInvite = {}, onSelf = {}, signInAction = { GoogleAuthButton(onClick = {}) }) }
 
 /** Renders the actual account overview used by YouScreen, without a network or Hilt fixture. */
 @PreviewTest

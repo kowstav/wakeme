@@ -22,3 +22,5 @@ says what evidence the decision rests on and what would make us revisit it.
 | [0014](0014-focus-supervision.md) | Focus: recipient-chosen apps, local shield (iOS Family Controls, Android scoped accessibility service), always finite | Proposed |
 | [0020](0020-daybreak-design-system-and-motion.md) | Daybreak design system: outline/container roles, increased contrast, motion tokens, original duck, shared delivery-trail rule | Accepted (visual parts superseded by 0021) |
 | [0021](0021-bloom-visual-refresh.md) | Bloom: reference-image palette with petal families, flat cards, owned icon set, bento tiles, quick actions, hero cards | Accepted |
+| [0022](0022-daylight-native-redesign.md) | Daylight: lavender canvas, ink time cards, violet actions and Manrope across both apps | Accepted |
+| [0023](0023-first-light-refinement.md) | First light: keep Daylight's palette, add the dawn arc signature, quiet status, restore the product headline | Accepted |

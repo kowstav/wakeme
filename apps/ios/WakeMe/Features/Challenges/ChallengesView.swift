@@ -140,7 +140,7 @@ struct ChallengesView: View {
 
     /// Each template tile its own icon and petal, in a fixed order so a template keeps its look.
     private func templateLook(_ index: Int) -> (icon: WMIcon, family: WMFamily) {
-        let looks: [(WMIcon, WMFamily)] = [(.sparkle, WMPalette.gold), (.trophy, WMPalette.sky), (.book, WMPalette.orchid),
+        let looks: [(WMIcon, WMFamily)] = [(.sun, WMPalette.gold), (.trophy, WMPalette.sky), (.book, WMPalette.orchid),
                                            (.focus, WMPalette.aqua), (.dumbbell, WMPalette.apricot), (.heart, WMPalette.periwinkle)]
         let look = looks[index % looks.count]
         return (look.0, look.1)
@@ -228,7 +228,7 @@ private struct TryOutView: View {
         if let completed {
             ScrollView {
                 VStack(alignment: .leading, spacing: WMSpacing.md) {
-                    Text(tryOut.definition.title).font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                    Text(tryOut.definition.title).font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                     StatusPill(text: completed ? "You finished it." : "You stopped before the end.", tone: completed ? .success : .neutral, icon: completed ? toneIcon(.success) : nil)
                     if let notes = tryOut.notes {
                         Text("About this draft: \(notes)").foregroundStyle(WMColor.textPrimary)
@@ -240,7 +240,7 @@ private struct TryOutView: View {
                         PrimaryButton(title: "Done") { onFinish(false) }
                     }
                 }
-                .padding(WMSpacing.lg).frame(maxWidth: 640).frame(maxWidth: .infinity)
+                .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.lg).frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
             .background(WMColor.surface)
         } else {

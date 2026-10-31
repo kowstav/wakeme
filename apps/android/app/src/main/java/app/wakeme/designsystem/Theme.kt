@@ -34,11 +34,10 @@ val LocalWakeMePalette = staticCompositionLocalOf { WakeMeTokens.PaletteLight }
 val LocalWakeMeDark = staticCompositionLocalOf { false }
 
 // Material uses `primary` as the text colour of text buttons, focused field labels and the checked
-// switch track, so it maps to accentText (forest by day, lime by night; contrast-checked on every
-// surface), not to the lime fill; PrimaryButton sets the fill itself. `secondary` is accentText
-// too: Material colours the selected navigation label with it. The navigation indicator uses
-// secondaryContainer, which is the lime accent with forest ink (Bloom's one action colour) instead
-// of Material's default lavender. `outline` (≥ 3:1, WCAG 1.4.11) draws text-field and control
+// switch track, so it maps to accentText (contrast-checked on every surface), not to the violet
+// fill; PrimaryButton sets the fill itself. `secondary` is accentText too: Material colours the
+// selected navigation label with it. The navigation indicator uses secondaryContainer, the quiet
+// accent tint, so the screen's one violet fill stays its primary action. `outline` (≥ 3:1, WCAG 1.4.11) draws text-field and control
 // boundaries; `outlineVariant` is the decorative hairline for dividers. Dialogs and sheets use the
 // overlay surface; the unchecked switch track uses the neutral card grey. Dark `onError` is ink,
 // since the dark error colour is a light salmon.
@@ -46,7 +45,7 @@ private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
     if (dark) {
         darkColorScheme(
             primary = c.accentText, onPrimary = c.textOnAccent, primaryContainer = c.accentContainer, onPrimaryContainer = c.onAccentContainer,
-            secondary = c.accentText, onSecondary = c.textOnAccent, secondaryContainer = c.accent, onSecondaryContainer = c.textOnAccent,
+            secondary = c.accentText, onSecondary = c.textOnAccent, secondaryContainer = c.accentContainer, onSecondaryContainer = c.onAccentContainer,
             tertiary = c.success, tertiaryContainer = c.successContainer,
             background = c.surface, onBackground = c.textPrimary, surface = c.surface, onSurface = c.textPrimary,
             surfaceVariant = c.surfaceNeutral, onSurfaceVariant = c.textSecondary, surfaceTint = c.surface,
@@ -58,7 +57,7 @@ private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
     } else {
         lightColorScheme(
             primary = c.accentText, onPrimary = c.surfaceRaised, primaryContainer = c.accentContainer, onPrimaryContainer = c.onAccentContainer,
-            secondary = c.accentText, onSecondary = c.surfaceRaised, secondaryContainer = c.accent, onSecondaryContainer = c.textOnAccent,
+            secondary = c.accentText, onSecondary = c.surfaceRaised, secondaryContainer = c.accentContainer, onSecondaryContainer = c.onAccentContainer,
             tertiary = c.success, tertiaryContainer = c.successContainer,
             background = c.surface, onBackground = c.textPrimary, surface = c.surface, onSurface = c.textPrimary,
             surfaceVariant = c.surfaceNeutral, onSurfaceVariant = c.textSecondary, surfaceTint = c.surface,
@@ -69,7 +68,7 @@ private fun scheme(c: WakeMeColors, dark: Boolean): ColorScheme =
         )
     }
 
-/** Text fields use extraSmall (12), chips small, cards and tiles large (24), dialogs and sheets extraLarge (32). */
+/** Text fields use extraSmall (10), chips small, cards and tiles large (20), dialogs and sheets extraLarge (28). */
 private val shapes = Shapes(
     extraSmall = RoundedCornerShape(WakeMeTokens.radiusSm),
     small = RoundedCornerShape(WakeMeTokens.radiusMd),
@@ -79,21 +78,21 @@ private val shapes = Shapes(
 )
 
 /**
- * The system font (Roboto) on Wake Me's semantic roles (tokens: type.roles), mapped onto Material's
- * slots so Material components pick them up: dialogs, text fields, chips and the navigation bar.
- * Sizes are sp and follow the person's font size; figures are tabular everywhere, so 07:00 → 07:01
- * doesn't shift sideways.
+ * Manrope on Wake Me's semantic roles (tokens: type.roles), mapped onto Material's slots so Material
+ * components pick them up: dialogs, text fields, chips and the navigation bar. Sizes are sp and
+ * follow the person's font size; figures are tabular everywhere, so 07:00 → 07:01 doesn't shift
+ * sideways. Hierarchy comes from size and colour: nothing is heavier than SemiBold.
  *
  * | Material slot | Role | Size / line | Weight |
  * |---|---|---|---|
- * | displayLarge | alarmTime | 80 / 84 | Bold |
- * | displayMedium | timeDisplay | 60 / 64 | Bold |
- * | displaySmall | timeInline | 34 / 40 | Bold |
- * | headlineLarge | hero | 32 / 38 | Bold |
- * | headlineMedium | screenTitle | 30 / 36 | Bold |
- * | headlineSmall | prominent (dialog titles too) | 24 / 30 | Bold |
- * | titleLarge | section | 22 / 28 | Bold |
- * | titleMedium | cardTitle, button labels | 17 / 24 | SemiBold |
+ * | displayLarge | alarmTime | 80 / 84 | SemiBold |
+ * | displayMedium | timeDisplay | 56 / 64 | Regular |
+ * | displaySmall | timeInline | 38 / 44 | Medium |
+ * | headlineLarge | hero | 28 / 34 | SemiBold |
+ * | headlineMedium | screenTitle | 28 / 36 | SemiBold |
+ * | headlineSmall | prominent (dialog titles too) | 24 / 30 | SemiBold |
+ * | titleLarge | section | 19 / 26 | SemiBold |
+ * | titleMedium | cardTitle, button labels | 16 / 23 | SemiBold |
  * | titleSmall | fieldLabel | 14 / 20 | SemiBold |
  * | bodyLarge | body (text fields too) | 16 / 24 | Regular |
  * | bodyMedium | supporting (dialog text too) | 14 / 20 | Regular |
@@ -136,7 +135,7 @@ fun TextStyle.withCappedScale(maxScale: Float): TextStyle {
 val TimeDisplayStyle: TextStyle
     @Composable get() = MaterialTheme.typography.displayMedium.withCappedScale(WakeMeType.timeDisplayMaxScale)
 
-/** Hero headlines (tokens: type.roles.display): condensed, set in capitals by [DisplayText]. */
+/** Hero headlines (tokens: type.roles.display): sentence case, set by [DisplayText]. */
 val DisplayStyle: TextStyle
     @Composable get() = WakeMeType.display.withCappedScale(WakeMeType.displayMaxScale)
 
@@ -163,7 +162,7 @@ fun rememberHighContrast(): Boolean {
     return contrast >= 0.5f
 }
 
-/** Bloom (docs/design/system.md): white canvas, flat neutral cards, lime actions, petal families. System fonts so font scaling is honoured. */
+/** Daylight (docs/design/unslop-2026-10-31.md): lavender canvas, white cards, ink time cards and one violet action colour. */
 @Composable
 fun WakeMeTheme(dark: Boolean = isSystemInDarkTheme(), highContrast: Boolean = rememberHighContrast(), content: @Composable () -> Unit) {
     val colors = when {

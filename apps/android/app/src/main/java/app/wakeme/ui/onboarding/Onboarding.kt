@@ -9,13 +9,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -23,7 +28,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.wakeme.push.Channels
 import app.wakeme.ui.AnimalSounds
-import app.wakeme.ui.FriendHuddle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -60,8 +64,10 @@ import app.wakeme.config.AppConfig
 import app.wakeme.data.net.InvitePreviewDto
 import app.wakeme.designsystem.GoogleAuthButton
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DawnScene
+import app.wakeme.designsystem.DisplayStyle
 import app.wakeme.designsystem.IconChip
-import app.wakeme.designsystem.PillButton
+import app.wakeme.designsystem.ReadableWidth
 import app.wakeme.designsystem.WMIcon
 import androidx.compose.ui.text.style.TextAlign
 import app.wakeme.designsystem.Gap
@@ -93,7 +99,7 @@ fun playSoundPreview(context: Context, soundId: String = AnimalSounds.DEFAULT_ID
 @Composable
 private fun Page(content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg),
+        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(WakeMeTokens.screenMargin),
         verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
     ) { content() }
 }
@@ -101,31 +107,51 @@ private fun Page(content: @Composable () -> Unit) {
 @Composable
 private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
 
-/** Reference-led onboarding: headline, flat scene, then one account-entry group. */
+/**
+ * The headline on the empty sky, the sun coming up behind the hills, and the two ways in on a panel
+ * the hills run under. The scene gives its height back as text grows, and the whole page scrolls on
+ * short windows.
+ */
 @Composable
 fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit, signInAction: (@Composable () -> Unit)? = null) {
-    BoxWithConstraints(Modifier.fillMaxSize().background(WM.colors.surface).safeDrawingPadding()) {
-        val sceneHeight = (maxHeight - 390.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)).coerceIn(100.dp, 280.dp)
+    BoxWithConstraints(Modifier.fillMaxSize().background(WM.colors.surface)) {
+        val sceneHeight = (maxHeight - 340.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)).coerceIn(140.dp, 480.dp)
+        val panel = RoundedCornerShape(topStart = WakeMeTokens.radiusXl, topEnd = WakeMeTokens.radiusXl)
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
-                .padding(horizontal = 24.dp, vertical = 24.dp),
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight),
             verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(Modifier.padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Your morning.\nYour rhythm.", style = app.wakeme.designsystem.WakeMeType.display,
+            Column(
+                Modifier.widthIn(max = ReadableWidth).fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                    .padding(start = WakeMeTokens.screenMargin, end = WakeMeTokens.screenMargin, top = WakeMeTokens.spaceLg, bottom = WakeMeTokens.spaceMd),
+                verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs),
+            ) {
+                Text("Alert your friends.\nWake each other up.", style = DisplayStyle,
                     color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-                Text("A little nudge. A better day.", style = MaterialTheme.typography.bodyLarge,
+                Text("You decide what each friend can do", style = MaterialTheme.typography.bodyLarge,
                     color = WM.colors.textSecondary)
             }
-            app.wakeme.designsystem.MorningArtwork(Modifier.fillMaxWidth().padding(bottom = 24.dp).height(sceneHeight))
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (signInAction != null) signInAction()
-                else PrimaryButton("Sign in", onClick = onInvite, icon = WMIcon.PersonPlus)
-                if (signInAction != null) androidx.compose.material3.TextButton(
-                    onClick = onInvite, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                ) { Text("Continue with email", style = MaterialTheme.typography.labelLarge, color = WM.colors.accentText) }
-                Gap(8.dp)
-                SecondaryButton("Set up my own wake-up", onClick = onSelf, icon = WMIcon.Alarm)
+            Box {
+                DawnScene(Modifier.fillMaxWidth().height(sceneHeight))
+                Column(
+                    Modifier.padding(top = sceneHeight - WakeMeTokens.radiusXl).fillMaxWidth()
+                        .background(WM.colors.surfaceRaised, panel).navigationBarsPadding(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Column(
+                        Modifier.widthIn(max = ReadableWidth).fillMaxWidth().padding(start = WakeMeTokens.screenMargin, end = WakeMeTokens.screenMargin, top = WakeMeTokens.spaceLg, bottom = WakeMeTokens.spaceMd),
+                        verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs),
+                    ) {
+                        if (signInAction != null) signInAction()
+                        else PrimaryButton("Sign in", onClick = onInvite, icon = WMIcon.PersonPlus)
+                        if (signInAction != null) androidx.compose.material3.TextButton(
+                            onClick = onInvite, modifier = Modifier.fillMaxWidth().heightIn(min = WakeMeTokens.minTouchTarget),
+                        ) { Text("Continue with email", style = MaterialTheme.typography.labelLarge, color = WM.colors.accentText) }
+                        SecondaryButton("Set up my own wake-up", onClick = onSelf, icon = WMIcon.Alarm)
+                    }
+                }
             }
         }
     }
@@ -224,8 +250,8 @@ fun InviteScreen(preview: InvitePreviewDto?, onAccept: () -> Unit, onDecline: ()
             return@Page
         }
         val who = preview.inviter.displayName
-        Heading(if (preview.kind == "circle") "$who invited you to ${preview.circle?.name ?: "a circle"}" else "$who wants to quack you.")
-        if (preview.kind != "circle") Body("Next, you choose what they can do.")
+        Heading(if (preview.kind == "circle") "$who invited you to ${preview.circle?.name ?: "a circle"}" else "$who wants to quack you")
+        if (preview.kind != "circle") Body("Next, you choose what they can do")
         if (preview.ownInvite) {
             Body("This is your own invite. Share it with a friend.")
             SecondaryButton("Back", onClick = onDecline)

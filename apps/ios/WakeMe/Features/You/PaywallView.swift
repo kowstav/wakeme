@@ -25,7 +25,7 @@ struct PaywallView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: WMSpacing.md) {
-                    Text("Make your routine a team effort.").font(.largeTitle.bold()).foregroundStyle(WMColor.textPrimary)
+                    Text("Make your routine a team effort").font(WMFont.screenTitle).foregroundStyle(WMColor.textPrimary)
                     Text("Quacks, wake requests, safety check-ins and your alarms stay free.").foregroundStyle(WMColor.textSecondary)
                     benefit("Create with \(status?.credits.plusMonthlyAllowance ?? 10) AI challenge credits each month. Unused monthly credits don't carry over.")
                     benefit("Keep up to \(plusRoutines) active routines.")
@@ -71,7 +71,7 @@ struct PaywallView: View {
                     Button("Restore purchases") { Task { await restore() } }.frame(minHeight: WMSize.minTouchTarget)
                     Button("Manage subscription") { manage = true }.frame(minHeight: WMSize.minTouchTarget)
                 }
-                .padding(WMSpacing.lg).frame(maxWidth: 640).frame(maxWidth: .infinity)
+                .padding(.horizontal, WMLayout.screenMargin).padding(.vertical, WMSpacing.lg).frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
             .background(WMColor.surface)
             .navigationTitle("Plus")
@@ -83,7 +83,10 @@ struct PaywallView: View {
     }
 
     private func benefit(_ text: String) -> some View {
-        Text("•  \(text)").foregroundStyle(WMColor.textPrimary)
+        HStack(alignment: .top, spacing: WMSpacing.xs) {
+            WMIconImage(.check, size: WMLayout.iconSizeSmall).foregroundStyle(WMColor.accentText)
+            Text(text).foregroundStyle(WMColor.textPrimary).fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func load() async {
@@ -110,7 +113,7 @@ struct PaywallView: View {
         switch outcome {
         case let .completed(s):
             status = s
-            note = s.plan == "plus" ? "You're on Plus. Thank you!" : "No active Plus subscription was found for this account."
+            note = s.plan == "plus" ? "You're on Plus. Thank you." : "No active Plus subscription was found for this account."
             Task { await app.refreshMe() }
         case .cancelled: note = nil
         case .pending: note = "The purchase is waiting for approval. Plus starts when the App Store confirms it."

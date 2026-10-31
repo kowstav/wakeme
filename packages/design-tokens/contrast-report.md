@@ -18,8 +18,14 @@ Every pair is checked in light, dark, and both increased-contrast variants (iOS 
 | accentText on surfaceNeutral | 7.79 | 9.01 | 11.12 | 10.89 | 4.5 | pass |
 | accentText on surfaceSunken | 7.98 | 11.91 | 11.39 | 14.39 | 4.5 | pass |
 | brandInk on surface | 13.87 | 11.41 | 15.39 | 13.78 | 7 | pass |
-| onHero on heroFill | 14.53 | 15.46 | 14.53 | 15.46 | 7 | pass |
-| onHeroSecondary on heroFill | 10.55 | 11.23 | 10.55 | 11.23 | 7 | pass |
+| onHero on heroFill | 14.53 | 13.78 | 14.53 | 13.78 | 7 | pass |
+| onHeroSecondary on heroFill | 10.55 | 10.00 | 10.55 | 10.00 | 7 | pass |
+| onHeroMuted on heroFill | 7.69 | 7.29 | 7.69 | 7.29 | 4.5 | pass |
+| onHeroSuccess on heroFill | 10.70 | 10.15 | 10.70 | 10.15 | 4.5 | pass |
+| onHeroWarning on heroFill | 10.20 | 9.67 | 10.20 | 9.67 | 4.5 | pass |
+| onHeroLine on heroFill (decorative) | 2.87 | 3.36 | 2.87 | 3.36 | 1.5 | pass |
+| sun on heroFill (non-text) | 8.35 | 7.92 | 8.35 | 7.92 | 3 | pass |
+| moon on heroFill (non-text) | 10.18 | 9.65 | 10.18 | 9.65 | 3 | pass |
 | info on surface | 6.19 | 10.97 | 6.19 | 10.97 | 4.5 | pass |
 | info on surfaceNeutral | 5.68 | 8.67 | 5.68 | 8.67 | 4.5 | pass |
 | success on surface | 7.83 | 12.32 | 7.83 | 12.32 | 4.5 | pass |
@@ -77,9 +83,18 @@ Every pair is checked in light, dark, and both increased-contrast variants (iOS 
 | onAccentContainer | `#302470` 32.5 0.125 284 | `#E1DAFF` 90.5 0.051 294 |
 | accentText | `#4835A1` 41.8 0.166 285 | `#D0C6FF` 85.4 0.079 293 |
 | brandInk | `#29233F` 27.7 0.051 293 | `#D0C6FF` 85.4 0.079 293 |
-| heroFill | `#292833` 28.3 0.020 289 | `#242330` 26.3 0.024 288 |
+| heroFill | `#292833` 28.3 0.020 289 | `#2C2A45` 30.0 0.048 286 |
 | onHero | `#FFFFFF` 100.0 0.000 – | `#FFFFFF` 100.0 0.000 – |
 | onHeroSecondary | `#DDD9EF` 89.5 0.030 294 | `#DDD9EF` 89.5 0.030 294 |
+| onHeroLine | `#6E6C86` 54.3 0.040 289 | `#7C7A9C` 59.4 0.052 287 |
+| onHeroSuccess | `#B5ECA0` 88.7 0.116 137 | `#B5ECA0` 88.7 0.116 137 |
+| onHeroWarning | `#FFD09A` 88.6 0.087 70 | `#FFD09A` 88.6 0.087 70 |
+| onHeroMuted | `#BDBAD2` 79.9 0.034 291 | `#BDBAD2` 79.9 0.034 291 |
+| sun | `#FFB56B` 82.8 0.125 65 | `#FFB56B` 82.8 0.125 65 |
+| moon | `#D9D3FF` 88.6 0.060 291 | `#D9D3FF` 88.6 0.060 291 |
+| hillFar | `#C9C2F7` 83.7 0.074 291 | `#3F3A6E` 38.0 0.087 286 |
+| hillNear | `#7A6CE0` 60.1 0.170 286 | `#5B50CE` 51.5 0.188 281 |
+| hillFront | `#4B40B5` 45.6 0.178 281 | `#332C72` 34.4 0.116 283 |
 | info | `#2A5E98` 47.6 0.109 253 | `#95D3E2` 83.0 0.066 214 |
 | infoContainer | `#DEEFF3` 94.1 0.019 – | `#1E3A41` 32.9 0.036 216 |
 | success | `#2F5711` 41.2 0.108 135 | `#9FE870` 85.7 0.170 135 |

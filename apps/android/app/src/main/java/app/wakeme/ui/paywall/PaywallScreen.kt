@@ -111,7 +111,7 @@ class PaywallViewModel @Inject constructor(private val billing: Billing) : ViewM
         val note = when (val o = block()) {
             is PurchaseOutcome.Completed -> {
                 _s.value = _s.value.copy(status = o.status)
-                if (o.status.plan == "plus") "You're on Plus. Thank you!" else "No active Plus subscription was found for this account."
+                if (o.status.plan == "plus") "You're on Plus. Thank you." else "No active Plus subscription was found for this account."
             }
             PurchaseOutcome.Cancelled -> null
             PurchaseOutcome.Pending -> "Your payment is pending with Google Play. Plus starts when it completes."
@@ -138,7 +138,7 @@ fun PaywallScreen(onClose: () -> Unit, vm: PaywallViewModel = hiltViewModel()) {
     // A pushed screen like the others: Back and "Continue free" both close it.
     DetailScreen(onBack = onClose) {
         QuietButton("Continue free", onClick = onClose, modifier = Modifier.align(Alignment.End))
-        Text("Make your routine a team effort.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
+        Text("Make your routine a team effort", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary)
         Body("Quacks, wake requests, safety check-ins and your alarms stay free.")
         Benefit("Create with $credits AI challenge credits each month. Unused monthly credits don't carry over.")
         Benefit("Keep up to $PLUS_ROUTINES active routines.")
@@ -184,7 +184,10 @@ fun PaywallScreen(onClose: () -> Unit, vm: PaywallViewModel = hiltViewModel()) {
 
 @Composable
 private fun Benefit(text: String) {
-    Body("•  $text", color = WM.colors.textPrimary)
+    androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+        app.wakeme.designsystem.WMIconView(app.wakeme.designsystem.WMIcon.Check, tint = WM.colors.accentText, size = WakeMeTokens.iconSizeSmall, modifier = Modifier.padding(top = 2.dp))
+        Body(text, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+    }
 }
 
 @Composable
@@ -192,7 +195,7 @@ private fun OfferRow(o: Offer, selected: Boolean, onSelect: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().selectable(selected = selected, onClick = onSelect, role = Role.RadioButton),
         shape = RoundedCornerShape(WakeMeTokens.radiusLg),
-        colors = CardDefaults.cardColors(containerColor = if (selected) WM.colors.accentContainer else WM.colors.surfaceNeutral),
+        colors = CardDefaults.cardColors(containerColor = if (selected) WM.colors.accentContainer else WM.colors.surfaceRaised),
         border = BorderStroke(2.dp, if (selected) WM.colors.accentText else Color.Transparent),
     ) {
         androidx.compose.foundation.layout.Row(Modifier.padding(WakeMeTokens.spaceMd), verticalAlignment = Alignment.CenterVertically) {

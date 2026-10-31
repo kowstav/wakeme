@@ -11,7 +11,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -42,6 +45,7 @@ import app.wakeme.core.WakeSessionState
 import app.wakeme.challenge.ChallengeRunner
 import app.wakeme.designsystem.AlarmTimeStyle
 import app.wakeme.designsystem.Body
+import app.wakeme.designsystem.DawnArc
 import app.wakeme.designsystem.DisplayText
 import app.wakeme.designsystem.Gap
 import app.wakeme.ui.AnimalSounds
@@ -167,45 +171,78 @@ fun AlarmScreen(
             escapeLabel = stringResource(R.string.alarm_need_to_stop),
             sessionKey = wake.identity,
             controls = {
-                if (wake.ringing) PrimaryButton(stringResource(R.string.alarm_stop_sound), onClick = onStop)
+                if (wake.ringing) SecondaryButton(stringResource(R.string.alarm_stop_sound), onClick = onStop)
             },
         )
         return
     }
     Readable(modifier = Modifier.background(c.alarmBackground)) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceLg),
-                verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd),
-            ) {
-                val formatter = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
-                var now by remember { mutableStateOf(LocalTime.now()) }
-                LaunchedEffect(clockText) {
-                    if (clockText == null) while (true) { delay(1000); now = LocalTime.now() }
-                }
-                // System font with tabular figures (monospace spaced the colon out: "07 : 00").
-                // Grows with font size up to 1.3× so it never overflows a phone at 2×.
-                Text(clockText ?: now.format(formatter), style = AlarmTimeStyle, color = c.alarmText, maxLines = 1)
-                if (wake.label.isNotBlank()) Text(wake.label, style = MaterialTheme.typography.headlineSmall, color = c.alarmText)
-                wake.helperName?.let { Text(stringResource(R.string.alarm_from_friend, it), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal), color = c.alarmText) }
-                if (wake.usedFallbackSound) Body("Recording unavailable. Playing Gentle rise.", color = c.alarmText)
-                when {
-                    wake.playbackFailure == "audio_focus_denied" -> Body("Sound paused by a call. Vibration continues.", color = c.alarmText)
-                    wake.ringing && wake.routeType == "bluetooth" -> Body("Playing through Bluetooth.", color = c.alarmText)
-                    wake.ringing && wake.routeType == "wired" -> Body("Playing through connected headphones.", color = c.alarmText)
-                }
-                if (wake.state == WakeSessionState.FOLLOW_UP_PENDING) Body("A follow-up rings unless you finish.", color = c.alarmText)
-                when {
-                    wake.challengeRevisionId == null -> PrimaryButton(stringResource(R.string.alarm_im_up), onClick = onImUp, height = WakeMeTokens.alarmControl)
-                    challenge != null -> PrimaryButton(stringResource(R.string.alarm_start_challenge), onClick = { running = true }, height = WakeMeTokens.alarmControl)
-                    challengeMissing -> Body("The challenge isn't available. Unlock your phone and try again. You can still stop the sound or end this wake session.", color = c.alarmText)
-                }
-                Body(stringResource(R.string.alarm_escape_explainer), color = c.alarmText)
+        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+            // Every control stays on screen: short, wide windows put them beside the clock, and
+            // the arc gives way to the words.
+            val short = maxWidth > maxHeight && maxHeight < 480.dp
+            val details: @Composable (Modifier) -> Unit = { modifier -> AlarmDetails(wake, clockText, challengeMissing, showArc = !short, modifier) }
+            val actions: @Composable (Modifier) -> Unit = { modifier ->
+                AlarmActions(wake, challengeReady = challenge != null, onImUp, onStart = { running = true }, onStop, onEscape, modifier)
             }
-            Column(Modifier.padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
-                if (wake.ringing) PrimaryButton(stringResource(R.string.alarm_stop_sound), onClick = onStop, height = WakeMeTokens.alarmControl)
-                SecondaryButton(stringResource(R.string.alarm_need_to_stop), onClick = onEscape)
+            if (short) {
+                Row(Modifier.fillMaxSize()) {
+                    details(Modifier.weight(1f).fillMaxHeight())
+                    actions(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()))
+                }
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    details(Modifier.weight(1f).fillMaxWidth())
+                    actions(Modifier.fillMaxWidth())
+                }
             }
         }
+    }
+}
+
+/** The clock, who and what this alarm is, and where the morning is. Nothing here is a control. */
+@Composable
+private fun AlarmDetails(wake: ActiveWake, clockText: String?, challengeMissing: Boolean, showArc: Boolean, modifier: Modifier) {
+    val c = WM.colors
+    val formatter = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
+    var now by remember { mutableStateOf(LocalTime.now()) }
+    LaunchedEffect(clockText) {
+        if (clockText == null) while (true) { delay(1000); now = LocalTime.now() }
+    }
+    Column(
+        modifier.verticalScroll(rememberScrollState()).padding(horizontal = WakeMeTokens.screenMargin, vertical = WakeMeTokens.spaceLg),
+        verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm),
+    ) {
+        // Tabular figures (monospace spaced the colon out: "07 : 00"). Grows with font size up to
+        // 1.3× so it never overflows a phone at 2×.
+        Text(clockText ?: now.format(formatter), style = AlarmTimeStyle, color = c.alarmText, maxLines = 1)
+        if (wake.label.isNotBlank()) Text(wake.label, style = MaterialTheme.typography.headlineSmall, color = c.alarmText)
+        wake.helperName?.let { Text(stringResource(R.string.alarm_from_friend, it), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal), color = c.alarmText) }
+        if (wake.usedFallbackSound) Body("Recording unavailable. Playing Gentle rise.", color = c.alarmText)
+        when {
+            wake.playbackFailure == "audio_focus_denied" -> Body("Sound paused by a call. Vibration continues.", color = c.alarmText)
+            wake.ringing && wake.routeType == "bluetooth" -> Body("Playing through Bluetooth.", color = c.alarmText)
+            wake.ringing && wake.routeType == "wired" -> Body("Playing through connected headphones.", color = c.alarmText)
+        }
+        if (wake.state == WakeSessionState.FOLLOW_UP_PENDING) Body("A follow-up rings unless you finish.", color = c.alarmText)
+        if (challengeMissing) Body("The challenge isn't available. Unlock your phone and try again. You can still stop the sound or end this wake session.", color = c.alarmText)
+        if (showArc) DawnArc(clockText ?: now.format(DateTimeFormatter.ofPattern("HH:mm")), Modifier.padding(top = WakeMeTokens.spaceMd), width = 200.dp, height = 108.dp, sky = c.alarmBackground)
+    }
+}
+
+/**
+ * Every way out of the alarm, in thumb reach and always on screen. Finishing leads; silencing is a
+ * separate control of the same size, so a sleepy press can't mistake one for the other.
+ */
+@Composable
+private fun AlarmActions(wake: ActiveWake, challengeReady: Boolean, onImUp: () -> Unit, onStart: () -> Unit, onStop: () -> Unit, onEscape: () -> Unit, modifier: Modifier) {
+    Column(modifier.padding(horizontal = WakeMeTokens.screenMargin, vertical = WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
+        when {
+            wake.challengeRevisionId == null -> PrimaryButton(stringResource(R.string.alarm_im_up), onClick = onImUp, height = WakeMeTokens.alarmControl)
+            challengeReady -> PrimaryButton(stringResource(R.string.alarm_start_challenge), onClick = onStart, height = WakeMeTokens.alarmControl)
+        }
+        if (wake.ringing) SecondaryButton(stringResource(R.string.alarm_stop_sound), onClick = onStop, height = WakeMeTokens.alarmControl)
+        SecondaryButton(stringResource(R.string.alarm_need_to_stop), onClick = onEscape)
+        Body(stringResource(R.string.alarm_escape_explainer), color = WM.colors.alarmText)
     }
 }

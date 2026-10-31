@@ -129,8 +129,7 @@ private struct PlanRow: View {
                         if !v.label.isEmpty { Text(v.label).foregroundStyle(WMColor.onHeroSecondary) }
                     }
                     Spacer(minLength: 0)
-                    let tod = timeOfDay(v.localTime)
-                    IconChip(icon: tod.icon, family: tod.family, size: 48)
+                    DawnArc(localTime: v.localTime)
                 }
             }
             if !mine { Text("For \(plan.owner.displayName)").foregroundStyle(WMColor.onHeroSecondary) }

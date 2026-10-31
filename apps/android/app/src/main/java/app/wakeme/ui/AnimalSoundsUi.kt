@@ -49,7 +49,7 @@ import app.wakeme.designsystem.rememberReducedMotion
 import app.wakeme.ui.onboarding.playSoundPreview
 import kotlinx.coroutines.delay
 
-/** One animal in a sound row: its face, ringed in lime when chosen, and its word under it. */
+/** One animal in a sound row: its face, ringed in violet when chosen, and its word under it. */
 @Composable
 fun SoundChoice(sound: AnimalSound, selected: Boolean, modifier: Modifier = Modifier) {
     Column(modifier.width(68.dp), horizontalAlignment = Alignment.CenterHorizontally) {
