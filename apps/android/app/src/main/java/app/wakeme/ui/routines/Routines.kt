@@ -21,6 +21,11 @@ import app.wakeme.designsystem.AdaptiveList
 import app.wakeme.designsystem.ReloadWhenBackOnTop
 import app.wakeme.designsystem.fullWidth
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -445,6 +450,8 @@ private val RoutineWindowSaver = listSaver<LocalWindow, String>(
 
 @Composable
 fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = false, reuseId: String? = null, vm: RoutineEditorViewModel = hiltViewModel()) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val s by vm.state.collectAsState()
     val customSounds by vm.sounds.ready.collectAsState()
     val context = LocalContext.current
@@ -506,7 +513,15 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
             Body("${s.friendName ?: "They"} allow wake-ups: " + limits.windows.joinToString("; ") { "${daysText(Recurrence.weekly(it.days))} ${it.start}–${it.end}" } + ". It rings at this time in their time zone.")
             if (outsideHours) StatusPill("That's outside the wake hours ${s.friendName ?: "they"} chose.", Tone.Warning)
         }
-        OutlinedTextField(label, { label = it.take(40) }, label = { Text("Name (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            label, { label = it.take(40) }, label = { Text("Name (optional)") },
+            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                focusManager.clearFocus()
+                keyboardController?.hide()
+            }),
+        )
         FieldGroup("Sound") {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                 sounds.forEach { id ->

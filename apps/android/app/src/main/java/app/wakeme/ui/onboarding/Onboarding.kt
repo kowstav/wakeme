@@ -109,15 +109,15 @@ fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit, signInAction: (@Comp
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
                 .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Your morning.\nYour rhythm.", style = app.wakeme.designsystem.WakeMeType.display,
                     color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
                 Text("A little nudge. A better day.", style = MaterialTheme.typography.bodyLarge,
                     color = WM.colors.textSecondary)
             }
-            app.wakeme.designsystem.MorningArtwork(Modifier.fillMaxWidth().height(sceneHeight))
+            app.wakeme.designsystem.MorningArtwork(Modifier.fillMaxWidth().padding(bottom = 24.dp).height(sceneHeight))
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (signInAction != null) signInAction()
                 else PrimaryButton("Sign in", onClick = onInvite, icon = WMIcon.PersonPlus)

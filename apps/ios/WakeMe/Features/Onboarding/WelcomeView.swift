@@ -10,7 +10,7 @@ struct WelcomeView: View {
     var body: some View {
         GeometryReader { space in
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Your morning.\nYour rhythm.")
                             .font(WMFont.display).foregroundStyle(WMColor.textPrimary)
@@ -19,18 +19,21 @@ struct WelcomeView: View {
                         Text("A little nudge. A better day.")
                             .font(WMFont.body).foregroundStyle(WMColor.textSecondary)
                     }
+                    Spacer(minLength: 24)
                     Image("WakeDaylight").resizable().scaledToFit()
                         .frame(maxWidth: .infinity)
                         .frame(height: min(280, max(100, space.size.height - actionReserve)))
                         .accessibilityHidden(true)
+                    Spacer(minLength: 24)
                     VStack(spacing: 16) {
                         PrimaryButton(title: "Sign in", icon: .personPlus, action: onInvite)
                         SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
                     }
                 }
+                .frame(minHeight: max(0, space.size.height - 48), alignment: .top)
                 .padding(24)
                 .frame(maxWidth: WMLayout.readableWidth, alignment: .leading)
-                .frame(maxWidth: .infinity, minHeight: space.size.height, alignment: .top)
+                .frame(maxWidth: .infinity, alignment: .top)
             }
             .background(WMColor.surface)
         }

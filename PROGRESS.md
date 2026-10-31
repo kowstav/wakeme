@@ -3,6 +3,8 @@
 - Head 26ba0b7 passed general CI, the iOS simulator journey and all 49 Compose preview renders. All three Android emulator jobs passed their widget and real Focus shield/escape journeys, then failed the broader account/routine journey.
 - Android 16/17 reached account migration with both guest alarms intact; the newly split card assertion accidentally selected both 07:00 weekday alarms. Make the original blank-label card exact and navigate named cards by their visible recurrence/name metadata, retaining the same-card time checks.
 - Android 13 failure evidence shows the second editor with its keyboard open and Save below it; OS IME animation can race Compose idleness. The regression now waits for the real keyboard, invokes Done once, waits for it to close, then scrolls/taps Save once. Both saved alarms and the third-editor cancellation still have to pass.
+- The 4720692 journey reached the real keyboard but exposed Default IME semantics on the single-line name field. Declare Done explicitly and clear focus/hide the keyboard when it is pressed. Saving remains a separate explicit action.
+- Final native review found unused space below the welcome actions. Distribute remaining vertical space between the headline, scene and actions; retain 24-point minimum gaps, a bottom action group, scroll overflow and font-scaled illustration sizing on Android/iOS.
 - The routine list now applies and consumes its remaining safe-drawing insets, including the bottom inset on rail/wide windows. Root top/horizontal consumption is retained. Local build/lint/renders and journey-source compilation passed; fresh source-matched native CI remains required before merge.
 # Wake Me — progress
 
