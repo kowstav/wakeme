@@ -1,0 +1,10 @@
+<resources>
+<integer name="sample_toolbar_target_cell_width">4</integer>
+<integer name="sample_toolbar_target_cell_height">1</integer>
+<dimen name="sample_toolbar_widget_min_width">256dp</dimen>
+<dimen name="sample_toolbar_widget_min_height">48dp</dimen>
+<dimen name="sample_toolbar_widget_min_resize_width">48dp</dimen>
+<dimen name="sample_toolbar_widget_min_resize_height">48dp</dimen>
+<dimen name="sample_toolbar_widget_max_resize_width">624dp</dimen>
+<dimen name="sample_toolbar_widget_max_resize_height">422dp</dimen>
+</resources>

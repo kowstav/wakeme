@@ -21,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.util.Locale
@@ -32,7 +33,11 @@ sealed class Gate {
     data object SignIn : Gate()
     data object Profile : Gate()
     data class Invite(val token: String, val preview: InvitePreviewDto?) : Gate()
+    /** Self-setup route: make this phone ready for alarms before the first wake-up (doc 03 §5 steps 7–9). */
+    data object Ready : Gate()
     data object Main : Gate()
+    /** Personal wake-ups on this phone without an account (doc 02 §9); sign in to add friends. */
+    data object Guest : Gate()
 }
 
 /** App-level routing: signed in? profile? pending invite? Invites never auto-accept. */
@@ -46,6 +51,7 @@ class AppViewModel @Inject constructor(
     private val sync: SyncEngine,
     private val device: DeviceIdentity,
     private val billing: Billing,
+    private val localRoutines: app.wakeme.alarm.LocalRoutines,
 ) : ViewModel() {
     private val _gate = MutableStateFlow<Gate>(Gate.Loading)
     val gate: StateFlow<Gate> = _gate
@@ -55,7 +61,6 @@ class AppViewModel @Inject constructor(
     val error: StateFlow<String?> = _error
     private val _route = MutableStateFlow<String?>(null)
     val route: StateFlow<String?> = _route
-    private var wantsSelfSetup = false
 
     init {
         viewModelScope.launch {
@@ -79,9 +84,25 @@ class AppViewModel @Inject constructor(
         _route.value = null
     }
 
+    /** Doc 03 §5 step 2: a personal alarm needs no account. */
     fun chooseSelfSetup() {
-        wantsSelfSetup = true
+        viewModelScope.launch { prefs.setGuest(true) }
+        _gate.value = Gate.Guest
+    }
+
+    /** From guest use: sign in to add friends; local wake-ups move to the account. */
+    fun signInFromGuest() {
         _gate.value = Gate.SignIn
+    }
+
+    /** Back from the sign-in screen to wake-ups on this phone, when that's where it came from. */
+    fun backToGuest() = viewModelScope.launch { if (prefs.guest.first()) _gate.value = Gate.Guest else _gate.value = Gate.Welcome }
+
+    /** Leaves self-setup; opens the routine editor when the phone is ready. */
+    fun finishSelfSetup(openRoutineEditor: Boolean) = viewModelScope.launch {
+        prefs.setOnboardingStep(null)
+        _gate.value = Gate.Main
+        if (openRoutineEditor) _route.value = "routine-new"
     }
 
     fun chooseInviteFlow() {
@@ -90,7 +111,11 @@ class AppViewModel @Inject constructor(
 
     private suspend fun route() {
         if (session.state.value !is AuthState.SignedIn) {
-            _gate.value = if (_gate.value == Gate.SignIn) Gate.SignIn else Gate.Welcome
+            _gate.value = when {
+                _gate.value == Gate.SignIn -> Gate.SignIn
+                prefs.guest.first() -> Gate.Guest
+                else -> Gate.Welcome
+            }
             return
         }
         val me = try {
@@ -110,11 +135,19 @@ class AppViewModel @Inject constructor(
         runCatching {
             if (device.deviceId() == null) registrar.register(makePrimary = me.primaryDeviceId == null)
         }
+        // Wake-ups set up before signing in become this account's routines (sync installs them).
+        // Tried on every signed-in start, so any left behind by an offline sign-in move later.
+        runCatching { localRoutines.moveToAccount(api) }
+        prefs.setGuest(false)
         runCatching { billing.configure(me.id) }
         SyncWorker.schedulePeriodic(context)
         runCatching { sync.sync() }
         val invite = prefs.pendingInvite()
-        _gate.value = if (invite != null) Gate.Invite(invite, runCatching { api.previewInvite(invite, null) }.getOrNull()) else Gate.Main
+        _gate.value = when {
+            invite != null -> Gate.Invite(invite, runCatching { api.previewInvite(invite, null) }.getOrNull())
+            prefs.onboardingStep.first() == STEP_SELF_SETUP -> Gate.Ready
+            else -> Gate.Main
+        }
     }
 
     fun requestCode(email: String, onSent: () -> Unit) = launchCatching { session.requestEmailCode(email); onSent() }
@@ -167,6 +200,7 @@ class AppViewModel @Inject constructor(
 
     fun signOut() = launchCatching {
         sync.clearLocal()
+        app.wakeme.ui.friends.QuackShortcuts.clear(context)
         device.reset()
         session.signOut()
         prefs.clear()
@@ -174,11 +208,19 @@ class AppViewModel @Inject constructor(
         _gate.value = Gate.Welcome
     }
 
+    fun showError(message: String) {
+        _error.value = message
+    }
+
     fun clearError() {
         _error.value = null
     }
 
     val devAuth: Boolean get() = AppConfig.useDevAuth
+
+    private companion object {
+        const val STEP_SELF_SETUP = "self_setup"
+    }
 
     private fun launchCatching(block: suspend () -> Unit) = viewModelScope.launch {
         try {

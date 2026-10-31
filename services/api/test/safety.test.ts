@@ -38,6 +38,29 @@ describe('safety sessions', () => {
     assert.ok(log.rowCount >= 1, 'viewer access is audited');
   });
 
+  it('after a location-key rotation an old sample reads as "no location", never an error, until replaced', async () => {
+    h.setNow('2026-10-19T22:00:00Z');
+    const maya = await h.createUser('Maya');
+    const alex = await h.createUser('Alex');
+    await h.befriend(maya, alex);
+    const s = await h.req('POST', '/v1/location-sessions', { user: maya, body: { purpose: 'share', viewerIds: [alex.id], durationMinutes: 60, shareLocation: true } });
+    await h.signed('POST', `/v1/location-sessions/${s.body.id}/samples`, maya, { capturedAt: '2026-10-19T22:00:00Z', latitude: 51.5, longitude: -0.12, accuracyMeters: 20 });
+    const original = h.deps.config.locationKey;
+    try {
+      (h.deps.config as { locationKey: typeof original }).locationKey = { keyId: 'l2', keyBase64: Buffer.alloc(32, 7).toString('base64') };
+      const after = await h.req('GET', `/v1/location-sessions/${s.body.id}/latest`, { user: alex });
+      assert.equal(after.status, 200);
+      assert.equal(after.body.status, 'no_location');
+      h.advance(60);
+      await h.signed('POST', `/v1/location-sessions/${s.body.id}/samples`, maya, { capturedAt: '2026-10-19T22:01:00Z', latitude: 51.6, longitude: -0.13, accuracyMeters: 25 });
+      const fresh = await h.req('GET', `/v1/location-sessions/${s.body.id}/latest`, { user: alex });
+      assert.equal(fresh.body.status, 'available');
+      assert.equal(fresh.body.latitude, 51.6);
+    } finally {
+      (h.deps.config as { locationKey: typeof original }).locationKey = original;
+    }
+  });
+
   it('rejects stale samples; revoking a viewer or ending the session cuts access', async () => {
     h.setNow('2026-10-19T22:00:00Z');
     const maya = await h.createUser('Maya');

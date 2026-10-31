@@ -132,9 +132,11 @@ export const deviceRoutes: RouteDef[] = [
         const device = r.rows[0]!;
         if (body.push) await claimPushToken(q, device.id, body.push.token);
         let primary = user.primary_device_id;
-        if (body.makePrimary || !primary) {
+        if ((body.makePrimary || !primary) && primary !== device.id) {
           await q.query('update users set primary_device_id = $2, updated_at = $3 where id = $1', [user.id, device.id, now]);
           primary = device.id;
+          // Phones learn which one rings from the profile (ADR 0007).
+          await appendSync(q, [user.id], 'me', user.id);
         }
         await appendSync(q, [user.id], 'device', device.id);
         await audit(q, { actorUserId: user.id, actorKind: 'user', action: 'device.registered', targetKind: 'device', targetId: device.id, data: { platform: body.platform } });
@@ -224,7 +226,13 @@ export const deviceRoutes: RouteDef[] = [
         const r = await q.query('update devices set revoked_at = coalesce(revoked_at, $3), push_token = null where id = $1 and user_id = $2', [params.id, user.id, now]);
         if (r.rowCount === 0) throw notFound('device');
         const cleared = user.primary_device_id === params.id;
-        if (cleared) await q.query('update users set primary_device_id = null, updated_at = $2 where id = $1', [user.id, now]);
+        if (cleared) {
+          // The most recently seen remaining device rings from now on; with no primary at all,
+          // every remaining phone would count as primary and ring (ADR 0007).
+          const next = await q.query<{ id: string }>('select id from devices where user_id = $1 and revoked_at is null order by last_seen_at desc nulls last, created_at desc limit 1', [user.id]);
+          await q.query('update users set primary_device_id = $2, updated_at = $3 where id = $1', [user.id, next.rows[0]?.id ?? null, now]);
+          await appendSync(q, [user.id], 'me', user.id);
+        }
         await appendSync(q, [user.id], 'device', params.id, 'delete');
         await audit(q, { actorUserId: user.id, actorKind: 'user', action: 'device.revoked', targetKind: 'device', targetId: params.id });
         return { ok: true, primaryCleared: cleared };

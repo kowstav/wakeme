@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: the local dev backend runs on the emulator host (10.0.2.2), a
+     private address. Android 17 blocks apps that target it from reaching the local
+     network without this permission. Release builds talk only to the public API. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <application>
+        <activity android:name=".VoiceSoundsTestActivity" android:exported="false" />
+    </application>
+</manifest>

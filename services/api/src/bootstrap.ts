@@ -13,7 +13,7 @@ import { SupabaseAuthAdmin } from './modules/identity/auth-admin.ts';
 
 /** Production wiring. Each optional integration is off when unconfigured, never faked. */
 export function buildDeps(config: Config, log: Logger, opts: { db?: Db; role: 'api' | 'worker' }): Deps {
-  const db = opts.db ?? new PgDb(config.databaseUrl, config.databasePoolMax);
+  const db = opts.db ?? new PgDb(config.databaseUrl, config.databasePoolMax, (e) => log.warn({ err: e.message }, 'idle database client error'));
   return {
     config,
     db,

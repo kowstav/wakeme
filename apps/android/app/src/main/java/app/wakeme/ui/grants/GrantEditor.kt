@@ -1,6 +1,46 @@
 package app.wakeme.ui.grants
 
 import android.app.TimePickerDialog
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import app.wakeme.ui.AnimalSoundGrid
+import app.wakeme.ui.AnimalSounds
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
+import app.wakeme.designsystem.ChoiceChip
+import app.wakeme.designsystem.FieldGroup
+import app.wakeme.designsystem.HeroCard
+import app.wakeme.designsystem.WMIcon
+import app.wakeme.designsystem.WMIconView
+import app.wakeme.designsystem.quietFill
+import androidx.compose.ui.graphics.Color
+import app.wakeme.designsystem.Supporting
+import app.wakeme.designsystem.TimeDisplayStyle
+import app.wakeme.designsystem.WMMotion
+import app.wakeme.designsystem.rememberHaptics
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -10,7 +50,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,7 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.wakeme.core.AlarmLimits
@@ -39,15 +78,17 @@ import app.wakeme.data.WakeMeApi
 import app.wakeme.data.net.ApiException
 import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.PresetDto
-import app.wakeme.designsystem.Body
+import app.wakeme.data.net.OfflineException
+import app.wakeme.designsystem.DetailScreen
 import app.wakeme.designsystem.DangerButton
 import app.wakeme.designsystem.Gap
 import app.wakeme.designsystem.PrimaryButton
-import app.wakeme.designsystem.SectionTitle
 import app.wakeme.designsystem.SettingRow
+import app.wakeme.designsystem.Stepper
 import app.wakeme.designsystem.WM
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
+import app.wakeme.ui.soundName
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +96,10 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
+import app.wakeme.designsystem.Tone
+import app.wakeme.designsystem.StatusPill
+import java.time.format.DateTimeFormatter
+import java.time.ZoneId
 
 private val BUNDLED = listOf("bundled:quack.classic", "bundled:quack.double", "bundled:chime.soft", "bundled:bell.bright", "bundled:rise.gentle", "bundled:pulse.wake")
 private val ALL_DAYS = listOf(1, 2, 3, 4, 5, 6, 7)
@@ -62,7 +107,7 @@ private val CHALLENGE_TYPES = listOf("multiple_choice", "short_answer", "math", 
 
 data class Draft(
     val caps: Set<String> = emptySet(),
-    val nudge: NudgeLimits = NudgeLimits(3, listOf(LocalWindow(ALL_DAYS, "08:00", "22:00")), listOf("bundled:quack.classic", "bundled:quack.double"), false),
+    val nudge: NudgeLimits = NudgeLimits(3, listOf(LocalWindow(ALL_DAYS, "08:00", "22:00")), AnimalSounds.ids, false),
     val alarm: AlarmLimits = AlarmLimits(120, 1, listOf(LocalWindow(listOf(1, 2, 3, 4, 5), "06:00", "10:00")), listOf("bundled:rise.gentle", "bundled:bell.bright"), FollowUp(true, 300)),
     val challenge: ChallengeLimits = ChallengeLimits(listOf("multiple_choice", "short_answer", "math", "memory_order", "chess"), 90, "medium"),
     val checkin: CheckinLimits = CheckinLimits(2),
@@ -79,11 +124,12 @@ data class Draft(
 data class GrantEditorState(val friend: FriendDto? = null, val presets: List<PresetDto> = emptyList(), val draft: Draft = Draft(), val saving: Boolean = false, val error: String? = null, val saved: Boolean = false)
 
 @HiltViewModel
-class GrantEditorViewModel @Inject constructor(private val api: WakeMeApi) : ViewModel() {
+class GrantEditorViewModel @Inject constructor(private val api: WakeMeApi, val sounds: app.wakeme.media.SoundLibrary) : ViewModel() {
     private val _s = MutableStateFlow(GrantEditorState())
     val state: StateFlow<GrantEditorState> = _s
 
     fun load(friendshipId: String) = viewModelScope.launch {
+        runCatching { sounds.refresh() }
         runCatching {
             val f = api.friend(friendshipId)
             val presets = api.presets()
@@ -130,6 +176,8 @@ class GrantEditorViewModel @Inject constructor(private val api: WakeMeApi) : Vie
             if (existing == null) api.createGrant(f.user.id, s.draft.caps.toList(), s.draft.limits(), until)
             else api.updateGrant(existing.id, existing.version, s.draft.caps.toList(), s.draft.limits(), until, existing.paused)
             _s.value = _s.value.copy(saving = false, saved = true)
+        } catch (e: OfflineException) {
+            _s.value = _s.value.copy(saving = false, error = "You're offline. Nothing was changed.")
         } catch (e: ApiException) {
             val msg = if (e.code == "reauth_required") "For your safety, sign in again to allow wake alarms or location requests." else e.message
             _s.value = _s.value.copy(saving = false, error = msg)
@@ -149,124 +197,231 @@ class GrantEditorViewModel @Inject constructor(private val api: WakeMeApi) : Vie
 fun GrantEditorScreen(friendshipId: String, onDone: () -> Unit, vm: GrantEditorViewModel = hiltViewModel()) {
     LaunchedEffect(friendshipId) { vm.load(friendshipId) }
     val s by vm.state.collectAsState()
+    val customSounds by vm.sounds.ready.collectAsState()
     LaunchedEffect(s.saved) { if (s.saved) onDone() }
     val f = s.friend ?: return
     val name = f.user.displayName
     val d = s.draft
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(WakeMeTokens.spaceMd), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
+    DetailScreen(onBack = onDone) {
         Text("What can $name do?", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-        Body("You're giving $name permission to help you, within limits you set. You can change or remove this anytime. It only works one way: it doesn't give you anything on $name's phone.")
-        Text("Start from", style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-            s.presets.filter { it.id != "focus_buddy" }.forEach { p ->
-                FilterChip(selected = false, onClick = { vm.applyPreset(p) }, label = { Text(if (p.id == "gentle_nudges") "Gentle nudges" else "Wake buddy") })
-            }
+        f.iAllowThem?.let { g ->
+            val day = DateTimeFormatter.ofPattern("d MMM yyyy").withZone(ZoneId.systemDefault())
+            fun fmt(iso: String?) = iso?.let { runCatching { day.format(Instant.parse(it)) }.getOrNull() }
+            StatusPill(if (g.paused) "Paused" else "Active until ${fmt(g.validUntil) ?: "—"}", if (g.paused) Tone.Warning else Tone.Info)
         }
-
-        WMCard {
-            SettingRow("Send short sounds", "A quack or chime, a few times an hour at most.", Capability.NUDGE in d.caps) { vm.toggle(Capability.NUDGE, it) }
-            if (Capability.NUDGE in d.caps) {
-                Stepper("Up to ${d.nudge.maxPerHour} per hour", d.nudge.maxPerHour, 1, 12) { v -> vm.edit { it.copy(nudge = it.nudge.copy(maxPerHour = v)) } }
-                WindowEditor(d.nudge.windows.first()) { w -> vm.edit { it.copy(nudge = it.nudge.copy(windows = listOf(w))) } }
-                SoundPicker(d.nudge.sounds) { list -> vm.edit { it.copy(nudge = it.nudge.copy(sounds = list)) } }
-                SettingRow("Allow during my quiet hours", "Off means quacks wait for daytime. Turn on only if you want them at night too.", d.nudge.overridesQuietHours) { on -> vm.edit { it.copy(nudge = it.nudge.copy(overridesQuietHours = on)) } }
-            }
-        }
-
-        WMCard {
-            SectionTitle("Help wake me")
-            SettingRow("Set wake-up routines for me", "You'll see and accept every routine before it's active.", Capability.ALARM_SCHEDULE in d.caps) { vm.toggle(Capability.ALARM_SCHEDULE, it) }
-            SettingRow("Wake me now", "Ring this phone during your wake hours, if you're not up.", Capability.ALARM_REQUEST in d.caps) { vm.toggle(Capability.ALARM_REQUEST, it) }
-            if (Capability.ALARM_REQUEST in d.caps || Capability.ALARM_SCHEDULE in d.caps) {
-                Body("Wake hours are your explicit OK to be woken, even during quiet hours.")
-                WindowEditor(d.alarm.windows.first()) { w -> vm.edit { it.copy(alarm = it.alarm.copy(windows = listOf(w))) } }
-                Choice("Ring for at most", listOf(30, 60, 120, 300), d.alarm.maxAlarmSeconds, { "${it}s" }) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxAlarmSeconds = v)) } }
-                Stepper("Up to ${d.alarm.maxPerDay} wake-up${if (d.alarm.maxPerDay > 1) "s" else ""} a day", d.alarm.maxPerDay, 1, 3) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxPerDay = v)) } }
-                SoundPicker(d.alarm.sounds) { list -> vm.edit { it.copy(alarm = it.alarm.copy(sounds = list)) } }
-                SettingRow("Allow one follow-up alarm", "A second alarm a few minutes later unless you finish the challenge.", d.alarm.followUp.allowed) { on -> vm.edit { it.copy(alarm = it.alarm.copy(followUp = it.alarm.followUp.copy(allowed = on))) } }
-            }
-        }
-
-        WMCard {
-            SettingRow("Assign challenges", "Quizzes and puzzles to finish your wake-up. New versions always need your OK.", Capability.CHALLENGE_ASSIGN in d.caps) { vm.toggle(Capability.CHALLENGE_ASSIGN, it) }
-            if (Capability.CHALLENGE_ASSIGN in d.caps) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                    CHALLENGE_TYPES.forEach { t ->
-                        val on = t in d.challenge.types
-                        FilterChip(selected = on, onClick = { vm.edit { it.copy(challenge = it.challenge.copy(types = if (on) (it.challenge.types - t).ifEmpty { listOf("math") } else it.challenge.types + t)) } }, label = { Text(t.replace('_', ' ')) })
-                    }
+        FieldGroup("Start from") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                s.presets.filter { it.id != "focus_buddy" }.forEach { p ->
+                    ChoiceChip(if (p.id == "gentle_nudges") "Gentle nudges" else "Wake buddy", selected = false, onClick = { vm.applyPreset(p) })
                 }
-                Choice("At most", listOf(30, 60, 90, 180), d.challenge.maxDurationSeconds, { "${it}s" }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDurationSeconds = v)) } }
-                Choice("Hardest", listOf("easy", "medium", "hard"), d.challenge.maxDifficulty, { it }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDifficulty = v)) } }
+            }
+        }
+
+        // Choices first, as switches and faces; the detail behind each permission opens on demand
+        // (presets fill it in), so the screen reads as a few decisions, not a form.
+        WMCard {
+            SettingRow("Quacks", null, Capability.NUDGE in d.caps, icon = WMIcon.Speaker, family = WM.palette.gold) { vm.toggle(Capability.NUDGE, it) }
+            if (Capability.NUDGE in d.caps) {
+                AnimalSoundGrid(
+                    d.nudge.sounds.filter { it in AnimalSounds.ids }.ifEmpty { listOf(AnimalSounds.DEFAULT_ID) },
+                    onChange = { list -> vm.edit { it.copy(nudge = it.nudge.copy(sounds = list)) } },
+                )
+                Disclosure("Hours and limits") {
+                    Stepper("Up to ${d.nudge.maxPerHour} per hour", d.nudge.maxPerHour, 1, 12) { v -> vm.edit { it.copy(nudge = it.nudge.copy(maxPerHour = v)) } }
+                    WindowEditor(d.nudge.windows.first()) { w -> vm.edit { it.copy(nudge = it.nudge.copy(windows = listOf(w))) } }
+                    SettingRow("Allow during my quiet hours", null, d.nudge.overridesQuietHours) { on -> vm.edit { it.copy(nudge = it.nudge.copy(overridesQuietHours = on)) } }
+                }
             }
         }
 
         WMCard {
-            SectionTitle("Check in on me")
-            SettingRow("Ask me to check in", "A request you can answer with “I'm OK”.", Capability.CHECKIN in d.caps) { vm.toggle(Capability.CHECKIN, it) }
-            SettingRow("Ask where I am", "They can ask. Nothing is shared unless you choose to share, each time.", Capability.LOCATION in d.caps) { vm.toggle(Capability.LOCATION, it) }
+            SettingRow("Set wake-up routines for me", null, Capability.ALARM_SCHEDULE in d.caps, icon = WMIcon.CalendarPlus, family = WM.palette.sky) { vm.toggle(Capability.ALARM_SCHEDULE, it) }
+            SettingRow("Wake me now", null, Capability.ALARM_REQUEST in d.caps, icon = WMIcon.Wake, family = WM.palette.apricot) { vm.toggle(Capability.ALARM_REQUEST, it) }
+            if (Capability.ALARM_REQUEST in d.caps || Capability.ALARM_SCHEDULE in d.caps) {
+                Disclosure("Hours and limits") {
+                    WindowEditor(d.alarm.windows.first()) { w -> vm.edit { it.copy(alarm = it.alarm.copy(windows = listOf(w))) } }
+                    Choice("Ring for at most", listOf(30, 60, 120, 300), d.alarm.maxAlarmSeconds, { "${it}s" }) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxAlarmSeconds = v)) } }
+                    Stepper("Up to ${d.alarm.maxPerDay} wake-up${if (d.alarm.maxPerDay > 1) "s" else ""} a day", d.alarm.maxPerDay, 1, 3) { v -> vm.edit { it.copy(alarm = it.alarm.copy(maxPerDay = v)) } }
+                    SoundPicker(d.alarm.sounds, customSounds) { list -> vm.edit { it.copy(alarm = it.alarm.copy(sounds = list)) } }
+                    SettingRow("Allow one follow-up alarm", null, d.alarm.followUp.allowed) { on -> vm.edit { it.copy(alarm = it.alarm.copy(followUp = it.alarm.followUp.copy(allowed = on))) } }
+                }
+            }
+        }
+
+        WMCard {
+            SettingRow("Assign challenges", null, Capability.CHALLENGE_ASSIGN in d.caps, icon = WMIcon.Trophy, family = WM.palette.orchid) { vm.toggle(Capability.CHALLENGE_ASSIGN, it) }
+            if (Capability.CHALLENGE_ASSIGN in d.caps) {
+                Disclosure("Limits") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                        CHALLENGE_TYPES.forEach { t ->
+                            val on = t in d.challenge.types
+                            ChoiceChip(t.replace('_', ' '), selected = on, onClick = { vm.edit { it.copy(challenge = it.challenge.copy(types = if (on) (it.challenge.types - t).ifEmpty { listOf("math") } else it.challenge.types + t)) } })
+                        }
+                    }
+                    Choice("At most", listOf(30, 60, 90, 180), d.challenge.maxDurationSeconds, { "${it}s" }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDurationSeconds = v)) } }
+                    Choice("Hardest", listOf("easy", "medium", "hard"), d.challenge.maxDifficulty, { it }) { v -> vm.edit { it.copy(challenge = it.challenge.copy(maxDifficulty = v)) } }
+                }
+            }
+        }
+
+        WMCard {
+            SettingRow("Ask me to check in", null, Capability.CHECKIN in d.caps, icon = WMIcon.CheckCircle, family = WM.palette.aqua) { vm.toggle(Capability.CHECKIN, it) }
+            SettingRow("Ask where I am", null, Capability.LOCATION in d.caps, icon = WMIcon.Pin, family = WM.palette.periwinkle) { vm.toggle(Capability.LOCATION, it) }
         }
 
         Choice("Keep these permissions for", listOf(30L, 90L, 180L), d.validDays, { "$it days" }) { v -> vm.edit { it.copy(validDays = v) } }
-        PrimaryButton(if (s.saving) "Saving…" else "Save my rules", onClick = vm::save, enabled = !s.saving)
-        if (f.iAllowThem != null) DangerButton("Remove all of $name's permissions", onClick = vm::revokeAll)
+        PrimaryButton(if (s.saving) "Saving…" else "Save my rules", onClick = vm::save, enabled = !s.saving, icon = WMIcon.Check)
+        if (f.iAllowThem != null) DangerButton("Remove all of $name's permissions", onClick = vm::revokeAll, icon = WMIcon.Trash)
         Gap(WakeMeTokens.spaceXl)
     }
     s.error?.let { AlertDialog(onDismissRequest = vm::clearError, confirmButton = { TextButton(onClick = vm::clearError) { Text("OK") } }, text = { Text(it) }) }
 }
 
+/**
+ * Detail that most people never change, behind one row (progressive disclosure): the label and a
+ * chevron that turns; the controls slide open under it. Open state survives rotation.
+ */
 @Composable
-private fun Stepper(label: String, value: Int, min: Int, max: Int, onChange: (Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
-        TextButton(onClick = { onChange((value - 1).coerceAtLeast(min)) }, enabled = value > min) { Text("−") }
-        TextButton(onClick = { onChange((value + 1).coerceAtMost(max)) }, enabled = value < max) { Text("+") }
+private fun Disclosure(label: String, content: @Composable () -> Unit) {
+    var open by rememberSaveable(label) { mutableStateOf(false) }
+    val turn by animateFloatAsState(if (open) 90f else 0f, WMMotion.standard(), label = "chevron")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(onClickLabel = if (open) "Hide $label" else "Show $label") { open = !open },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary, modifier = Modifier.weight(1f))
+        WMIconView(WMIcon.ChevronRight, Modifier.graphicsLayer { rotationZ = turn }, tint = WM.colors.textSecondary, size = WakeMeTokens.iconSizeSmall)
+    }
+    AnimatedVisibility(open, enter = expandVertically(WMMotion.standard()) + fadeIn(WMMotion.standard()), exit = shrinkVertically(WMMotion.quick()) + fadeOut(WMMotion.quick())) {
+        Column(verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutControlGap)) { content() }
     }
 }
 
 @Composable
 private fun <T> Choice(label: String, options: List<T>, selected: T, text: (T) -> String, onPick: (T) -> Unit) {
-    Text(label, style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-        options.forEach { o -> FilterChip(selected = o == selected, onClick = { onPick(o) }, label = { Text(text(o)) }) }
+    FieldGroup(label) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+            options.forEach { o -> ChoiceChip(text(o), selected = o == selected, onClick = { onPick(o) }) }
+        }
     }
 }
 
 @Composable
-private fun SoundPicker(selected: List<String>, onChange: (List<String>) -> Unit) {
-    Text("Sounds they can use", style = MaterialTheme.typography.bodyLarge, color = WM.colors.textPrimary)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-        BUNDLED.forEach { id ->
-            val on = id in selected
-            FilterChip(selected = on, onClick = { onChange(if (on) (selected - id).ifEmpty { listOf(id) } else selected + id) }, label = { Text(id.removePrefix("bundled:").replace('.', ' ')) })
+private fun SoundPicker(selected: List<String>, custom: List<String>, onChange: (List<String>) -> Unit) {
+    FieldGroup("Sounds they can use") {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+            (BUNDLED + custom + selected).distinct().forEach { id ->
+                val on = id in selected
+                ChoiceChip(soundName(id), selected = on, onClick = { onChange(if (on) (selected - id).ifEmpty { listOf(id) } else selected + id) })
+            }
         }
+    }
+}
+
+/**
+ * Seven day toggles in one row, Monday first; at least one stays selected. Each is a 48 dp-tall
+ * target sharing the row's width (about 43 dp wide on a 360 dp phone), read as "Monday, checked".
+ * A chosen day is lime with a bold forest letter, like every selection in Bloom; an open day keeps
+ * an outline, so the state isn't colour alone.
+ */
+@Composable
+fun DayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
+    val names = listOf("M", "T", "W", "T", "F", "S", "S")
+    val full = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    val haptics = rememberHaptics()
+    val c = WM.colors
+    val off = quietFill()
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
+        ALL_DAYS.forEach { day ->
+            val on = day in days
+            val fill by animateColorAsState(if (on) c.accent else off, WMMotion.snappy(), label = "dayFill")
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = WakeMeTokens.minTouchTarget)
+                    .toggleable(value = on, role = Role.Checkbox, onValueChange = {
+                        haptics.selection()
+                        onChange(if (on) (days - day).ifEmpty { listOf(day) } else (days + day).sorted())
+                    })
+                    .semantics { contentDescription = full[day - 1] },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier.sizeIn(maxWidth = 44.dp, maxHeight = 44.dp).aspectRatio(1f).fillMaxSize()
+                        .background(fill, CircleShape)
+                        .border(1.dp, if (on) Color.Transparent else c.outline, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(names[day - 1], style = MaterialTheme.typography.titleMedium, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, color = if (on) c.textOnAccent else c.textPrimary)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The routine's time as the biggest thing on screen, lime on the forest hero card (tabular, so it
+ * doesn't shift while it changes), with an edit icon saying it can change. Tapping it opens the
+ * system time picker; TalkBack reads "Rings at 07:00, change time".
+ */
+@Composable
+fun TimeDisplay(label: String, time: String, onPick: (String) -> Unit) {
+    val context = LocalContext.current
+    val c = WM.colors
+    HeroCard(onClickLabel = "Change time", onClick = {
+        val (h, m) = time.split(":").map { it.toInt() }
+        TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
+    }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelLarge, color = c.onHeroSecondary)
+                AnimatedContent(targetState = time, transitionSpec = { WMMotion.fadeThrough() }, label = "time") { t ->
+                    Text(t, style = TimeDisplayStyle, color = c.onHero)
+                }
+            }
+            WMIconView(WMIcon.Edit, tint = c.onHero)
+        }
+    }
+}
+
+/**
+ * A time of day ("HH:MM") as a compact outlined field: the role ("From") small above the time.
+ * Opens the system time picker; read as "From 08:00, change time". Text stays "$label $time"
+ * for the journey test via the merged description.
+ */
+@Composable
+fun TimeOfDayButton(label: String, time: String, modifier: Modifier = Modifier, onPick: (String) -> Unit) {
+    val context = LocalContext.current
+    val c = WM.colors
+    val shape = RoundedCornerShape(WakeMeTokens.radiusMd)
+    Column(
+        modifier
+            .heightIn(min = WakeMeTokens.buttonHeight)
+            .clip(shape)
+            .border(1.dp, c.outline, shape)
+            .clickable(onClickLabel = "Change time", role = Role.Button) {
+                val (h, m) = time.split(":").map { it.toInt() }
+                TimePickerDialog(context, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
+            }
+            .padding(horizontal = WakeMeTokens.spaceMd, vertical = WakeMeTokens.spaceXs)
+            .semantics(mergeDescendants = true) { contentDescription = "$label $time" },
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+        Text(time, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
     }
 }
 
 @Composable
 fun WindowEditor(window: LocalWindow, onChange: (LocalWindow) -> Unit) {
-    val context = LocalContext.current
-    val names = listOf("M", "T", "W", "T", "F", "S", "S")
-    val full = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
-        ALL_DAYS.forEach { day ->
-            val on = day in window.days
-            FilterChip(
-                selected = on,
-                onClick = { onChange(window.copy(days = if (on) (window.days - day).ifEmpty { listOf(day) } else (window.days + day).sorted())) },
-                label = { Text(names[day - 1]) },
-                modifier = Modifier.semantics { contentDescription = full[day - 1] },
-            )
-        }
+    DayChips(window.days) { onChange(window.copy(days = it)) }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
+        TimeOfDayButton("From", window.start, Modifier.weight(1f)) { s -> if (s != window.end) onChange(window.copy(start = s)) }
+        TimeOfDayButton("Until", window.end, Modifier.weight(1f)) { e -> if (e != window.start) onChange(window.copy(end = e)) }
     }
-    fun pick(current: String, set: (String) -> Unit) {
-        val (h, m) = current.split(":").map { it.toInt() }
-        TimePickerDialog(context, { _, hh, mm -> set("%02d:%02d".format(hh, mm)) }, h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = { pick(window.start) { s -> if (s != window.end) onChange(window.copy(start = s)) } }) { Text("From ${window.start}") }
-        TextButton(onClick = { pick(window.end) { e -> if (e != window.start) onChange(window.copy(end = e)) } }) { Text("Until ${window.end}") }
-    }
-    if (window.end <= window.start) Body("Ends the next morning.")
+    if (window.end <= window.start) Supporting("Ends the next morning.")
 }
 

@@ -11,6 +11,10 @@ import app.wakeme.data.net.CommandDto
 import app.wakeme.data.net.FriendDto
 import app.wakeme.data.net.InviteCreatedDto
 import app.wakeme.data.net.OfflineException
+import app.wakeme.data.local.LocalDb
+import app.wakeme.data.local.ScheduledAlarmEntity
+import app.wakeme.readiness.Readiness
+import app.wakeme.readiness.ReadinessItem
 import app.wakeme.sync.SyncEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,6 +46,27 @@ fun statusText(context: Context, displayStatus: String): String = context.getStr
 )
 
 /** Why an action isn't available, in words that don't blame or reveal private settings. */
+/**
+ * What someone typed or pasted to join, read generously (Postel's law): a 9-character code in any
+ * case, with or without spaces and dashes, or a whole invite link (its token is used). Same rules
+ * as iOS `InviteInput`.
+ */
+data class InviteInput(val token: String?, val code: String?) {
+    companion object {
+        fun parse(raw: String): InviteInput? {
+            val text = raw.trim()
+            val at = text.indexOf("/i/")
+            if (at >= 0) {
+                val token = text.substring(at + 3).takeWhile { it !in "?#/ " }
+                return if (token.isEmpty()) null else InviteInput(token, null)
+            }
+            val chars = text.uppercase().filter { it.isLetterOrDigit() }
+            if (chars.length != 9) return null
+            return InviteInput(null, chars.substring(0, 3) + "-" + chars.substring(3, 6) + "-" + chars.substring(6))
+        }
+    }
+}
+
 fun reasonText(name: String, reason: String?): String = when (reason) {
     "capability_not_granted" -> "$name hasn't turned this on for you."
     "grant_paused" -> "$name has paused requests from you."
@@ -59,21 +84,44 @@ data class FriendsState(
     val invite: InviteCreatedDto? = null,
     val offline: Boolean = false,
     val message: String? = null,
+    /** The next main alarm armed on this phone (doc 03 §3: home shows it). */
+    val nextAlarm: ScheduledAlarmEntity? = null,
+    /** At most one thing stopping it from ringing well; notifications have their own card. */
+    val readinessIssue: ReadinessItem? = null,
 )
 
 @HiltViewModel
-class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: SyncEngine) : ViewModel() {
+class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: SyncEngine, db: LocalDb, private val readiness: Readiness, @ApplicationContext private val context: Context) : ViewModel() {
     private val _state = MutableStateFlow(FriendsState())
     val state: StateFlow<FriendsState> = _state
 
     init {
         load()
         viewModelScope.launch { sync.changes.collect { if (it == "grant" || it == "friendship" || it == "all") load() } }
+        viewModelScope.launch {
+            db.alarms().observe().collect { all ->
+                val now = System.currentTimeMillis()
+                val boot = app.wakeme.alarm.BootAlarms(context)
+                _state.value = _state.value.copy(nextAlarm = all.firstOrNull { it.fireAt > now && it.role == "MAIN" && !boot.isEnded(it.planId) })
+                refreshReadiness()
+            }
+        }
     }
+
+    /** Re-checked when the screen resumes (a setting may have changed outside the app). */
+    fun refreshReadiness() {
+        val missing = readiness.state().missing
+        val issue = if (_state.value.nextAlarm == null) null else HOME_ISSUES.firstOrNull { it in missing }
+        _state.value = _state.value.copy(readinessIssue = issue)
+    }
+
+    fun settingsIntent(item: ReadinessItem) = readiness.settingsIntent(item)
 
     fun load() = viewModelScope.launch {
         try {
-            _state.value = _state.value.copy(loading = false, friends = api.friends(), offline = false)
+            val friends = api.friends()
+            _state.value = _state.value.copy(loading = false, friends = friends, offline = false)
+            QuackShortcuts.publish(context, friends)
         } catch (e: OfflineException) {
             _state.value = _state.value.copy(loading = false, offline = true)
         } catch (e: ApiException) {
@@ -85,8 +133,9 @@ class FriendsViewModel @Inject constructor(private val api: WakeMeApi, sync: Syn
         runCatching { api.createInvite() }.onSuccess { _state.value = _state.value.copy(invite = it) }.onFailure { _state.value = _state.value.copy(message = it.message) }
     }
 
-    fun redeemCode(code: String) = viewModelScope.launch {
-        runCatching { api.redeemInvite(null, code) }.onSuccess { load() }.onFailure { _state.value = _state.value.copy(message = it.message) }
+    fun redeemCode(raw: String) = viewModelScope.launch {
+        val input = InviteInput.parse(raw) ?: run { _state.value = _state.value.copy(message = "That code didn't work."); return@launch }
+        runCatching { api.redeemInvite(input.token, input.code) }.onSuccess { load() }.onFailure { _state.value = _state.value.copy(message = it.message) }
     }
 
     fun dismissMessage() {
@@ -100,6 +149,9 @@ data class DetailState(
     val sending: String? = null,
     val lastSent: CommandDto? = null,
     val message: String? = null,
+    /** Bumped on each send result: haptics and the quack animation follow them (doc 03 §2). */
+    val sentTick: Int = 0,
+    val failTick: Int = 0,
 )
 
 @HiltViewModel
@@ -126,13 +178,13 @@ class FriendDetailViewModel @Inject constructor(private val api: WakeMeApi) : Vi
         _state.value = _state.value.copy(sending = capability)
         try {
             val cmd = api.sendCommand(f.user.id, capability, f.theyAllowMe?.version, extra, key)
-            _state.value = _state.value.copy(sending = null, lastSent = cmd)
+            _state.value = _state.value.copy(sending = null, lastSent = cmd, sentTick = _state.value.sentTick + 1)
             poll(cmd.id)
         } catch (e: ApiException) {
-            _state.value = _state.value.copy(sending = null, message = e.message)
+            _state.value = _state.value.copy(sending = null, message = e.message, failTick = _state.value.failTick + 1)
             if (e.code == "grant_changed") id?.let { load(it) }
         } catch (e: OfflineException) {
-            _state.value = _state.value.copy(sending = null, message = "You're offline, so nothing was sent.")
+            _state.value = _state.value.copy(sending = null, message = "You're offline, so nothing was sent.", failTick = _state.value.failTick + 1)
         }
     }
 
@@ -158,3 +210,6 @@ class FriendDetailViewModel @Inject constructor(private val api: WakeMeApi) : Vi
         _state.value = _state.value.copy(message = null)
     }
 }
+
+/** What could stop the next alarm, most serious first. Notifications have their own card. */
+private val HOME_ISSUES = listOf(ReadinessItem.EXACT_ALARMS, ReadinessItem.ALARM_VOLUME, ReadinessItem.FULL_SCREEN)

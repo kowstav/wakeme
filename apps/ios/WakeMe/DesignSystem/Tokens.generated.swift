@@ -3,23 +3,69 @@ import SwiftUI
 import UIKit
 
 enum WMColor {
-    static let surface = Color(light: 0xFBF8F1, dark: 0x121417)
-    static let surfaceRaised = Color(light: 0xFFFFFF, dark: 0x1C1F24)
-    static let surfaceSunken = Color(light: 0xF3EEE3, dark: 0x0C0E10)
-    static let border = Color(light: 0xE2DCCF, dark: 0x2C3036)
-    static let textPrimary = Color(light: 0x1B1A17, dark: 0xF3EFE6)
-    static let textSecondary = Color(light: 0x5C5850, dark: 0xB3ADA2)
-    static let accent = Color(light: 0xF2B705, dark: 0xF5C518)
-    static let textOnAccent = Color(light: 0x1B1A17, dark: 0x1B1A17)
-    static let accentText = Color(light: 0x835C00, dark: 0xF5C518)
-    static let info = Color(light: 0x2F5D9E, dark: 0x8DB4F0)
-    static let success = Color(light: 0x2B7449, dark: 0x6FCF97)
-    static let warning = Color(light: 0x8F5400, dark: 0xF2B05E)
-    static let danger = Color(light: 0xB3261E, dark: 0xFF8A80)
-    static let dangerFill = Color(light: 0xB3261E, dark: 0xB3261E)
+    static let surface = Color(light: 0xF6F6FC, dark: 0x15151D)
+    static let surfaceRaised = Color(light: 0xFFFFFF, dark: 0x20202B)
+    static let surfaceNeutral = Color(light: 0xECECF8, dark: 0x292936)
+    static let surfaceSunken = Color(light: 0xEFEFF7, dark: 0x101017)
+    static let surfacePressed = Color(light: 0xDFDFF0, dark: 0x353544)
+    static let surfaceOverlay = Color(light: 0xFFFFFF, dark: 0x292936)
+    static let border = Color(light: 0xD0D1DF, dark: 0x3E3E50)
+    static let outline = Color(light: 0x747488, dark: 0x9393AA, lightHighContrast: 0x525162, darkHighContrast: 0xC8C6D9)
+    static let textPrimary = Color(light: 0x24232C, dark: 0xF5F4FC)
+    static let textSecondary = Color(light: 0x575666, dark: 0xC0BECE, lightHighContrast: 0x383644, darkHighContrast: 0xE0DEEF)
+    static let accent = Color(light: 0x5B50CE, dark: 0xC2BAFF)
+    static let accentPressed = Color(light: 0x4B40B5, dark: 0xAFA4F4)
+    static let textOnAccent = Color(light: 0xFFFFFF, dark: 0x211B42)
+    static let accentContainer = Color(light: 0xE7E3FF, dark: 0x30294F)
+    static let onAccentContainer = Color(light: 0x302470, dark: 0xE1DAFF)
+    static let accentText = Color(light: 0x4835A1, dark: 0xD0C6FF, lightHighContrast: 0x302470, darkHighContrast: 0xE3DCFF)
+    static let brandInk = Color(light: 0x29233F, dark: 0xD0C6FF, lightHighContrast: 0x211A37, darkHighContrast: 0xE3DCFF)
+    static let heroFill = Color(light: 0x292833, dark: 0x242330)
+    static let onHero = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
+    static let onHeroSecondary = Color(light: 0xDDD9EF, dark: 0xDDD9EF)
+    static let info = Color(light: 0x2A5E98, dark: 0x95D3E2)
+    static let infoContainer = Color(light: 0xDEEFF3, dark: 0x1E3A41)
+    static let success = Color(light: 0x2F5711, dark: 0x9FE870)
+    static let successContainer = Color(light: 0xE2F6D5, dark: 0x203F05)
+    static let warning = Color(light: 0x8A4100, dark: 0xFAAF5F)
+    static let warningContainer = Color(light: 0xFDE7D2, dark: 0x4E2D02)
+    static let danger = Color(light: 0xA8200D, dark: 0xFF8A7A)
+    static let dangerContainer = Color(light: 0xFFE6E1, dark: 0x4A1A14)
+    static let dangerFill = Color(light: 0xA8200D, dark: 0xA8200D)
     static let textOnDanger = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
-    static let alarmBackground = Color(light: 0x121417, dark: 0x0C0E10)
-    static let alarmText = Color(light: 0xF3EFE6, dark: 0xF3EFE6)
+    static let focus = Color(light: 0x2A5E98, dark: 0x95D3E2)
+    static let alarmBackground = Color(light: 0x242330, dark: 0x101017)
+    static let alarmText = Color(light: 0xFAF9FF, dark: 0xFAF9FF)
+}
+
+/// A petal family: `fill` for tiles, chips and avatars, `ink` for text and icons on it (≥ 4.5:1
+/// in both themes). Families mark things of the same kind; they never carry status.
+struct WMFamily: Sendable {
+    let fill: Color
+    let ink: Color
+}
+
+enum WMPalette {
+    static let lime = WMFamily(fill: Color(light: 0xDFD9FF, dark: 0x30294F), ink: Color(light: 0x302470, dark: 0xD9D0FF))
+    static let orchid = WMFamily(fill: Color(light: 0xF1DFF0, dark: 0x422C43), ink: Color(light: 0x572653, dark: 0xF1C9EC))
+    static let sky = WMFamily(fill: Color(light: 0xDFE9FA, dark: 0x24324B), ink: Color(light: 0x203E6B, dark: 0xBDDAFF))
+    static let apricot = WMFamily(fill: Color(light: 0xFFE5CC, dark: 0x4B3020), ink: Color(light: 0x773509, dark: 0xFFD2AD))
+    static let gold = WMFamily(fill: Color(light: 0xFFF0BC, dark: 0x423B20), ink: Color(light: 0x654908, dark: 0xFFDF84))
+    static let aqua = WMFamily(fill: Color(light: 0xDDEFE9, dark: 0x233D36), ink: Color(light: 0x214B3F, dark: 0xB5E3D3))
+    static let periwinkle = WMFamily(fill: Color(light: 0xE5E2FA, dark: 0x302C48), ink: Color(light: 0x39316B, dark: 0xD0C9FF))
+    static let forest = WMFamily(fill: Color(light: 0x292833, dark: 0x242330), ink: Color(light: 0xFFFFFF, dark: 0xFFFFFF))
+    /// Friend avatars, in the same order as Android, so a friend has one colour on both.
+    static let avatars: [WMFamily] = [lime, orchid, sky, apricot, gold, aqua, periwinkle]
+}
+
+/// Illustration colours for the duck; the same in both themes.
+enum WMIllustration {
+    static let duckBody = Color(light: 0xF8C53D, dark: 0xF8C53D)
+    static let duckWing = Color(light: 0xD7961A, dark: 0xD7961A)
+    static let duckBeak = Color(light: 0xED7737, dark: 0xED7737)
+    static let duckBeakShade = Color(light: 0xD03E20, dark: 0xD03E20)
+    static let duckEye = Color(light: 0x163300, dark: 0x163300)
+    static let duckEyeHighlight = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
 }
 
 enum WMSpacing {
@@ -33,28 +79,128 @@ enum WMSpacing {
 }
 
 enum WMRadius {
-    static let sm: CGFloat = 8
-    static let md: CGFloat = 12
-    static let lg: CGFloat = 20
+    static let sm: CGFloat = 10
+    static let md: CGFloat = 16
+    static let lg: CGFloat = 22
+    static let xl: CGFloat = 28
     static let pill: CGFloat = 999
 }
 
 enum WMSize {
     static let minTouchTarget: CGFloat = 44
     static let alarmControl: CGFloat = 72
+    static let controlHeight: CGFloat = 56
 }
 
-enum WMMotion {
-    static let quick: Double = 0.15
-    static let standard: Double = 0.25
+/// Semantic type roles. Each follows Dynamic Type through its text style; roles with a fixed
+/// design size (iosSize) are for views that scale it with @ScaledMetric(relativeTo:).
+enum WMFont {
+    /// Welcome and celebration headline, sentence case
+    static var display: Font { .custom("Manrope-ExtraLight", size: 34, relativeTo: .largeTitle).weight(.semibold) }
+    /// Alarm clock face
+    static var alarmTime: Font { .custom("Manrope-ExtraLight", size: 80, relativeTo: .largeTitle).weight(.bold) }
+    /// Routine time on heroes, detail and editor
+    static var timeDisplay: Font { .custom("Manrope-ExtraLight", size: 56, relativeTo: .largeTitle).weight(.regular) }
+    /// Routine time on cards and lists
+    static var timeInline: Font { .custom("Manrope-ExtraLight", size: 38, relativeTo: .largeTitle).weight(.medium) }
+    /// Large headings on full-screen states
+    static var hero: Font { .custom("Manrope-ExtraLight", size: 28, relativeTo: .largeTitle).weight(.semibold) }
+    /// Top of a screen
+    static var screenTitle: Font { .custom("Manrope-ExtraLight", size: 28, relativeTo: .largeTitle).weight(.semibold) }
+    /// Alarm label, challenge title, question
+    static var prominent: Font { .custom("Manrope-ExtraLight", size: 24, relativeTo: .title2).weight(.bold) }
+    /// Header between groups (outside cards); large alarm button labels
+    static var section: Font { .custom("Manrope-ExtraLight", size: 19, relativeTo: .title2).weight(.semibold) }
+    /// Card and list-row titles, button labels
+    static var cardTitle: Font { .custom("Manrope-ExtraLight", size: 16, relativeTo: .headline).weight(.semibold) }
+    /// Bento tile titles
+    static var tileTitle: Font { .custom("Manrope-ExtraLight", size: 16, relativeTo: .callout).weight(.semibold) }
+    /// Label above a group of form controls; small section headers
+    static var fieldLabel: Font { .custom("Manrope-ExtraLight", size: 14, relativeTo: .subheadline).weight(.semibold) }
+    /// Paragraphs and sentences
+    static var body: Font { .custom("Manrope-ExtraLight", size: 16, relativeTo: .body).weight(.regular) }
+    /// Secondary line under a title, metadata
+    static var supporting: Font { .custom("Manrope-ExtraLight", size: 14, relativeTo: .subheadline).weight(.regular) }
+    /// Status pills, chips
+    static var label: Font { .custom("Manrope-ExtraLight", size: 14, relativeTo: .subheadline).weight(.medium) }
+    /// The short word under a quick-action circle
+    static var actionLabel: Font { .custom("Manrope-ExtraLight", size: 13, relativeTo: .footnote).weight(.semibold) }
+    /// Trail step labels, footnotes; the floor for anything people must read
+    static var caption: Font { .custom("Manrope-ExtraLight", size: 12, relativeTo: .caption).weight(.medium) }
+}
+
+/// Semantic spacing (4-point scale) and component sizes.
+enum WMLayout {
+    static let screenMargin: CGFloat = 20
+    static let readableWidth: CGFloat = 640
+    static let cardPadding: CGFloat = 16
+    static let heroPadding: CGFloat = 20
+    static let cardGap: CGFloat = 12
+    static let titleGap: CGFloat = 4
+    static let fieldLabelGap: CGFloat = 8
+    static let controlGap: CGFloat = 12
+    static let sectionGap: CGFloat = 28
+    static let sectionTopExtra: CGFloat = 8
+    static let buttonHeight: CGFloat = 56
+    static let alarmButtonHeight: CGFloat = 72
+    static let buttonPaddingX: CGFloat = 24
+    static let compactControlHeight: CGFloat = 40
+    static let chipHeight: CGFloat = 36
+    static let iconButtonVisual: CGFloat = 44
+    static let iconChip: CGFloat = 40
+    static let actionCircle: CGFloat = 56
+    static let iconSize: CGFloat = 24
+    static let iconSizeSmall: CGFloat = 20
+    static let iconSizeLarge: CGFloat = 28
+    static let avatarRow: CGFloat = 44
+    static let avatarHeader: CGFloat = 72
+    static let tileMinHeight: CGFloat = 128
+    static let statusPillPaddingX: CGFloat = 12
+    static let statusPillPaddingY: CGFloat = 6
+    static let dayToggleMax: CGFloat = 44
+}
+
+enum WMOpacity {
+    static let disabled: Double = 0.38
+    static let pressedOverlay: Double = 0.1
+    static let scrim: Double = 0.45
+}
+
+/// Cards and tiles are flat; only overlays cast a shadow.
+enum WMElevation {
+    static let overlayShadowOpacity: Double = 0.12
+    static let overlayShadowRadius: CGFloat = 24
+    static let overlayShadowY: CGFloat = 8
+}
+
+/// Raw motion values; Motion.swift turns them into animations that respect Reduce Motion.
+enum WMMotionToken {
+    static let quick: Double = 0.12
+    static let standard: Double = 0.22
+    static let emphasized: Double = 0.32
+    static let exit: Double = 0.18
+    static let reducedCrossfade: Double = 0.15
     static let quack: Double = 0.6
+    static let celebrate: Double = 0.9
+    static let pressResponse: Double = 0.2
+    static let pressDamping: Double = 0.9
+    static let snappyResponse: Double = 0.3
+    static let snappyDamping: Double = 0.86
+    static let smoothResponse: Double = 0.45
+    static let smoothDamping: Double = 1
+    static let playfulResponse: Double = 0.4
+    static let playfulDamping: Double = 0.55
+    static let pressScale: CGFloat = 0.97
+    static let stagger: Double = 0.04
+    static let staggerMaxItems = 5
 }
 
 extension Color {
-    /// A colour that follows light/dark appearance, including high-contrast variants handled by the system.
-    init(light: UInt32, dark: UInt32) {
+    /// A colour that follows light/dark appearance and, where a token defines one, Increase Contrast.
+    init(light: UInt32, dark: UInt32, lightHighContrast: UInt32? = nil, darkHighContrast: UInt32? = nil) {
         self.init(uiColor: UIColor { traits in
-            let v = traits.userInterfaceStyle == .dark ? dark : light
+            let high = traits.accessibilityContrast == .high
+            let v = traits.userInterfaceStyle == .dark ? (high ? darkHighContrast ?? dark : dark) : (high ? lightHighContrast ?? light : light)
             return UIColor(red: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255, blue: CGFloat(v & 0xFF) / 255, alpha: 1)
         })
     }

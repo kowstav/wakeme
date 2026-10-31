@@ -1,0 +1,144 @@
+# Builds the iOS app on a GitHub-hosted macOS runner, runs WakeMeCore and
+# UI tests on the iOS Simulator, and keeps screenshots as an artifact.
+# Simulator results are not device evidence: AlarmKit, audio routes and
+# lock-screen behaviour need physical iPhones (doc 04 Stage 0).
+# macOS minutes are billed at 10x on private repositories: runs are limited
+# to iOS changes on pull requests/the working branch, or started by hand.
+name: ios
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main-o7h6l5]
+    paths:
+      - apps/ios/**
+      - packages/policy-fixtures/**
+      - .github/workflows/ios.yml
+      - scripts/ci/**
+      - services/api/src/entrypoints/dev.ts
+  push:
+    branches: [main-o7h6l5]
+    paths:
+      - apps/ios/**
+      - packages/policy-fixtures/**
+      - .github/workflows/ios.yml
+      - scripts/ci/**
+      - services/api/src/entrypoints/dev.ts
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    name: iOS app (build, tests, simulator screenshots)
+    runs-on: macos-26
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Toolchain
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XCODE" ] && sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          xcrun simctl list runtimes | grep -i ios
+      - name: AlarmKit API surface in this SDK (for implementation against real signatures)
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          IF=$(find "$SDK/System/Library/Frameworks/AlarmKit.framework" -name "*.swiftinterface" | head -1)
+          echo "$IF"
+          grep -E "public (struct|enum|class|protocol|init|func|static|var|typealias|actor)|@available" "$IF" | grep -v "^ *//" | head -400
+      - name: WakeMeCore tests (shared fixtures)
+        run: swift test --package-path WakeMeCore
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.19.0
+      - name: Start the local dev backend (embedded database) for UI journeys
+        working-directory: .
+        run: |
+          npm ci --no-audit --no-fund
+          (cd services/api && nohup npm run dev > "$RUNNER_TEMP/dev-backend.log" 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/healthz > /dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:8787/healthz || { tail -n 40 "$RUNNER_TEMP/dev-backend.log"; exit 1; }
+      - name: Client-server contract (WakeMeAPI against the dev backend)
+        working-directory: apps/ios/WakeMeCore
+        run: set -o pipefail; WAKEME_DEV_BACKEND=http://127.0.0.1:8787 swift test --filter DevBackendTests 2>&1 | grep -E "error|passed|failed|skipped|Executed"
+      - name: Generate project
+        run: brew install xcodegen && xcodegen generate
+      - name: Build and UI-test on a simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available | grep -E "iPhone 1[6-9]|iPhone 2[0-9]" | grep -v Plus | head -1 | sed -E 's/^ *([^()]+) \(.*/\1/' | xargs)
+          echo "Using $DEVICE"
+          echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
+          # Prepare the OS before XCTest's first app launch. In run 55, Xcode timed out
+          # launching the first test while the later setup and welcome tests both passed.
+          # Keep a real app launch in every test; this only waits for simulator boot readiness.
+          xcrun simctl boot "$DEVICE" 2>/dev/null || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          # No APNs in CI: relay the pushes the dev backend records into the Simulator.
+          python3 "$GITHUB_WORKSPACE/scripts/ci/relay_sim_pushes.py" http://127.0.0.1:8787 app.wakeme.ios "$RUNNER_TEMP/push-relay.log" &
+          RELAY=$!
+          xcodebuild -project WakeMe.xcodeproj -scheme WakeMe -configuration Debug \
+            -destination "platform=iOS Simulator,name=$DEVICE" -resultBundlePath "$RUNNER_TEMP/WakeMe.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log" | grep -E "error:|warning: |Test Case|Executed|BUILD|\*\*" | head -300
+          status=${PIPESTATUS[0]}
+          kill $RELAY 2>/dev/null || true
+          echo "--- push relay ---"; cat "$RUNNER_TEMP/push-relay.log" 2>/dev/null || true
+          test $status -eq 0
+      - name: Launch and screenshot
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/evidence"
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -path "*Debug-iphonesimulator/WakeMe.app" -type d | head -1)
+          # The privacy manifest ships in the bundle and is a valid property list.
+          plutil -lint "$APP/PrivacyInfo.xcprivacy"
+          xcrun simctl boot "$DEVICE" 2>/dev/null || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" "$APP"
+          xcrun simctl launch "$DEVICE" app.wakeme.ios -uiTestReset
+          sleep 6
+          xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/evidence/10-welcome-light.png"
+          xcrun simctl ui "$DEVICE" appearance dark; sleep 3
+          xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/evidence/11-welcome-dark.png"
+          xcrun simctl ui "$DEVICE" appearance light
+          xcrun simctl ui "$DEVICE" content_size extra-extra-extra-large; sleep 3
+          xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/evidence/12-welcome-large-text.png"
+          ls -la "$RUNNER_TEMP/evidence"
+      - name: Screenshots into the log (downscaled base64, for review without artifact access)
+        if: always()
+        run: |
+          xcrun xcresulttool export attachments --path "$RUNNER_TEMP/WakeMe.xcresult" --output-path "$RUNNER_TEMP/attachments" > /dev/null 2>&1 || true
+          if [ -f "$RUNNER_TEMP/attachments/manifest.json" ]; then
+            python3 - "$RUNNER_TEMP/attachments" "$RUNNER_TEMP/evidence" <<'PY'
+          import json, os, re, shutil, sys
+          src, dst = sys.argv[1], sys.argv[2]
+          for test in json.load(open(os.path.join(src, "manifest.json"))):
+              for a in test.get("attachments", []):
+                  if not a["exportedFileName"].lower().endswith((".png", ".jpg", ".jpeg", ".heic")):
+                      continue  # debug descriptions and other text attachments
+                  name = a.get("suggestedHumanReadableName", a["exportedFileName"]).split("_")[0]
+                  name = re.sub(r"[^A-Za-z0-9.-]+", "-", name)
+                  shutil.copy(os.path.join(src, a["exportedFileName"]), os.path.join(dst, "ui-" + name + ".png"))
+          PY
+          fi
+          for f in "$RUNNER_TEMP"/evidence/*.png; do
+            [ -f "$f" ] || continue
+            n=$(basename "$f" .png)
+            sips -Z 640 "$f" --out "$RUNNER_TEMP/$n.small.png" > /dev/null
+            echo "=====BEGIN SCREENSHOT $n====="; base64 -i "$RUNNER_TEMP/$n.small.png"; echo; echo "=====END SCREENSHOT $n====="
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ios-simulator-evidence
+          path: |
+            ${{ runner.temp }}/evidence
+            ${{ runner.temp }}/xcodebuild.log
+            ${{ runner.temp }}/dev-backend.log

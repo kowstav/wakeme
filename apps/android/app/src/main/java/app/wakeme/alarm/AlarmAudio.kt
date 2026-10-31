@@ -7,6 +7,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
+import android.os.Build
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
@@ -40,16 +41,8 @@ class AlarmAudio(private val context: Context) {
         .build()
 
     fun resolve(soundId: String): Pair<Uri, Boolean> {
-        val bundled = mapOf(
-            "bundled:quack.classic" to R.raw.quack_classic,
-            "bundled:quack.double" to R.raw.quack_double,
-            "bundled:chime.soft" to R.raw.chime_soft,
-            "bundled:bell.bright" to R.raw.bell_bright,
-            "bundled:rise.gentle" to R.raw.rise_gentle,
-            "bundled:pulse.wake" to R.raw.pulse_wake,
-        )
-        bundled[soundId]?.let { return Uri.parse("android.resource://${context.packageName}/$it") to false }
-        if (soundId.startsWith("media:")) {
+        app.wakeme.push.Channels.quackSounds[soundId]?.let { return Uri.parse("android.resource://${context.packageName}/$it") to false }
+        if (soundId.startsWith("media:") && context.getSystemService(android.os.UserManager::class.java).isUserUnlocked) {
             val file = File(context.filesDir, "sounds/${soundId.removePrefix("media:")}.audio")
             if (file.exists()) return Uri.fromFile(file) to false
         }
@@ -73,7 +66,11 @@ class AlarmAudio(private val context: Context) {
         }
         val (uri, fallback) = resolve(soundId)
         return try {
-            val mp = MediaPlayer().apply {
+            val mp = MediaPlayer()
+            // Own the instance before prepare/start: either operation may fail (missing/corrupt
+            // cached media), and the failure path must still release the native player.
+            player = mp
+            mp.apply {
                 setAudioAttributes(attributes)
                 setDataSource(context, uri)
                 isLooping = true
@@ -83,9 +80,10 @@ class AlarmAudio(private val context: Context) {
                 audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }?.let { mp.setPreferredDevice(it) }
             }
             mp.start()
-            player = mp
             PlaybackReport(started = mp.isPlaying, focusGranted = true, routeType = routeName(mp.routedDevice), usedFallbackSound = fallback)
         } catch (e: Exception) {
+            releasePlayer()
+            if (soundId.startsWith("media:")) return start("bundled:rise.gentle", preferSpeaker).copy(usedFallbackSound = true)
             PlaybackReport(started = false, focusGranted = true, routeType = "none", usedFallbackSound = fallback, failure = "player_error")
         }
     }
@@ -104,16 +102,29 @@ class AlarmAudio(private val context: Context) {
     private fun vibrate() {
         val vm = context.getSystemService(VibratorManager::class.java) ?: return
         val effect = VibrationEffect.createWaveform(longArrayOf(0, 600, 400, 600, 1200), 0)
-        vm.defaultVibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+        if (Build.VERSION.SDK_INT >= 33) {
+            vm.defaultVibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+        } else {
+            // Android 12: the AudioAttributes overload marks it as alarm vibration.
+            @Suppress("DEPRECATION")
+            vm.defaultVibrator.vibrate(effect, attributes)
+        }
     }
 
     fun alarmVolumeIsZero(): Boolean = audioManager.getStreamVolume(AudioManager.STREAM_ALARM) == 0
 
     fun stop() {
-        player?.runCatching { stop(); release() }
-        player = null
+        releasePlayer()
         focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
         focusRequest = null
         context.getSystemService(VibratorManager::class.java)?.defaultVibrator?.cancel()
+    }
+
+    private fun releasePlayer() {
+        val previous = player
+        player = null
+        if (previous != null) {
+            try { runCatching { previous.stop() } } finally { previous.release() }
+        }
     }
 }

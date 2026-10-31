@@ -34,7 +34,8 @@ val WakeMeApiJson: Json = Json {
     val limits: LimitsDto,
 )
 
-@Serializable data class DeviceDto(val id: String, val platform: String, val isPrimary: Boolean, val pushRegistered: Boolean, val readinessIssues: List<String>)
+@Serializable data class DeviceDto(val id: String, val platform: String, val isPrimary: Boolean, val pushRegistered: Boolean, val readinessIssues: List<String>, val osVersion: String? = null, val lastSeenAt: String? = null)
+@Serializable data class DevicesDto(val devices: List<DeviceDto>)
 
 @Serializable data class PublicUser(val id: String, val displayName: String)
 @Serializable data class GrantDto(
@@ -65,6 +66,10 @@ val WakeMeApiJson: Json = Json {
 @Serializable data class FriendsDto(val friends: List<FriendDto>)
 @Serializable data class InviteCreatedDto(val id: String, val kind: String, val token: String, val code: String, val url: String, val expiresAt: String, val maxUses: Int)
 @Serializable data class CircleRefDto(val name: String, val memberCount: Int)
+@Serializable data class CircleDto(val id: String, val name: String, val role: String, val memberCount: Int, val conversationId: String, val createdAt: String)
+@Serializable data class CirclesDto(val circles: List<CircleDto>)
+@Serializable data class CircleMemberDto(val user: PublicUser, val role: String, val isFriend: Boolean, val joinedAt: String)
+@Serializable data class CircleDetailDto(val circle: CircleDto, val members: List<CircleMemberDto>)
 @Serializable data class InvitePreviewDto(val kind: String, val inviter: PublicUser, val circle: CircleRefDto? = null, val expiresAt: String, val ownInvite: Boolean, val alreadyConnected: Boolean)
 @Serializable data class RedeemDto(val kind: String, val friend: FriendDto? = null)
 @Serializable data class GrantsDto(val grants: List<GrantDto>)

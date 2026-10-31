@@ -1,9 +1,11 @@
 package app.wakeme.alarm
 
+import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import app.wakeme.sync.SyncWorker
 
 /**
  * Fired by AlarmManager at the exact time. Exact alarms are an allowed
@@ -27,19 +29,35 @@ class AlarmReceiver : BroadcastReceiver() {
 /** Re-registers alarms after reboot (including before first unlock), app update, time or zone change. */
 class RescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val scheduler = AlarmEntryPoints.scheduler(context)
-        if (intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED) {
-            scheduler.rescheduleFromBootMirror()
+        // Exported for the system broadcasts in the manifest (all protected, so only the system
+        // sends them); an explicit intent from another app with any other action is ignored.
+        if (intent.action !in SYSTEM_ACTIONS) return
+        if (!context.getSystemService(android.os.UserManager::class.java).isUserUnlocked) {
+            BootAlarms(context).reschedule()
             return
         }
+        val scheduler = AlarmEntryPoints.scheduler(context)
         val pending = goAsync()
+        val clockChanged = intent.action == Intent.ACTION_TIME_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED
         AlarmEntryPoints.scope.launchCatching {
             try {
-                scheduler.rescheduleAll()
+                scheduler.rescheduleAll(recompute = clockChanged)
                 AlarmEntryPoints.readiness(context).reportCapabilities()
+                // Exact alarms allowed again: routines that failed to install meanwhile come from the server.
+                if (intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) SyncWorker.runNow(context)
             } finally {
                 pending.finish()
             }
         }
     }
 }
+
+/** The protected system broadcasts RescheduleReceiver is declared for (AndroidManifest.xml). */
+private val SYSTEM_ACTIONS = setOf(
+    Intent.ACTION_BOOT_COMPLETED,
+    Intent.ACTION_LOCKED_BOOT_COMPLETED,
+    Intent.ACTION_MY_PACKAGE_REPLACED,
+    Intent.ACTION_TIME_CHANGED,
+    Intent.ACTION_TIMEZONE_CHANGED,
+    AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
+)

@@ -1,0 +1,12 @@
+<resources>
+    <!-- The View library defaults reference AppCompat colorPrimary; this Compose app uses a
+         platform Activity theme. Scope explicit, high-contrast colors to this one system control. -->
+    <style name="ThemeOverlay.WakeMe.LocationButton" parent="">
+        <item name="locationButtonStyle">@style/Widget.WakeMe.LocationButton</item>
+    </style>
+    <style name="Widget.WakeMe.LocationButton" parent="Widget.AndroidXCore.LocationButton">
+        <item name="backgroundColor">@color/wm_accent</item>
+        <item name="android:textColor">#163300</item>
+        <item name="iconTint">#163300</item>
+    </style>
+</resources>

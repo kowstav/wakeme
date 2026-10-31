@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Release builds keep the focus service off until Play approves the accessibility declaration. -->
+    <bool name="focus_service_available">false</bool>
+    <string name="focus_service_label">Wake Me focus</string>
+    <string name="focus_service_description">During a focus session you start, Wake Me notices when an app you chose to keep closed opens and shows the focus screen instead. It doesn\'t read what\'s on your screen, type or tap for you, or send anything about your apps to anyone.</string>
+</resources>

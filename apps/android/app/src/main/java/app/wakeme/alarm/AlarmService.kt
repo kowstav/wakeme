@@ -6,6 +6,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -15,6 +16,7 @@ import androidx.core.app.NotificationCompat
 import app.wakeme.R
 import app.wakeme.core.AlarmRole
 import app.wakeme.core.WakeSessionState
+import app.wakeme.core.WakeCompletion
 import app.wakeme.push.Channels
 import app.wakeme.receipts.Receipt
 import kotlinx.coroutines.runBlocking
@@ -43,8 +45,9 @@ class AlarmService : Service() {
         when (intent?.action) {
             ACTION_RING -> ring(intent.getIntExtra(AlarmReceiver.EXTRA_REQUEST_CODE, 0))
             ACTION_STOP_SOUND -> stopSound(reason = "user")
-            ACTION_COMPLETE -> finish(completed = true)
-            ACTION_ESCAPE -> finish(completed = false)
+            ACTION_COMPLETE -> finish(if (AlarmEntryPoints.sessions(this).active.value?.challengeRevisionId != null) WakeCompletion.SOLVED else WakeCompletion.CHECKED_IN)
+            ACTION_CHECK_IN -> finish(WakeCompletion.CHECKED_IN)
+            ACTION_ESCAPE -> finish(WakeCompletion.ESCAPED)
             ACTION_IM_UP -> imUp()
             else -> stopSelf()
         }
@@ -56,22 +59,28 @@ class AlarmService : Service() {
         val sessions = AlarmEntryPoints.sessions(this)
         // Before first unlock only the device-protected mirror is readable.
         val alarm = if (unlocked) runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().get(requestCode) }?.let {
-            BootAlarm(it.requestCode, it.fireAt, it.soundId, it.ringSeconds, it.label, it.planId, it.commandId, it.role, it.occurrenceKey, it.version)
-        } else AlarmEntryPoints.scheduler(this).bootAlarm(requestCode)
+            BootAlarm(it.requestCode, it.fireAt, it.soundId, it.ringSeconds, it.label, it.planId, it.commandId, it.role, it.occurrenceKey, it.version, it.challengeRevisionId)
+        } else BootAlarms(this).get(requestCode)
         if (alarm == null) {
             stopSelf()
             return
         }
+        if (BootAlarms(this).isEnded(alarm.planId)) { stopSelf(); return }
         val helper = if (unlocked) runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().get(requestCode)?.helperName } else null
-        val challenge = if (unlocked) runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().get(requestCode)?.challengeRevisionId } else null
-        val hasFollowUp = alarm.role == AlarmRole.MAIN.name && unlocked && alarm.planId != null &&
-            runBlocking { AlarmEntryPoints.db(this@AlarmService).alarms().forPlan(alarm.planId) }.any { it.role == AlarmRole.FOLLOW_UP.name && it.occurrenceKey == alarm.occurrenceKey }
+        val challenge = alarm.challengeRevisionId
+        val hasFollowUp = alarm.role == AlarmRole.MAIN.name && alarm.planId != null &&
+            BootAlarms(this).all().any { it.planId == alarm.planId && it.role == AlarmRole.FOLLOW_UP.name && it.occurrenceKey == alarm.occurrenceKey }
 
-        startForeground(NOTIFICATION_ID, notification(alarm, helper), ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        // systemExempted exists from Android 14; before that the untyped call is the supported form.
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(NOTIFICATION_ID, notification(alarm, helper), ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        } else {
+            startForeground(NOTIFICATION_ID, notification(alarm, helper))
+        }
         wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WakeMe:alarm").apply { acquire((alarm.ringSeconds + 30) * 1000L) }
 
         val report = audio.start(alarm.soundId)
-        val previous = sessions.active.value
+        val previous = sessions.active.value?.takeIf { it.planId == alarm.planId && it.commandId == alarm.commandId && it.occurrenceKey == alarm.occurrenceKey && it.version == alarm.version }
         val isFollowUp = alarm.role == AlarmRole.FOLLOW_UP.name
         sessions.set(
             ActiveWake(
@@ -89,6 +98,7 @@ class AlarmService : Service() {
                 routeType = report.routeType,
                 playbackFailure = report.failure,
                 startedAt = System.currentTimeMillis(),
+                usedFallbackSound = report.usedFallbackSound,
             ),
         )
         startActivity(Intent(this, AlarmActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION))
@@ -99,9 +109,12 @@ class AlarmService : Service() {
         val receipts = AlarmEntryPoints.receipts(this)
         if (alarm.commandId != null) {
             if (report.started) receipts.enqueue(Receipt.Command(alarm.commandId, "execution_reported"))
-            else receipts.enqueue(Receipt.Command(alarm.commandId, "execution_refused", report.failure ?: "audio_focus_denied"))
+            else receipts.enqueue(Receipt.Command(alarm.commandId, "execution_refused", if (report.failure == "audio_focus_denied") "audio_focus_denied" else "os_scheduling_failed"))
         } else if (alarm.planId != null) {
             receipts.enqueue(Receipt.Occurrence(alarm.planId, alarm.occurrenceKey, alarm.version, if (isFollowUp) "follow_up_rang" else "rang"))
+            // Arm the occurrence that just entered the window, so the routine keeps ringing
+            // even if the app doesn't run again before then (ADR 0011).
+            if (unlocked) AlarmEntryPoints.scope.launchCatching { AlarmEntryPoints.arming(this@AlarmService).topUpAll() }
         }
     }
 
@@ -137,32 +150,33 @@ class AlarmService : Service() {
     }
 
     /** Challenge completed or the safe escape used: cancel the follow-up, report, end the session. */
-    private fun finish(completed: Boolean) {
+    private fun finish(outcome: WakeCompletion) {
         handler.removeCallbacks(autoStop)
         audio.stop()
         val sessions = AlarmEntryPoints.sessions(this)
         val active = sessions.active.value
         if (active != null) {
-            val next = if (completed) active.session.onChallengeCompleted() else active.session.onEscape()
+            val next = if (outcome != WakeCompletion.ESCAPED) active.session.onChallengeCompleted() else active.session.onEscape()
             if (next.cancelsFollowUp && active.planId != null) {
-                runBlocking { AlarmEntryPoints.scheduler(this@AlarmService).cancelFollowUp(active.planId, active.occurrenceKey) }
+                if (getSystemService(UserManager::class.java).isUserUnlocked) {
+                    runBlocking { AlarmEntryPoints.scheduler(this@AlarmService).cancelFollowUp(active.planId, active.occurrenceKey) }
+                } else BootAlarms(this).cancelFollowUp(active.planId, active.occurrenceKey)
             }
             val receipts = AlarmEntryPoints.receipts(this)
-            if (active.commandId != null) receipts.enqueue(Receipt.Command(active.commandId, if (completed) "challenge_completed" else "bypassed"))
-            if (active.planId != null) receipts.enqueue(Receipt.Occurrence(active.planId, active.occurrenceKey, active.version, if (completed) "challenge_completed" else "bypassed"))
+            if (active.commandId != null) receipts.enqueue(Receipt.Command(active.commandId, outcome.commandReceipt))
+            if (active.planId != null) receipts.enqueue(Receipt.Occurrence(active.planId, active.occurrenceKey, active.version, outcome.occurrenceOutcome))
             sessions.set(null)
         }
         releaseWakeLock()
         getSystemService(android.app.NotificationManager::class.java).cancel(NOTIFICATION_ID)
+        getSystemService(android.app.NotificationManager::class.java).cancel(NOTIFICATION_ID + 1)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     /** No challenge attached: "I'm up" acknowledges and ends the session. */
     private fun imUp() {
-        val active = AlarmEntryPoints.sessions(this).active.value
-        if (active?.commandId != null) AlarmEntryPoints.receipts(this).enqueue(Receipt.Command(active.commandId, "acknowledged"))
-        finish(completed = true)
+        finish(WakeCompletion.CHECKED_IN)
     }
 
     private fun notification(alarm: BootAlarm, helper: String?): Notification {
@@ -199,6 +213,7 @@ class AlarmService : Service() {
         const val ACTION_RING = "app.wakeme.alarm.RING"
         const val ACTION_STOP_SOUND = "app.wakeme.alarm.STOP_SOUND"
         const val ACTION_COMPLETE = "app.wakeme.alarm.COMPLETE"
+        const val ACTION_CHECK_IN = "app.wakeme.alarm.CHECK_IN"
         const val ACTION_ESCAPE = "app.wakeme.alarm.ESCAPE"
         const val ACTION_IM_UP = "app.wakeme.alarm.IM_UP"
 

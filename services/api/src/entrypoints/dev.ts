@@ -10,6 +10,7 @@ import { jwksVerifier } from '../http/auth.ts';
 import { buildApp } from '../http/app.ts';
 import { createLogger } from '../lib/log.ts';
 import { allRoutes } from '../modules/index.ts';
+import { ApnsClient } from '../push/apns.ts';
 import { RecordingPushGateway } from '../push/gateway.ts';
 import { MemoryStorage } from '../storage/s3.ts';
 import { AnthropicChallengeAuthor, ScriptedChallengeAuthor } from '../ai/author.ts';
@@ -46,6 +47,7 @@ const config: Config = {
   reauthSecondsForHighImpactGrants: 86_400,
   adminUserIds: [],
   challengeSigning: { keyId: 'dev-1', privateKeyPem: signing },
+  challengeVerifyKeys: [],
   locationKey: { keyId: 'dev', keyBase64: Buffer.alloc(32, 1).toString('base64') },
   inviteLinkBase: 'http://127.0.0.1:8787/i/',
   apns: null,
@@ -91,7 +93,23 @@ app.post('/dev/token', async (req) => {
     .sign(privateKey);
   return { subject: sub, accessToken: token, expiresIn: 12 * 3600 };
 });
-app.get('/dev/pushes', async () => push.sent.slice(-50).map((p) => ({ deviceId: p.target.deviceId, alert: p.message.alert ?? null, data: p.message.data })));
+// The last pushes, numbered so a relay can ask for newer ones (?after=seq). iOS entries carry the
+// exact APNs payload, which CI feeds to the Simulator with `xcrun simctl push` (no real APNs).
+app.get<{ Querystring: { after?: string } }>('/dev/pushes', async (req) => {
+  const after = Number(req.query.after ?? -1);
+  return push.sent
+    .map((p, seq) => ({ seq, p }))
+    .filter(({ seq }) => seq > after)
+    .slice(-50)
+    .map(({ seq, p }) => ({
+      seq,
+      deviceId: p.target.deviceId,
+      platform: p.target.platform,
+      alert: p.message.alert ?? null,
+      data: p.message.data,
+      ...(p.target.platform === 'ios' ? { apns: ApnsClient.payload(p.message) } : {}),
+    }));
+});
 
 const worker = new Worker(deps);
 void worker.start();

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><title>Owl</title>
+<circle cx="32" cy="32" r="32" fill="#9386E4"/>
+<path d="M14 21L18 8.5L26.5 16.5Z" fill="#8B5E3C" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+<path d="M50 21L46 8.5L37.5 16.5Z" fill="#8B5E3C" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+<ellipse cx="32" cy="34" rx="19" ry="18" fill="#8B5E3C" stroke="#2B2118" stroke-width="2"/>
+<circle cx="24" cy="31" r="8.5" fill="#F4E3C1"/>
+<circle cx="40" cy="31" r="8.5" fill="#F4E3C1"/>
+<circle cx="24" cy="31" r="5.5" fill="#FFFFFF" stroke="#2B2118" stroke-width="1.5"/>
+<circle cx="40" cy="31" r="5.5" fill="#FFFFFF" stroke="#2B2118" stroke-width="1.5"/>
+<circle cx="24" cy="31" r="3.4" fill="#2B2118"/>
+<circle cx="40.5" cy="32" r="1.8" fill="#2B2118"/>
+<path d="M30 38H34L32 43.5Z" fill="#F8B133" stroke="#2B2118" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M25 47.5Q27 49.5 29 47.5Q31 49.5 33 47.5Q35 49.5 37 47.5Q39 49.5 41 47.5" fill="none" stroke="#2B2118" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

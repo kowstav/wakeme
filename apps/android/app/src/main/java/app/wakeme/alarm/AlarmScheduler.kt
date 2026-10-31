@@ -26,11 +26,13 @@ sealed class ScheduleResult {
     /** The user hasn't granted "Alarms & reminders"; the routine is saved but NOT armed. */
     data object ExactAlarmPermissionMissing : ScheduleResult()
     data class Failed(val reason: String) : ScheduleResult()
+    /** Signed out while installing: nothing was left armed. */
+    data object Abandoned : ScheduleResult()
 }
 
 /** Minimal copy kept in device-protected storage so alarms re-register after reboot, before first unlock. */
 @Serializable
-data class BootAlarm(val requestCode: Int, val fireAt: Long, val soundId: String, val ringSeconds: Int, val label: String, val planId: String?, val commandId: String?, val role: String, val occurrenceKey: String, val version: Int)
+data class BootAlarm(val requestCode: Int, val fireAt: Long, val soundId: String, val ringSeconds: Int, val label: String, val planId: String?, val commandId: String?, val role: String, val occurrenceKey: String, val version: Int, val challengeRevisionId: String? = null)
 
 /**
  * Installs native alarms with AlarmManager.setAlarmClock: exact, allowed in
@@ -40,30 +42,76 @@ data class BootAlarm(val requestCode: Int, val fireAt: Long, val soundId: String
 @Singleton
 class AlarmScheduler @Inject constructor(@ApplicationContext private val context: Context, private val db: LocalDb) {
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
-    private val bootPrefs = context.createDeviceProtectedStorageContext().getSharedPreferences("boot_alarms", Context.MODE_PRIVATE)
+    private val boot = BootAlarms(context)
     private val json = Json { ignoreUnknownKeys = true }
+
+    /** Bumped by [cancelAll] (sign-out): installs that started before it must not leave alarms behind. */
+    @Volatile private var generation = 0
 
     fun canScheduleExact(): Boolean = alarmManager.canScheduleExactAlarms()
 
     suspend fun installRoutine(routine: InstalledRoutine, helperName: String?, now: Instant = Instant.now()): ScheduleResult {
+        if (boot.isEnded(routine.planId)) return ScheduleResult.Abandoned
+        val started = generation
         cancelPlan(routine.planId)
         val alarms = scheduleFor(routine, now, ZoneId.systemDefault())
         if (alarms.isEmpty()) return ScheduleResult.NothingToSchedule
         if (!canScheduleExact()) return ScheduleResult.ExactAlarmPermissionMissing
         return try {
-            for (a in alarms) {
-                val entity = ScheduledAlarmEntity(
-                    requestCode = a.requestCode, planId = a.planId, commandId = null, version = a.version, occurrenceKey = a.occurrenceKey,
-                    role = a.role.name, fireAt = a.fireAt.toEpochMilli(), soundId = routine.soundId, ringSeconds = routine.ringSeconds,
-                    label = routine.label, helperName = helperName, challengeRevisionId = routine.challengeRevisionId,
-                )
-                register(entity)
-            }
-            ScheduleResult.Scheduled(alarms)
+            for (a in alarms) register(entity(a, routine, helperName))
+            if (abandoned(routine.planId, started)) ScheduleResult.Abandoned else ScheduleResult.Scheduled(alarms)
         } catch (e: SecurityException) {
             ScheduleResult.ExactAlarmPermissionMissing
         }
     }
+
+    /**
+     * Arms the occurrences of an installed routine that entered the window since it was
+     * installed (ADR 0011). Alarms already armed are re-registered as they are (the same
+     * PendingIntent replaces itself), so a follow-up still pending for an occurrence that
+     * just rang is kept, and one cancelled by completing the challenge isn't brought back.
+     * Local data only. Returns true when alarms were added.
+     */
+    suspend fun topUp(routine: InstalledRoutine, helperName: String?, now: Instant = Instant.now()): Boolean {
+        if (boot.isEnded(routine.planId)) return false
+        val started = generation
+        if (!canScheduleExact()) return false
+        val rows = db.alarms().forPlan(routine.planId)
+        val known = rows.map { it.requestCode }.toSet()
+        val missing = scheduleFor(routine, now, ZoneId.systemDefault()).filter { it.requestCode !in known }
+        return try {
+            for (row in rows.filter { it.fireAt > now.toEpochMilli() }) setAlarmClock(row)
+            for (a in missing) register(entity(a, routine, helperName))
+            missing.isNotEmpty() && !abandoned(routine.planId, started)
+        } catch (e: SecurityException) {
+            false
+        }
+    }
+
+    /** Signed out while this plan's alarms were being registered: remove them again. */
+    private suspend fun abandoned(planId: String, started: Int): Boolean {
+        if (generation == started && !boot.isEnded(planId)) return false
+        cancelPlan(planId)
+        return true
+    }
+
+    /** Alarms still ahead for a routine, soonest first. */
+    suspend fun armed(planId: String, now: Instant = Instant.now()): List<ScheduledAlarmEntity> =
+        if (boot.isEnded(planId)) emptyList() else db.alarms().forPlan(planId).filter { it.fireAt > now.toEpochMilli() }.sortedBy { it.fireAt }
+
+    /** Rows of alarms that rang more than a day ago are bookkeeping only. */
+    suspend fun pruneRang(now: Instant = Instant.now()) {
+        val before = now.toEpochMilli() - 24 * 60 * 60 * 1000L
+        val old = db.alarms().all().filter { it.fireAt < before }
+        for (a in old) db.alarms().delete(a.requestCode)
+        if (old.isNotEmpty()) mirrorForBoot()
+    }
+
+    private fun entity(a: ScheduledAlarm, routine: InstalledRoutine, helperName: String?) = ScheduledAlarmEntity(
+        requestCode = a.requestCode, planId = a.planId, commandId = null, version = a.version, occurrenceKey = a.occurrenceKey,
+        role = a.role.name, fireAt = a.fireAt.toEpochMilli(), soundId = routine.soundId, ringSeconds = routine.ringSeconds,
+        label = routine.label, helperName = helperName, challengeRevisionId = routine.challengeRevisionId,
+    )
 
     /** Immediate remote wake that already passed local re-validation: ring in ~1 second via the alarm path. */
     suspend fun scheduleImmediate(commandId: String, soundId: String, ringSeconds: Int, helperName: String, challengeRevisionId: String?): ScheduleResult {
@@ -82,10 +130,18 @@ class AlarmScheduler @Inject constructor(@ApplicationContext private val context
     }
 
     private suspend fun register(entity: ScheduledAlarmEntity) {
+        if (boot.isEnded(entity.planId)) return
+        setAlarmClock(entity)
+        db.alarms().upsert(entity)
+        // End may have raced an in-flight install. Keep both the mirror and DB from reviving it.
+        if (boot.isEnded(entity.planId)) { cancel(entity.requestCode); return }
+        mirrorForBoot()
+    }
+
+    private fun setAlarmClock(entity: ScheduledAlarmEntity) {
+        if (boot.isEnded(entity.planId)) return
         val show = PendingIntent.getActivity(context, entity.requestCode, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(entity.fireAt, show), firePendingIntent(entity.requestCode))
-        db.alarms().upsert(entity)
-        mirrorForBoot()
     }
 
     private fun firePendingIntent(requestCode: Int): PendingIntent =
@@ -112,42 +168,52 @@ class AlarmScheduler @Inject constructor(@ApplicationContext private val context
     }
 
     suspend fun cancelAll() {
+        generation++
         for (a in db.alarms().all()) alarmManager.cancel(firePendingIntent(a.requestCode))
         db.alarms().clear()
         mirrorForBoot()
     }
 
-    /** After reboot, time or zone change: re-register from local data only (no network needed). */
-    suspend fun rescheduleAll() {
+    /**
+     * After reboot, an app update, a time or zone change, or exact alarms being allowed again:
+     * re-register from local data only (no network needed). A clock or zone change recomputes
+     * every occurrence; otherwise armed alarms are kept as they are and the window topped up.
+     */
+    suspend fun rescheduleAll(recompute: Boolean) {
+        reconcileBootCancellations()
         val now = System.currentTimeMillis()
+        // A clock/reboot/update recovery is for installed routines. Never replay a fresh command.
+        for (a in db.alarms().all().filter { it.commandId != null }) cancel(a.requestCode)
         for (a in db.alarms().all()) {
             if (a.fireAt < now - 60_000) db.alarms().delete(a.requestCode)
         }
         for (r in db.routines().all()) {
             val routine = json.decodeFromString(InstalledRoutine.serializer(), r.json)
-            installRoutine(routine, if (r.ownerIsCreator) null else r.creatorName)
+            val helper = if (r.ownerIsCreator) null else r.creatorName
+            if (recompute) installRoutine(routine, helper) else topUp(routine, helper)
         }
-        for (a in db.alarms().all().filter { it.commandId != null && it.fireAt >= now }) register(a)
     }
 
     /** Pre-unlock path: credential-encrypted Room isn't readable yet, so use the device-protected mirror. */
     fun rescheduleFromBootMirror() {
-        val raw = bootPrefs.getString("alarms", null) ?: return
-        val alarms = runCatching { json.decodeFromString(ListSerializer(BootAlarm.serializer()), raw) }.getOrDefault(emptyList())
-        val now = System.currentTimeMillis()
-        for (a in alarms.filter { it.fireAt > now - 60_000 }) {
-            val show = PendingIntent.getActivity(context, a.requestCode, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-            runCatching { alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(maxOf(a.fireAt, now + 1000), show), firePendingIntent(a.requestCode)) }
-        }
+        boot.reschedule()
     }
 
     fun bootAlarm(requestCode: Int): BootAlarm? {
-        val raw = bootPrefs.getString("alarms", null) ?: return null
-        return runCatching { json.decodeFromString(ListSerializer(BootAlarm.serializer()), raw) }.getOrNull()?.firstOrNull { it.requestCode == requestCode }
+        return boot.get(requestCode)
+    }
+
+    suspend fun reconcileBootCancellations() {
+        val codes = boot.cancelled()
+        for (code in codes) code.toIntOrNull()?.let { db.alarms().delete(it) }
+        if (codes.isNotEmpty()) {
+            mirrorForBoot()
+            boot.clearCancelled(codes)
+        }
     }
 
     private suspend fun mirrorForBoot() {
-        val list = db.alarms().all().map { BootAlarm(it.requestCode, it.fireAt, it.soundId, it.ringSeconds, it.label, it.planId, it.commandId, it.role, it.occurrenceKey, it.version) }
-        bootPrefs.edit().putString("alarms", json.encodeToString(ListSerializer(BootAlarm.serializer()), list)).apply()
+        val list = db.alarms().all().map { BootAlarm(it.requestCode, it.fireAt, it.soundId, it.ringSeconds, it.label, it.planId, it.commandId, it.role, it.occurrenceKey, it.version, it.challengeRevisionId) }
+        boot.replace(list)
     }
 }

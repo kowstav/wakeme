@@ -37,6 +37,29 @@ describe('personal routines', () => {
     void tablet;
   });
 
+  it('stays ready while the phone has the next occurrence armed, and not once its window has passed', async () => {
+    const sam = await h.createUser('Sam');
+    for (const timeZonePolicy of ['fixed', 'device']) {
+      h.setNow('2026-10-18T12:00:00Z');
+      const p = await h.req('POST', '/v1/alarm-plans', { user: sam, body: { ...weekday7, timeZonePolicy } });
+      const armed = ['2026-10-19T11:00:00Z', '2026-10-20T11:00:00Z', '2026-10-21T11:00:00Z'];
+      const ok = await h.signed('POST', `/v1/alarm-plans/${p.body.id}/installations`, sam, { version: 1, result: 'scheduled', nextFireAt: armed[0], scheduledInstants: armed });
+      assert.equal(ok.body.readiness, 'ready', timeZonePolicy);
+      h.setNow('2026-10-19T11:05:00Z'); // Monday's rang; Tuesday's is armed
+      assert.equal((await h.req('GET', `/v1/alarm-plans/${p.body.id}`, { user: sam })).body.readiness, 'ready', timeZonePolicy);
+      h.setNow('2026-10-21T11:05:00Z'); // everything the phone armed has passed
+      assert.equal((await h.req('GET', `/v1/alarm-plans/${p.body.id}`, { user: sam })).body.readiness, 'awaiting_installation', timeZonePolicy);
+    }
+  });
+
+  it('a fixed-zone routine is not ready when the phone armed a different instant', async () => {
+    h.setNow('2026-10-18T12:00:00Z');
+    const sam = await h.createUser('Sam');
+    const p = await h.req('POST', '/v1/alarm-plans', { user: sam, body: weekday7 });
+    const off = await h.signed('POST', `/v1/alarm-plans/${p.body.id}/installations`, sam, { version: 1, result: 'scheduled', nextFireAt: '2026-10-19T12:00:00Z', scheduledInstants: ['2026-10-19T12:00:00Z'] });
+    assert.equal(off.body.readiness, 'awaiting_installation', 'an hour off is not the routine the owner accepted');
+  });
+
   it('free plan limits creation of new routines but never disables existing ones', async () => {
     h.setNow('2026-10-18T12:00:00Z');
     const sam = await h.createUser('Sam');

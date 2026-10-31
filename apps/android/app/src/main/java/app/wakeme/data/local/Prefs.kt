@@ -1,7 +1,9 @@
 package app.wakeme.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.wakeme.core.QuietHours
@@ -26,7 +28,14 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
     private val cursorKey = stringPreferencesKey("sync_cursor")
     private val inviteKey = stringPreferencesKey("pending_invite")
     private val trustedKeysKey = stringPreferencesKey("challenge_keys")
+    private val trustedKeysAtKey = longPreferencesKey("challenge_keys_at")
     private val onboardingKey = stringPreferencesKey("onboarding_step")
+    private val installErrorsKey = stringPreferencesKey("install_errors")
+    private val guestKey = booleanPreferencesKey("guest")
+
+    /** Using Wake Me for personal wake-ups without an account (doc 02 §9). */
+    val guest: Flow<Boolean> = context.appPrefs.data.map { it[guestKey] == true }
+    suspend fun setGuest(on: Boolean) = context.appPrefs.edit { if (on) it[guestKey] = true else it.remove(guestKey) }
 
     val me: Flow<MeDto?> = context.appPrefs.data.map { p -> p[meKey]?.let { runCatching { WakeMeApiJson.decodeFromString(MeDto.serializer(), it) }.getOrNull() } }
 
@@ -50,7 +59,22 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
 
     suspend fun trustedChallengeKeys(): Map<String, String> =
         context.appPrefs.data.first()[trustedKeysKey]?.let { WakeMeJson.decodeFromString<Map<String, String>>(it) } ?: emptyMap()
-    suspend fun setTrustedChallengeKeys(keys: Map<String, String>) = context.appPrefs.edit { it[trustedKeysKey] = WakeMeJson.encodeToString(keys) }
+    /** When the key list was last fetched (epoch ms), 0 if never. */
+    suspend fun trustedChallengeKeysAt(): Long = context.appPrefs.data.first()[trustedKeysAtKey] ?: 0L
+    suspend fun setTrustedChallengeKeys(keys: Map<String, String>, at: Long = System.currentTimeMillis()) = context.appPrefs.edit {
+        it[trustedKeysKey] = WakeMeJson.encodeToString(keys)
+        it[trustedKeysAtKey] = at
+    }
+
+    /** Error code of each routine's last installation receipt (e.g. challenge_unavailable), repeated when its window is topped up. */
+    suspend fun installError(planId: String): String? = installErrors()[planId]
+    suspend fun setInstallError(planId: String, code: String?) = context.appPrefs.edit {
+        val errors = it[installErrorsKey]?.let { raw -> runCatching { WakeMeJson.decodeFromString<Map<String, String>>(raw) }.getOrNull() }.orEmpty().toMutableMap()
+        if (code == null) errors.remove(planId) else errors[planId] = code
+        it[installErrorsKey] = WakeMeJson.encodeToString(errors.toMap())
+    }
+    private suspend fun installErrors(): Map<String, String> =
+        context.appPrefs.data.first()[installErrorsKey]?.let { runCatching { WakeMeJson.decodeFromString<Map<String, String>>(it) }.getOrNull() } ?: emptyMap()
 
     val onboardingStep: Flow<String?> = context.appPrefs.data.map { it[onboardingKey] }
     suspend fun setOnboardingStep(step: String?) = context.appPrefs.edit { if (step == null) it.remove(onboardingKey) else it[onboardingKey] = step }

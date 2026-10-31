@@ -65,6 +65,8 @@ interface GrantDao {
     suspend fun live(grantorId: String, granteeId: String): GrantEntity?
     @Query("SELECT * FROM grants WHERE revoked = 0") fun observeLive(): Flow<List<GrantEntity>>
     @Query("UPDATE grants SET revoked = 1 WHERE grantorId = :grantorId AND granteeId = :granteeId") suspend fun revokeLocally(grantorId: String, granteeId: String)
+    @Query("SELECT id FROM grants WHERE revoked = 0") suspend fun liveIds(): List<String>
+    @Query("UPDATE grants SET revoked = 1 WHERE id = :id") suspend fun markRevoked(id: String)
     @Query("DELETE FROM grants") suspend fun clear()
 }
 

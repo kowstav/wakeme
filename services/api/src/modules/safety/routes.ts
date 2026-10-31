@@ -246,7 +246,15 @@ export const safetyRoutes: RouteDef[] = [
         const sample = (await q.query<{ captured_at: Date; received_at: Date; accuracy_m: number; ciphertext: string; nonce: string; key_id: string; expires_at: Date }>('select * from location_samples where session_id = $1', [s.id])).rows[0];
         await q.query('insert into location_access_log (session_id, viewer_id, accessed_at) values ($1, $2, $3)', [s.id, user.id, now]);
         if (!sample || sample.expires_at <= now) return { status: 'no_location' as const, ...empty };
-        const coords = JSON.parse(open({ ciphertext: sample.ciphertext, nonce: sample.nonce, keyId: sample.key_id }, deps.config.locationKey.keyBase64, s.id)) as { lat: number; lon: number };
+        // A sample sealed under a rotated-out key can't be read; the phone replaces it within a minute.
+        if (sample.key_id !== deps.config.locationKey.keyId) return { status: 'no_location' as const, ...empty };
+        let coords: { lat: number; lon: number };
+        try {
+          coords = JSON.parse(open({ ciphertext: sample.ciphertext, nonce: sample.nonce, keyId: sample.key_id }, deps.config.locationKey.keyBase64, s.id)) as { lat: number; lon: number };
+        } catch {
+          deps.log.warn({ sessionId: s.id }, 'location sample could not be decrypted');
+          return { status: 'no_location' as const, ...empty };
+        }
         return {
           status: 'available' as const,
           capturedAt: sample.captured_at.toISOString(),

@@ -9,7 +9,10 @@ import java.util.Locale
 
 private val MARKS = Regex("\\p{M}+")
 private val PUNCT_SYMBOL = Regex("[\\p{P}\\p{S}]")
-private val WHITESPACE = Regex("(?U)\\s+")
+// The same characters as JavaScript's /\s/u, listed explicitly: Android's ICU regex engine
+// rejects the inline Unicode-classes flag the JVM accepts, which crashed every quiz answer
+// check on a phone (NormalizeAnswerTest keeps it out).
+private val WHITESPACE = Regex("[\\t\\n\\u000B\\f\\r \\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]+")
 private val INTEGER = Regex("^[+-]?\\d{1,9}$")
 
 fun normalizeAnswer(input: String): String {
