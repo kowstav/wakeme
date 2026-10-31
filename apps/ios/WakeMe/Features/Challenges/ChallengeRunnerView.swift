@@ -29,7 +29,7 @@ struct ChallengeRunnerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
-                Text(definition.title).font(.title2.bold()).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
+                Text(definition.title).font(WMFont.section).foregroundStyle(WMColor.textPrimary).accessibilityAddTraits(.isHeader)
                 Text("Step \(run.stepNumber) of \(definition.steps.count)").foregroundStyle(WMColor.textSecondary)
                 if definition.steps.count > 1 {
                     StepProgress(total: definition.steps.count, done: run.finished ? definition.steps.count : run.index)

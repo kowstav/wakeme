@@ -2,6 +2,13 @@
 
 Last updated: 2026-10-30. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. No production release. The owner has installed the staging build on Android 13; full physical-device verification is still open.
 
+## Full native Daylight redesign (2026-10-31, Codex)
+
+- Owner rejected the prior welcome again and requested the whole app be redesigned from actual Dribbble/Mobbin screens. Inspected original Alarmi and Habit Tracker reference images and mapped every native screen family in docs/design/daylight-screen-map.md.
+- Replaced the green visual system with lavender/white, ink time cards, violet actions, Manrope typography, flatter category colors and original native vector scenes. Applied shared styling across both apps; rebuilt welcome, local/routine cards, profile overview and template hierarchy, and moved Android's full alarm checklist to its existing readiness route.
+- Preserved real consent, delivery/readiness, escapes, product/provider state and strong alarm time/recurrence assertions. No fake reference statistics, controls or achievements added.
+- Local 0.1.2 (3) staging build, lint, journey-source compilation and 49 preview renders passed; 22 unit tests and 2 tooling tests passed. Lint has 0 errors, 73 warnings and 6 hints. Verified APK version, registered debug certificate, staging markers and bundled font. Routines has a persistent compact add control; its real accessible action is asserted by the journey. Fresh emulator/iOS CI and physical acceptance remain open; no merge or store upload yet.
+
 ## Welcome composition revision (2026-10-31, Codex)
 
 - Owner rejected the isolated wordmark, boxed artwork, bold centred type and disconnected “More sign-in options” action. Revised both native welcome compositions using three actually viewed Dribbble references, documented in docs/design/welcome-2026-10-31.md.

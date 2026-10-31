@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -105,7 +106,9 @@ class JourneyTest {
         tap("Routines", timeout = 15_000)
         // The guest wake-up is now the account's routine: the server lists it, and readiness is what
         // this phone reported to the server after AlarmManager armed the server version.
-        waitFor("07:00 · Weekdays", timeout = 30_000)
+        waitFor("07:00", timeout = 30_000)
+        // Same real routine card: its time and recurrence now occupy separate visual lines.
+        compose.onNode(hasText("07:00") and hasText("Weekdays", substring = true)).assertExists()
         waitFor("Ready on this phone", timeout = 60_000)
         DeviceEvidence.screenshot("26b-moved-to-account")
 
@@ -220,12 +223,13 @@ class JourneyTest {
         check(alexChallenges().none { it.getString("id") == shared.getString("id") }) { "Leaving the circle kept access to its quiz" }
 
         tap("Routines")
-        tap("New wake-up")
+        compose.onNode(hasContentDescription("New wake-up")).assertIsDisplayed().performClick()
         tap("More options")
         tap("Study")
         waitFor("18:00", substring = true)
         tap("Save wake-up")
-        waitInList("18:00 · Weekdays")
+        waitInList("18:00")
+        compose.onNode(hasText("18:00") and hasText("Weekdays", substring = true)).assertExists()
         tap("Study")
         tap("Use this routine again")
         waitFor("Study")

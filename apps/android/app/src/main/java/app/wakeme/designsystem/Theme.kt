@@ -113,10 +113,10 @@ private val typography: Typography = Typography().let { t ->
         titleSmall = WakeMeType.fieldLabel,
         bodyLarge = WakeMeType.body,
         bodyMedium = WakeMeType.supporting,
-        bodySmall = t.bodySmall.copy(fontFeatureSettings = "tnum"),
+        bodySmall = t.bodySmall.copy(fontFeatureSettings = "tnum", fontFamily = BrandFontFamily),
         labelLarge = WakeMeType.label,
         labelMedium = WakeMeType.caption,
-        labelSmall = t.labelSmall.copy(fontFeatureSettings = "tnum"),
+        labelSmall = t.labelSmall.copy(fontFeatureSettings = "tnum", fontFamily = BrandFontFamily),
     )
 }
 

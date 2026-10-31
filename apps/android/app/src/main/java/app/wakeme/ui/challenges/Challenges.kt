@@ -264,7 +264,7 @@ fun ChallengesList(
                 BentoRow {
                     pair.forEachIndexed { i, t ->
                         val (icon, family) = templateLook(row * 2 + i)
-                        BentoTile(t.title, icon, family, onClick = { onTry(t) }, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = t.description)
+                        BentoTile(t.title, icon, family, onClick = { onTry(t) }, modifier = Modifier.weight(1f).fillMaxHeight())
                     }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }

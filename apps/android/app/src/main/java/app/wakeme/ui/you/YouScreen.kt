@@ -59,6 +59,7 @@ import app.wakeme.designsystem.SettingRow
 import app.wakeme.designsystem.StatusPill
 import app.wakeme.designsystem.Tone
 import app.wakeme.designsystem.WM
+import app.wakeme.designsystem.HeroCard
 import app.wakeme.designsystem.WMCard
 import app.wakeme.designsystem.WakeMeTokens
 import app.wakeme.data.device.DeviceIdentity
@@ -183,7 +184,7 @@ private fun whenText(iso: String?) = iso?.let { runCatching { dateFmt.format(Ins
  * recipient's own consent settings and apply to every friend at once.
  */
 @Composable
-fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, onFocus: () -> Unit = {}, onVoiceSounds: () -> Unit = {}, vm: YouViewModel = hiltViewModel()) {
+fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, onFocus: () -> Unit = {}, onVoiceSounds: () -> Unit = {}, onReady: () -> Unit, vm: YouViewModel = hiltViewModel()) {
     val me by app.me.collectAsState()
     val s by vm.state.collectAsState()
     val context = LocalContext.current
@@ -203,34 +204,11 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = WakeMeTokens.screenMargin), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
         item {
             Gap()
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd)) {
-                me?.let { FriendAvatar(it.displayName, it.id, size = 64.dp) }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(me?.displayName ?: "You", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary)
-                    me?.let {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXxs)) {
-                            WMIconView(WMIcon.Globe, tint = WM.colors.textSecondary, size = 16.dp)
-                            Supporting(it.timeZone)
-                        }
-                    }
-                }
-            }
-        }
-
-        // The places you go from here, as a bento grid: each its own petal colour and icon.
-        item {
-            Gap(WakeMeTokens.spaceXs)
-            BentoRow {
-                BentoTile("Safety check-ins and location", WMIcon.Shield, palette.orchid, onClick = onSafety, modifier = Modifier.weight(1f).fillMaxHeight())
-                BentoTile("Focus", WMIcon.Focus, palette.aqua, onClick = onFocus, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "Time with chosen apps paused")
-            }
-        }
-        item {
-            BentoRow {
-                BentoTile("Voice sounds", WMIcon.Mic, palette.apricot, onClick = onVoiceSounds, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = "Record your own wake-up")
-                val plus = s.billing?.plan == "plus" || me?.billing?.plan == "plus"
-                BentoTile("Wake Me Plus", WMIcon.Sparkle, palette.gold, onClick = onPaywall, modifier = Modifier.weight(1f).fillMaxHeight(), supporting = if (plus) "Manage subscription" else "See what's included")
-            }
+            ProfileOverview(
+                name = me?.displayName ?: "You", personKey = me?.id ?: "me", timeZone = me?.timeZone ?: "",
+                plus = s.billing?.plan == "plus" || me?.billing?.plan == "plus",
+                onSafety = onSafety, onFocus = onFocus, onVoiceSounds = onVoiceSounds, onPaywall = onPaywall,
+            )
         }
 
         me?.takeIf { it.accountState == "deletion_pending" }?.let { m ->
@@ -246,7 +224,13 @@ fun YouScreen(app: AppViewModel, onPaywall: () -> Unit, onSafety: () -> Unit, on
         item {
             Gap(WakeMeTokens.spaceSm)
             // One card for the whole checklist: each missing step is a row inside it.
-            WMCard { ReadinessSection() }
+            WMCard(onClick = onReady, onClickLabel = "Check alarm access") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconChip(WMIcon.Phone, WM.palette.lime)
+                    Text("Alarm access", Modifier.weight(1f).padding(horizontal = 12.dp), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
+                    WMIconView(WMIcon.ChevronRight, tint = WM.colors.textSecondary)
+                }
+            }
         }
         item { PhonesSection(s.devices, s.thisDeviceId, busy = s.busy, onMakePrimary = vm::makeThisPhonePrimary) }
 

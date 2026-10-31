@@ -214,7 +214,22 @@ fun RoutinesScreen(onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: 
 /** The Routines tab's content without its ViewModel (the screenshot tests render it with sample data). */
 @Composable
 fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: () -> Unit) {
-    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues()) {
+    androidx.compose.material3.Scaffold(
+        containerColor = WM.colors.surface,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        floatingActionButton = {
+            androidx.compose.material3.FloatingActionButton(
+                onClick = onNew,
+                shape = androidx.compose.foundation.shape.CircleShape,
+                containerColor = WM.colors.accent,
+                contentColor = WM.colors.textOnAccent,
+            ) {
+                WMIconView(WMIcon.Plus, tint = WM.colors.textOnAccent, contentDescription = "New wake-up")
+            }
+        },
+    ) { listInsets ->
+    AdaptiveList(Modifier.padding(listInsets).padding(horizontal = WakeMeTokens.spaceMd),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)) {
         fullWidth {
             Gap()
             Text("Routines", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
@@ -236,11 +251,8 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
             fullWidth { SectionTitle("Helping friends") }
             items(s.helping, key = { "h" + it.id }) { p -> PlanCard(p, s.myId, onOpen, Modifier.animateItem()) }
         }
-        fullWidth {
-            Gap()
-            PrimaryButton("New wake-up", onClick = onNew, icon = WMIcon.Plus)
-            Gap(WakeMeTokens.spaceXl)
-        }
+
+    }
     }
 }
 
@@ -249,12 +261,12 @@ private fun PlanCard(p: PlanDto, myId: String?, onOpen: (String) -> Unit, modifi
     val v = p.accepted ?: p.pending ?: return
     val mine = p.owner.id == myId
     val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
-    WMCard(modifier, onClick = { onOpen(p.id) }, onClickLabel = "Open routine") {
+    WMCard(modifier, onClick = { onOpen(p.id) }, onClickLabel = "Open routine", container = WM.colors.heroFill) {
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
-                Text(timeAndDays(v.localTime, daysText(v.recurrence), WM.colors.textSecondary), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                if (v.label.isNotBlank()) Text(v.label, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                if (!mine) Supporting("For ${p.owner.displayName}") else if (p.creator.id != myId) Supporting("Suggested by ${p.creator.displayName}")
+                Text(v.localTime, style = MaterialTheme.typography.displaySmall, color = WM.colors.onHero)
+                Supporting(daysText(v.recurrence) + if (v.label.isBlank()) "" else " · ${v.label}", color = WM.colors.onHeroSecondary)
+                if (!mine) Supporting("For ${p.owner.displayName}", color = WM.colors.onHeroSecondary) else if (p.creator.id != myId) Supporting("Suggested by ${p.creator.displayName}", color = WM.colors.onHeroSecondary)
             }
             val (icon, family) = timeOfDay(v.localTime)
             IconChip(icon, family, size = 48.dp)

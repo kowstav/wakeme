@@ -101,67 +101,36 @@ private fun Page(content: @Composable () -> Unit) {
 @Composable
 private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
 
-/** A continuous illustration field and one aligned, accessible entry panel. */
+/** Reference-led onboarding: headline, flat scene, then one account-entry group. */
 @Composable
 fun WelcomeScreen(onInvite: () -> Unit, onSelf: () -> Unit, signInAction: (@Composable () -> Unit)? = null) {
-    BoxWithConstraints(
-        Modifier.fillMaxSize().background(WM.colors.surface)
-            .background(Brush.verticalGradient(listOf(WM.palette.lime.fill.copy(alpha = 0.38f), WM.colors.surface)))
-            .safeDrawingPadding(),
-    ) {
-        val sceneHeight = (maxHeight - 380.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)).coerceIn(100.dp, 420.dp)
-        val panelHeight = (maxHeight - sceneHeight).coerceAtLeast(0.dp)
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)) {
-            Box(Modifier.fillMaxWidth().height(sceneHeight), contentAlignment = Alignment.Center) {
-                androidx.compose.foundation.Image(
-                    painterResource(R.drawable.wm_morning), contentDescription = null,
-                    modifier = Modifier.fillMaxSize().padding(12.dp),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                )
+    BoxWithConstraints(Modifier.fillMaxSize().background(WM.colors.surface).safeDrawingPadding()) {
+        val sceneHeight = (maxHeight - 390.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)).coerceIn(100.dp, 280.dp)
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Your morning.\nYour rhythm.", style = app.wakeme.designsystem.WakeMeType.display,
+                    color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
+                Text("A little nudge. A better day.", style = MaterialTheme.typography.bodyLarge,
+                    color = WM.colors.textSecondary)
             }
-            Column(
-                Modifier.fillMaxWidth().heightIn(min = panelHeight)
-                    .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                    .background(WM.colors.surface).padding(horizontal = 28.dp, vertical = 28.dp),
-                verticalArrangement = Arrangement.Top,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "Better mornings,\ntogether.",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontSize = 30.sp, lineHeight = 36.sp,
-                            fontWeight = FontWeight.Medium, letterSpacing = (-0.8).sp,
-                        ),
-                        color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() },
-                    )
-                    Text("Your alarms. Your people.", style = MaterialTheme.typography.bodyLarge,
-                        color = WM.colors.textSecondary)
-                }
-                Column(Modifier.padding(top = 28.dp)) {
-                    if (signInAction != null) signInAction()
-                    else PrimaryButton("Sign in", onClick = onInvite, icon = WMIcon.PersonPlus)
-                    if (signInAction != null) {
-                        androidx.compose.material3.TextButton(
-                            onClick = onInvite, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) {
-                            Text("Continue with email", style = MaterialTheme.typography.labelLarge,
-                                color = WM.colors.textPrimary)
-                        }
-                    }
-                    androidx.compose.material3.HorizontalDivider(
-                        Modifier.padding(vertical = 8.dp), color = WM.colors.textSecondary.copy(alpha = 0.15f),
-                    )
-                    androidx.compose.material3.TextButton(
-                        onClick = onSelf, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    ) {
-                        Text("Set up my own wake-up", style = MaterialTheme.typography.labelLarge,
-                            color = WM.colors.textSecondary, textAlign = TextAlign.Center)
-                    }
-                }
+            app.wakeme.designsystem.MorningArtwork(Modifier.fillMaxWidth().height(sceneHeight))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (signInAction != null) signInAction()
+                else PrimaryButton("Sign in", onClick = onInvite, icon = WMIcon.PersonPlus)
+                if (signInAction != null) androidx.compose.material3.TextButton(
+                    onClick = onInvite, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) { Text("Continue with email", style = MaterialTheme.typography.labelLarge, color = WM.colors.accentText) }
+                Gap(8.dp)
+                SecondaryButton("Set up my own wake-up", onClick = onSelf, icon = WMIcon.Alarm)
             }
         }
     }
 }
+
 @Composable
 fun GoogleSignInButton(app: AppViewModel) {
     val context = LocalContext.current

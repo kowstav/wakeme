@@ -3,26 +3,26 @@ import SwiftUI
 import UIKit
 
 enum WMColor {
-    static let surface = Color(light: 0xFFFFFF, dark: 0x0E110B)
-    static let surfaceRaised = Color(light: 0xFFFFFF, dark: 0x181C15)
-    static let surfaceNeutral = Color(light: 0xEBEDEA, dark: 0x1E221B)
-    static let surfaceSunken = Color(light: 0xF2F4F0, dark: 0x080A06)
-    static let surfacePressed = Color(light: 0xDDE0DA, dark: 0x2B3027)
-    static let surfaceOverlay = Color(light: 0xFFFFFF, dark: 0x22261F)
-    static let border = Color(light: 0xE3E5E0, dark: 0x2C3128)
-    static let outline = Color(light: 0x767876, dark: 0x858C80, lightHighContrast: 0x545653, darkHighContrast: 0xA9B0A3)
-    static let textPrimary = Color(light: 0x0E0F0C, dark: 0xF2F5EE)
-    static let textSecondary = Color(light: 0x454745, dark: 0xB5BBAE, lightHighContrast: 0x2E302D, darkHighContrast: 0xD7DCD1)
-    static let accent = Color(light: 0x9FE870, dark: 0x9FE870)
-    static let accentPressed = Color(light: 0x8ED45E, dark: 0x8ED45E)
-    static let textOnAccent = Color(light: 0x163300, dark: 0x163300)
-    static let accentContainer = Color(light: 0xE2F6D5, dark: 0x203F05)
-    static let onAccentContainer = Color(light: 0x163300, dark: 0xCDF2B4)
-    static let accentText = Color(light: 0x163300, dark: 0x9FE870, lightHighContrast: 0x0B1A00, darkHighContrast: 0xC4F5A3)
-    static let brandInk = Color(light: 0x163300, dark: 0x9FE870)
-    static let heroFill = Color(light: 0x163300, dark: 0x163300)
-    static let onHero = Color(light: 0x9FE870, dark: 0x9FE870)
-    static let onHeroSecondary = Color(light: 0xCDF2B4, dark: 0xCDF2B4)
+    static let surface = Color(light: 0xF6F6FC, dark: 0x15151D)
+    static let surfaceRaised = Color(light: 0xFFFFFF, dark: 0x20202B)
+    static let surfaceNeutral = Color(light: 0xECECF8, dark: 0x292936)
+    static let surfaceSunken = Color(light: 0xEFEFF7, dark: 0x101017)
+    static let surfacePressed = Color(light: 0xDFDFF0, dark: 0x353544)
+    static let surfaceOverlay = Color(light: 0xFFFFFF, dark: 0x292936)
+    static let border = Color(light: 0xD0D1DF, dark: 0x3E3E50)
+    static let outline = Color(light: 0x747488, dark: 0x9393AA, lightHighContrast: 0x525162, darkHighContrast: 0xC8C6D9)
+    static let textPrimary = Color(light: 0x24232C, dark: 0xF5F4FC)
+    static let textSecondary = Color(light: 0x575666, dark: 0xC0BECE, lightHighContrast: 0x383644, darkHighContrast: 0xE0DEEF)
+    static let accent = Color(light: 0x5B50CE, dark: 0xC2BAFF)
+    static let accentPressed = Color(light: 0x4B40B5, dark: 0xAFA4F4)
+    static let textOnAccent = Color(light: 0xFFFFFF, dark: 0x211B42)
+    static let accentContainer = Color(light: 0xE7E3FF, dark: 0x30294F)
+    static let onAccentContainer = Color(light: 0x302470, dark: 0xE1DAFF)
+    static let accentText = Color(light: 0x4835A1, dark: 0xD0C6FF, lightHighContrast: 0x302470, darkHighContrast: 0xE3DCFF)
+    static let brandInk = Color(light: 0x29233F, dark: 0xD0C6FF, lightHighContrast: 0x211A37, darkHighContrast: 0xE3DCFF)
+    static let heroFill = Color(light: 0x292833, dark: 0x242330)
+    static let onHero = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
+    static let onHeroSecondary = Color(light: 0xDDD9EF, dark: 0xDDD9EF)
     static let info = Color(light: 0x2A5E98, dark: 0x95D3E2)
     static let infoContainer = Color(light: 0xDEEFF3, dark: 0x1E3A41)
     static let success = Color(light: 0x2F5711, dark: 0x9FE870)
@@ -34,8 +34,8 @@ enum WMColor {
     static let dangerFill = Color(light: 0xA8200D, dark: 0xA8200D)
     static let textOnDanger = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
     static let focus = Color(light: 0x2A5E98, dark: 0x95D3E2)
-    static let alarmBackground = Color(light: 0x163300, dark: 0x0B1A00)
-    static let alarmText = Color(light: 0xF2F5EE, dark: 0xF2F5EE)
+    static let alarmBackground = Color(light: 0x242330, dark: 0x101017)
+    static let alarmText = Color(light: 0xFAF9FF, dark: 0xFAF9FF)
 }
 
 /// A petal family: `fill` for tiles, chips and avatars, `ink` for text and icons on it (≥ 4.5:1
@@ -46,14 +46,14 @@ struct WMFamily: Sendable {
 }
 
 enum WMPalette {
-    static let lime = WMFamily(fill: Color(light: 0x9FE870, dark: 0x203F05), ink: Color(light: 0x163300, dark: 0x9FE870))
-    static let orchid = WMFamily(fill: Color(light: 0xDE82C3, dark: 0x4E2442), ink: Color(light: 0x510841, dark: 0xDE82C3))
-    static let sky = WMFamily(fill: Color(light: 0x95D3E2, dark: 0x1E3A41), ink: Color(light: 0x02343E, dark: 0x95D3E2))
-    static let apricot = WMFamily(fill: Color(light: 0xFAAF5F, dark: 0x4E2D02), ink: Color(light: 0x6C1C0F, dark: 0xFAAF5F))
-    static let gold = WMFamily(fill: Color(light: 0xF8C53D, dark: 0x443300), ink: Color(light: 0x683305, dark: 0xF8C53D))
-    static let aqua = WMFamily(fill: Color(light: 0xA4F2ED, dark: 0x173C3A), ink: Color(light: 0x045B49, dark: 0xA4F2ED))
-    static let periwinkle = WMFamily(fill: Color(light: 0x9386E4, dark: 0x282249), ink: Color(light: 0x251454, dark: 0x9386E4))
-    static let forest = WMFamily(fill: Color(light: 0x163300, dark: 0x163300), ink: Color(light: 0x9FE870, dark: 0x9FE870))
+    static let lime = WMFamily(fill: Color(light: 0xDFD9FF, dark: 0x30294F), ink: Color(light: 0x302470, dark: 0xD9D0FF))
+    static let orchid = WMFamily(fill: Color(light: 0xF1DFF0, dark: 0x422C43), ink: Color(light: 0x572653, dark: 0xF1C9EC))
+    static let sky = WMFamily(fill: Color(light: 0xDFE9FA, dark: 0x24324B), ink: Color(light: 0x203E6B, dark: 0xBDDAFF))
+    static let apricot = WMFamily(fill: Color(light: 0xFFE5CC, dark: 0x4B3020), ink: Color(light: 0x773509, dark: 0xFFD2AD))
+    static let gold = WMFamily(fill: Color(light: 0xFFF0BC, dark: 0x423B20), ink: Color(light: 0x654908, dark: 0xFFDF84))
+    static let aqua = WMFamily(fill: Color(light: 0xDDEFE9, dark: 0x233D36), ink: Color(light: 0x214B3F, dark: 0xB5E3D3))
+    static let periwinkle = WMFamily(fill: Color(light: 0xE5E2FA, dark: 0x302C48), ink: Color(light: 0x39316B, dark: 0xD0C9FF))
+    static let forest = WMFamily(fill: Color(light: 0x292833, dark: 0x242330), ink: Color(light: 0xFFFFFF, dark: 0xFFFFFF))
     /// Friend avatars, in the same order as Android, so a friend has one colour on both.
     static let avatars: [WMFamily] = [lime, orchid, sky, apricot, gold, aqua, periwinkle]
 }
@@ -79,10 +79,10 @@ enum WMSpacing {
 }
 
 enum WMRadius {
-    static let sm: CGFloat = 12
+    static let sm: CGFloat = 10
     static let md: CGFloat = 16
-    static let lg: CGFloat = 24
-    static let xl: CGFloat = 32
+    static let lg: CGFloat = 22
+    static let xl: CGFloat = 28
     static let pill: CGFloat = 999
 }
 
@@ -96,37 +96,37 @@ enum WMSize {
 /// design size (iosSize) are for views that scale it with @ScaledMetric(relativeTo:).
 enum WMFont {
     /// Welcome and celebration headline, sentence case
-    static var display: Font { .system(size: 36, weight: .bold) }
+    static var display: Font { .custom("Manrope-ExtraLight", size: 34, relativeTo: .largeTitle).weight(.semibold) }
     /// Alarm clock face
-    static var alarmTime: Font { .system(size: 80, weight: .bold) }
+    static var alarmTime: Font { .custom("Manrope-ExtraLight", size: 80, relativeTo: .largeTitle).weight(.bold) }
     /// Routine time on heroes, detail and editor
-    static var timeDisplay: Font { .system(size: 56, weight: .medium) }
+    static var timeDisplay: Font { .custom("Manrope-ExtraLight", size: 56, relativeTo: .largeTitle).weight(.regular) }
     /// Routine time on cards and lists
-    static var timeInline: Font { .largeTitle.weight(.medium) }
+    static var timeInline: Font { .custom("Manrope-ExtraLight", size: 38, relativeTo: .largeTitle).weight(.medium) }
     /// Large headings on full-screen states
-    static var hero: Font { .largeTitle.weight(.semibold) }
+    static var hero: Font { .custom("Manrope-ExtraLight", size: 28, relativeTo: .largeTitle).weight(.semibold) }
     /// Top of a screen
-    static var screenTitle: Font { .largeTitle.weight(.semibold) }
+    static var screenTitle: Font { .custom("Manrope-ExtraLight", size: 28, relativeTo: .largeTitle).weight(.semibold) }
     /// Alarm label, challenge title, question
-    static var prominent: Font { .title2.weight(.bold) }
+    static var prominent: Font { .custom("Manrope-ExtraLight", size: 24, relativeTo: .title2).weight(.bold) }
     /// Header between groups (outside cards); large alarm button labels
-    static var section: Font { .title2.weight(.semibold) }
+    static var section: Font { .custom("Manrope-ExtraLight", size: 19, relativeTo: .title2).weight(.semibold) }
     /// Card and list-row titles, button labels
-    static var cardTitle: Font { .headline.weight(.semibold) }
+    static var cardTitle: Font { .custom("Manrope-ExtraLight", size: 16, relativeTo: .headline).weight(.semibold) }
     /// Bento tile titles
-    static var tileTitle: Font { .callout.weight(.semibold) }
+    static var tileTitle: Font { .custom("Manrope-ExtraLight", size: 16, relativeTo: .callout).weight(.semibold) }
     /// Label above a group of form controls; small section headers
-    static var fieldLabel: Font { .subheadline.weight(.semibold) }
+    static var fieldLabel: Font { .custom("Manrope-ExtraLight", size: 14, relativeTo: .subheadline).weight(.semibold) }
     /// Paragraphs and sentences
-    static var body: Font { .body.weight(.regular) }
+    static var body: Font { .custom("Manrope-ExtraLight", size: 16, relativeTo: .body).weight(.regular) }
     /// Secondary line under a title, metadata
-    static var supporting: Font { .subheadline.weight(.regular) }
+    static var supporting: Font { .custom("Manrope-ExtraLight", size: 14, relativeTo: .subheadline).weight(.regular) }
     /// Status pills, chips
-    static var label: Font { .subheadline.weight(.semibold) }
+    static var label: Font { .custom("Manrope-ExtraLight", size: 14, relativeTo: .subheadline).weight(.medium) }
     /// The short word under a quick-action circle
-    static var actionLabel: Font { .footnote.weight(.semibold) }
+    static var actionLabel: Font { .custom("Manrope-ExtraLight", size: 13, relativeTo: .footnote).weight(.semibold) }
     /// Trail step labels, footnotes; the floor for anything people must read
-    static var caption: Font { .caption.weight(.medium) }
+    static var caption: Font { .custom("Manrope-ExtraLight", size: 12, relativeTo: .caption).weight(.medium) }
 }
 
 /// Semantic spacing (4-point scale) and component sizes.
@@ -139,7 +139,7 @@ enum WMLayout {
     static let titleGap: CGFloat = 4
     static let fieldLabelGap: CGFloat = 8
     static let controlGap: CGFloat = 12
-    static let sectionGap: CGFloat = 24
+    static let sectionGap: CGFloat = 28
     static let sectionTopExtra: CGFloat = 8
     static let buttonHeight: CGFloat = 56
     static let alarmButtonHeight: CGFloat = 72
@@ -154,7 +154,7 @@ enum WMLayout {
     static let iconSizeLarge: CGFloat = 28
     static let avatarRow: CGFloat = 44
     static let avatarHeader: CGFloat = 72
-    static let tileMinHeight: CGFloat = 116
+    static let tileMinHeight: CGFloat = 128
     static let statusPillPaddingX: CGFloat = 12
     static let statusPillPaddingY: CGFloat = 6
     static let dayToggleMax: CGFloat = 44

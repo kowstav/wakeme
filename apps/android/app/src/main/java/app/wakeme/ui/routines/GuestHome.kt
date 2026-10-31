@@ -96,13 +96,13 @@ fun GuestAlarmContent(
                         color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
                 }
             }
-            fullWidth { MorningArtwork(Modifier.fillMaxWidth().height(if (state.routines.isEmpty()) 240.dp else 180.dp)) }
+            if (state.routines.isEmpty()) fullWidth { MorningArtwork(Modifier.fillMaxWidth().height(180.dp)) }
             items(state.routines, key = { it.first.planId }) { (routine, armed) ->
-                WMCard {
+                WMCard(container = WM.colors.heroFill) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                            Text(routine.localTime, style = MaterialTheme.typography.displaySmall, color = WM.colors.textPrimary)
-                            Supporting(daysText(routine.recurrence) + if (routine.label.isBlank()) "" else " · ${routine.label}")
+                            Text(routine.localTime, style = MaterialTheme.typography.displaySmall, color = WM.colors.onHero)
+                            Supporting(daysText(routine.recurrence) + if (routine.label.isBlank()) "" else " · ${routine.label}", color = WM.colors.onHeroSecondary)
                             StatusPill(if (armed) "Scheduled" else "Needs alarm access", if (armed) Tone.Success else Tone.Warning,
                                 icon = if (armed) WMIcon.CheckCircle else WMIcon.Warning)
                         }

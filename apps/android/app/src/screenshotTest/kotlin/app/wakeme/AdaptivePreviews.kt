@@ -1,6 +1,9 @@
 package app.wakeme
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -157,3 +160,16 @@ fun ChallengesTab() = Shell(2) {
 @Preview(name = "Large text", widthDp = 360, heightDp = 800, fontScale = 1.6f)
 @Preview(name = "Dark", device = Devices.PHONE, uiMode = Configuration.UI_MODE_NIGHT_YES)
 fun Welcome() = WakeMeTheme { Readable { WelcomeScreen(onInvite = {}, onSelf = {}, signInAction = { GoogleAuthButton(onClick = {}) }) } }
+
+/** Renders the actual account overview used by YouScreen, without a network or Hilt fixture. */
+@PreviewTest
+@FormFactorPreviews
+@Composable
+fun YouOverview() = Shell(3) {
+    androidx.compose.foundation.layout.Column(
+        androidx.compose.ui.Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+    ) {
+        app.wakeme.ui.you.ProfileOverview("Sam Rivera", "me", "Asia/Kolkata", false, {}, {}, {}, {})
+    }
+}

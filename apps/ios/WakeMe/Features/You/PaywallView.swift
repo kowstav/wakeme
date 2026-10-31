@@ -45,7 +45,7 @@ struct PaywallView: View {
                             Button { selected = o.id } label: {
                                 HStack {
                                     VStack(alignment: .leading) {
-                                        Text(o.title).font(.headline).foregroundStyle(WMColor.textPrimary)
+                                        Text(o.title).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                                         Text(o.priceText).foregroundStyle(WMColor.textSecondary)
                                     }
                                     Spacer()

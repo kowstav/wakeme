@@ -5,57 +5,38 @@ struct WelcomeView: View {
     let onInvite: () -> Void
     let onSelfSetup: () -> Void
 
-    @ScaledMetric(relativeTo: .largeTitle) private var welcomeTitleSize: CGFloat = 30
+    @ScaledMetric(relativeTo: .body) private var actionReserve: CGFloat = 390
 
     var body: some View {
         GeometryReader { space in
-            let sceneHeight = min(420, max(100, space.size.height - 380 * max(1, welcomeTitleSize / 30)))
             ScrollView {
-                VStack(spacing: 0) {
-                    Image("WakeMorning")
-                        .resizable().scaledToFit()
-                        .padding(12)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: sceneHeight)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 28) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Better mornings,\ntogether.")
-                                .font(.system(size: welcomeTitleSize, weight: .medium))
-                                .tracking(-0.8)
-                                .foregroundStyle(WMColor.textPrimary)
-                                .accessibilityAddTraits(.isHeader)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Text("Your alarms. Your people.")
-                                .font(.body).foregroundStyle(WMColor.textSecondary)
-                        }
-                        VStack(spacing: 0) {
-                            PrimaryButton(title: "Sign in", icon: .personPlus, action: onInvite)
-                            Divider().padding(.vertical, 16)
-                            Button(action: onSelfSetup) {
-                                Text("Set up my own wake-up")
-                                    .font(.body.weight(.medium))
-                                    .foregroundStyle(WMColor.textSecondary)
-                                    .multilineTextAlignment(.center)
-                                    .frame(maxWidth: .infinity, minHeight: 48)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Your morning.\nYour rhythm.")
+                            .font(WMFont.display).foregroundStyle(WMColor.textPrimary)
+                            .accessibilityAddTraits(.isHeader)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("A little nudge. A better day.")
+                            .font(WMFont.body).foregroundStyle(WMColor.textSecondary)
                     }
-                    .padding(28)
-                    .frame(maxWidth: .infinity, minHeight: max(0, space.size.height - sceneHeight), alignment: .topLeading)
-                    .background(WMColor.surface, in: UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32))
+                    Image("WakeDaylight").resizable().scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: min(280, max(100, space.size.height - actionReserve)))
+                        .accessibilityHidden(true)
+                    VStack(spacing: 16) {
+                        PrimaryButton(title: "Sign in", icon: .personPlus, action: onInvite)
+                        SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
+                    }
                 }
-                .frame(maxWidth: WMLayout.readableWidth)
-                .frame(maxWidth: .infinity)
+                .padding(24)
+                .frame(maxWidth: WMLayout.readableWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: space.size.height, alignment: .top)
             }
-            .background(LinearGradient(colors: [WMColor.brandInk.opacity(0.12), WMColor.surface],
-                startPoint: .top, endPoint: .bottom))
             .background(WMColor.surface)
         }
     }
 }
+
 /// Five friends' faces in a slight arc, the middle one largest. Tapping a face plays its call here
 /// and gives it a little hop (with Reduce Motion, only the sound).
 struct FriendHuddle: View {

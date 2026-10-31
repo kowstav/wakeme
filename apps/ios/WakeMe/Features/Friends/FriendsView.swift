@@ -36,7 +36,7 @@ struct FriendsView: View {
                 if loaded && friends.isEmpty {
                     Section {
                         VStack {
-                            Image("WakeConnection").resizable().scaledToFit().frame(height: 240).accessibilityHidden(true)
+                            Image("WakeOrbit").resizable().scaledToFit().frame(height: 240).accessibilityHidden(true)
                             Text("Your people, closer.").font(WMFont.section).foregroundStyle(WMColor.textPrimary)
                         }.frame(maxWidth: .infinity)
                     }
@@ -219,7 +219,7 @@ struct InviteSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
-                Text("Share your invite").font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
+                Text("Share your invite").font(WMFont.section).foregroundStyle(WMColor.textPrimary)
                 // The code is the fallback when the link doesn't open the app: big, selectable, on its own card.
                 WMCard {
                     Text("They can also type this code").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
@@ -281,7 +281,7 @@ struct FriendDetailView: View {
                     wakeCard(f)
                     if let c = lastCommand {
                         WMCard {
-                            Text("Last request").font(.headline).foregroundStyle(WMColor.textPrimary)
+                            Text("Last request").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                             StatusPill(text: statusText(c.displayStatus), tone: statusTone(c.displayStatus), announce: true)
                             if c.capability == Capability.nudge || c.capability == Capability.alarmRequest {
                                 DeliveryTrailView(displayStatus: c.displayStatus, alarm: c.capability == Capability.alarmRequest)

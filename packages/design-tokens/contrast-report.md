@@ -4,82 +4,82 @@ Every pair is checked in light, dark, and both increased-contrast variants (iOS 
 
 | Pair | Light | Dark | Light HC | Dark HC | Minimum | Result |
 |---|---:|---:|---:|---:|---:|---|
-| textPrimary on surface | 19.23 | 17.28 | 19.23 | 17.28 | 7 | pass |
-| textPrimary on surfaceRaised | 19.23 | 15.69 | 19.23 | 15.69 | 7 | pass |
-| textPrimary on surfaceNeutral | 16.33 | 14.67 | 16.33 | 14.67 | 7 | pass |
-| textPrimary on surfacePressed | 14.42 | 12.27 | 14.42 | 12.27 | 7 | pass |
-| textPrimary on surfaceOverlay | 19.23 | 13.97 | 19.23 | 13.97 | 7 | pass |
-| textSecondary on surface | 9.37 | 9.68 | 13.32 | 13.63 | 4.5 | pass |
-| textSecondary on surfaceRaised | 9.37 | 8.79 | 13.32 | 12.38 | 4.5 | pass |
-| textSecondary on surfaceNeutral | 7.96 | 8.22 | 11.31 | 11.58 | 4.5 | pass |
-| textSecondary on surfaceSunken | 8.47 | 10.11 | 12.03 | 14.24 | 4.5 | pass |
-| textSecondary on surfaceOverlay | 9.37 | 7.83 | 13.32 | 11.02 | 4.5 | pass |
-| accentText on surface | 13.93 | 12.91 | 18.07 | 15.35 | 4.5 | pass |
-| accentText on surfaceNeutral | 11.83 | 10.96 | 15.35 | 13.03 | 4.5 | pass |
-| accentText on surfaceSunken | 12.59 | 13.49 | 16.33 | 16.03 | 4.5 | pass |
-| brandInk on surface | 13.93 | 12.91 | 13.93 | 12.91 | 7 | pass |
-| onHero on heroFill | 9.45 | 9.45 | 9.45 | 9.45 | 7 | pass |
-| onHeroSecondary on heroFill | 11.25 | 11.25 | 11.25 | 11.25 | 7 | pass |
-| info on surface | 6.66 | 11.50 | 6.66 | 11.50 | 4.5 | pass |
-| info on surfaceNeutral | 5.66 | 9.77 | 5.66 | 9.77 | 4.5 | pass |
-| success on surface | 8.43 | 12.91 | 8.43 | 12.91 | 4.5 | pass |
-| success on surfaceNeutral | 7.16 | 10.96 | 7.16 | 10.96 | 4.5 | pass |
-| warning on surface | 7.40 | 10.29 | 7.40 | 10.29 | 4.5 | pass |
-| warning on surfaceNeutral | 6.29 | 8.74 | 6.29 | 8.74 | 4.5 | pass |
-| danger on surface | 7.30 | 8.31 | 7.30 | 8.31 | 4.5 | pass |
-| danger on surfaceNeutral | 6.20 | 7.05 | 6.20 | 7.05 | 4.5 | pass |
-| textOnAccent on accent | 9.45 | 9.45 | 9.45 | 9.45 | 4.5 | pass |
-| textOnAccent on accentPressed | 7.78 | 7.78 | 7.78 | 7.78 | 4.5 | pass |
-| onAccentContainer on accentContainer | 12.19 | 9.55 | 12.19 | 9.55 | 7 | pass |
-| textPrimary on accentContainer | 16.82 | 10.75 | 16.82 | 10.75 | 7 | pass |
+| textPrimary on surface | 14.43 | 16.62 | 14.43 | 16.62 | 7 | pass |
+| textPrimary on surfaceRaised | 15.53 | 14.76 | 15.53 | 14.76 | 7 | pass |
+| textPrimary on surfaceNeutral | 13.26 | 13.13 | 13.26 | 13.13 | 7 | pass |
+| textPrimary on surfacePressed | 11.80 | 11.02 | 11.80 | 11.02 | 7 | pass |
+| textPrimary on surfaceOverlay | 15.53 | 13.13 | 15.53 | 13.13 | 7 | pass |
+| textSecondary on surface | 6.66 | 9.94 | 10.96 | 13.71 | 4.5 | pass |
+| textSecondary on surfaceRaised | 7.17 | 8.82 | 11.80 | 12.18 | 4.5 | pass |
+| textSecondary on surfaceNeutral | 6.12 | 7.85 | 10.07 | 10.83 | 4.5 | pass |
+| textSecondary on surfaceSunken | 6.27 | 10.37 | 10.32 | 14.31 | 4.5 | pass |
+| textSecondary on surfaceOverlay | 7.17 | 7.85 | 11.80 | 10.83 | 4.5 | pass |
+| accentText on surface | 8.48 | 11.41 | 12.10 | 13.78 | 4.5 | pass |
+| accentText on surfaceNeutral | 7.79 | 9.01 | 11.12 | 10.89 | 4.5 | pass |
+| accentText on surfaceSunken | 7.98 | 11.91 | 11.39 | 14.39 | 4.5 | pass |
+| brandInk on surface | 13.87 | 11.41 | 15.39 | 13.78 | 7 | pass |
+| onHero on heroFill | 14.53 | 15.46 | 14.53 | 15.46 | 7 | pass |
+| onHeroSecondary on heroFill | 10.55 | 11.23 | 10.55 | 11.23 | 7 | pass |
+| info on surface | 6.19 | 10.97 | 6.19 | 10.97 | 4.5 | pass |
+| info on surfaceNeutral | 5.68 | 8.67 | 5.68 | 8.67 | 4.5 | pass |
+| success on surface | 7.83 | 12.32 | 7.83 | 12.32 | 4.5 | pass |
+| success on surfaceNeutral | 7.19 | 9.73 | 7.19 | 9.73 | 4.5 | pass |
+| warning on surface | 6.88 | 9.82 | 6.88 | 9.82 | 4.5 | pass |
+| warning on surfaceNeutral | 6.32 | 7.76 | 6.32 | 7.76 | 4.5 | pass |
+| danger on surface | 6.78 | 7.93 | 6.78 | 7.93 | 4.5 | pass |
+| danger on surfaceNeutral | 6.23 | 6.26 | 6.23 | 6.26 | 4.5 | pass |
+| textOnAccent on accent | 6.03 | 9.05 | 6.03 | 9.05 | 4.5 | pass |
+| textOnAccent on accentPressed | 7.78 | 7.26 | 7.78 | 7.26 | 4.5 | pass |
+| onAccentContainer on accentContainer | 10.44 | 10.07 | 10.44 | 10.07 | 7 | pass |
+| textPrimary on accentContainer | 12.45 | 12.36 | 12.45 | 12.36 | 7 | pass |
 | info on infoContainer | 5.63 | 7.31 | 5.63 | 7.31 | 4.5 | pass |
-| textPrimary on infoContainer | 16.25 | 10.98 | 16.25 | 10.98 | 7 | pass |
+| textPrimary on infoContainer | 13.13 | 11.07 | 13.13 | 11.07 | 7 | pass |
 | success on successContainer | 7.37 | 8.03 | 7.37 | 8.03 | 4.5 | pass |
 | warning on warningContainer | 6.18 | 6.68 | 6.18 | 6.68 | 4.5 | pass |
 | danger on dangerContainer | 6.14 | 6.33 | 6.14 | 6.33 | 4.5 | pass |
-| textPrimary on dangerContainer | 16.17 | 13.16 | 16.17 | 13.16 | 7 | pass |
+| textPrimary on dangerContainer | 13.06 | 13.27 | 13.06 | 13.27 | 7 | pass |
 | textOnDanger on dangerFill | 7.30 | 7.30 | 7.30 | 7.30 | 4.5 | pass |
-| alarmText on alarmBackground | 12.65 | 16.41 | 12.65 | 16.41 | 7 | pass |
-| outline on surface (non-text (WCAG 1.4.11)) | 4.45 | 5.49 | 7.41 | 8.54 | 3 | pass |
-| outline on surfaceRaised (non-text) | 4.45 | 4.98 | 7.41 | 7.75 | 3 | pass |
-| outline on surfaceNeutral (non-text) | 3.78 | 4.66 | 6.30 | 7.25 | 3 | pass |
-| outline on surfaceOverlay (non-text) | 4.45 | 4.44 | 7.41 | 6.91 | 3 | pass |
-| focus on surface (non-text) | 6.66 | 11.50 | 6.66 | 11.50 | 3 | pass |
-| focus on surfaceNeutral (non-text) | 5.66 | 9.77 | 5.66 | 9.77 | 3 | pass |
-| border on surface (decorative separator only; state is never conveyed by border colour alone) | 1.27 | 1.43 | 1.27 | 1.43 | 1.2 | pass |
-| lime ink on lime fill (palette) | 9.45 | 8.03 | – | – | 4.5 | pass |
-| orchid ink on orchid fill (palette) | 5.54 | 4.89 | – | – | 4.5 | pass |
-| sky ink on sky fill (palette) | 8.12 | 7.31 | – | – | 4.5 | pass |
-| apricot ink on apricot fill (palette) | 6.28 | 6.68 | – | – | 4.5 | pass |
-| gold ink on gold fill (palette) | 6.32 | 7.59 | – | – | 4.5 | pass |
-| aqua ink on aqua fill (palette) | 6.35 | 9.46 | – | – | 4.5 | pass |
-| periwinkle ink on periwinkle fill (palette) | 5.18 | 4.78 | – | – | 4.5 | pass |
-| forest ink on forest fill (palette) | 9.45 | 9.45 | – | – | 4.5 | pass |
+| alarmText on alarmBackground | 14.77 | 18.10 | 14.77 | 18.10 | 7 | pass |
+| outline on surface (non-text (WCAG 1.4.11)) | 4.24 | 6.05 | 7.19 | 10.84 | 3 | pass |
+| outline on surfaceRaised (non-text) | 4.57 | 5.37 | 7.74 | 9.62 | 3 | pass |
+| outline on surfaceNeutral (non-text) | 3.90 | 4.78 | 6.61 | 8.56 | 3 | pass |
+| outline on surfaceOverlay (non-text) | 4.57 | 4.78 | 7.74 | 8.56 | 3 | pass |
+| focus on surface (non-text) | 6.19 | 10.97 | 6.19 | 10.97 | 3 | pass |
+| focus on surfaceNeutral (non-text) | 5.68 | 8.67 | 5.68 | 8.67 | 3 | pass |
+| border on surface (decorative separator only; state is never conveyed by border colour alone) | 1.41 | 1.74 | 1.41 | 1.74 | 1.2 | pass |
+| lime ink on lime fill (palette) | 9.62 | 9.27 | – | – | 4.5 | pass |
+| orchid ink on orchid fill (palette) | 9.16 | 8.55 | – | – | 4.5 | pass |
+| sky ink on sky fill (palette) | 8.75 | 8.96 | – | – | 4.5 | pass |
+| apricot ink on apricot fill (palette) | 7.54 | 8.65 | – | – | 4.5 | pass |
+| gold ink on gold fill (palette) | 7.35 | 8.59 | – | – | 4.5 | pass |
+| aqua ink on aqua fill (palette) | 8.21 | 8.31 | – | – | 4.5 | pass |
+| periwinkle ink on periwinkle fill (palette) | 9.09 | 8.53 | – | – | 4.5 | pass |
+| forest ink on forest fill (palette) | 14.53 | 15.46 | – | – | 4.5 | pass |
 
 ## Roles in OKLCH (L × 100, C, h)
 
 | Token | Light | Dark |
 |---|---|---|
-| surface | `#FFFFFF` 100.0 0.000 – | `#0E110B` 17.2 0.013 – |
-| surfaceRaised | `#FFFFFF` 100.0 0.000 – | `#181C15` 22.0 0.015 – |
-| surfaceNeutral | `#EBEDEA` 94.4 0.005 – | `#1E221B` 24.5 0.014 – |
-| surfaceSunken | `#F2F4F0` 96.5 0.006 – | `#080A06` 14.0 0.010 – |
-| surfacePressed | `#DDE0DA` 90.3 0.009 – | `#2B3027` 30.1 0.017 – |
-| surfaceOverlay | `#FFFFFF` 100.0 0.000 – | `#22261F` 26.2 0.014 – |
-| border | `#E3E5E0` 91.9 0.007 – | `#2C3128` 30.5 0.017 – |
-| outline | `#767876` 57.0 0.004 – | `#858C80` 63.1 0.019 – |
-| textPrimary | `#0E0F0C` 16.6 0.006 – | `#F2F5EE` 96.6 0.010 – |
-| textSecondary | `#454745` 39.5 0.004 – | `#B5BBAE` 78.4 0.019 – |
-| accent | `#9FE870` 85.7 0.170 135 | `#9FE870` 85.7 0.170 135 |
-| accentPressed | `#8ED45E` 79.8 0.167 134 | `#8ED45E` 79.8 0.167 134 |
-| textOnAccent | `#163300` 28.7 0.084 135 | `#163300` 28.7 0.084 135 |
-| accentContainer | `#E2F6D5` 95.0 0.048 133 | `#203F05` 33.1 0.090 134 |
-| onAccentContainer | `#163300` 28.7 0.084 135 | `#CDF2B4` 91.9 0.090 133 |
-| accentText | `#163300` 28.7 0.084 135 | `#9FE870` 85.7 0.170 135 |
-| brandInk | `#163300` 28.7 0.084 135 | `#9FE870` 85.7 0.170 135 |
-| heroFill | `#163300` 28.7 0.084 135 | `#163300` 28.7 0.084 135 |
-| onHero | `#9FE870` 85.7 0.170 135 | `#9FE870` 85.7 0.170 135 |
-| onHeroSecondary | `#CDF2B4` 91.9 0.090 133 | `#CDF2B4` 91.9 0.090 133 |
+| surface | `#F6F6FC` 97.5 0.008 – | `#15151D` 20.0 0.016 – |
+| surfaceRaised | `#FFFFFF` 100.0 0.000 – | `#20202B` 24.9 0.021 285 |
+| surfaceNeutral | `#ECECF8` 94.7 0.016 – | `#292936` 28.7 0.024 285 |
+| surfaceSunken | `#EFEFF7` 95.4 0.011 – | `#101017` 17.7 0.014 – |
+| surfacePressed | `#DFDFF0` 90.9 0.023 286 | `#353544` 33.5 0.026 285 |
+| surfaceOverlay | `#FFFFFF` 100.0 0.000 – | `#292936` 28.7 0.024 285 |
+| border | `#D0D1DF` 86.4 0.019 – | `#3E3E50` 37.1 0.031 285 |
+| outline | `#747488` 56.6 0.031 285 | `#9393AA` 67.1 0.034 285 |
+| textPrimary | `#24232C` 26.1 0.017 – | `#F5F4FC` 97.0 0.011 – |
+| textSecondary | `#575666` 46.0 0.026 288 | `#C0BECE` 80.8 0.022 292 |
+| accent | `#5B50CE` 51.5 0.188 281 | `#C2BAFF` 82.0 0.096 289 |
+| accentPressed | `#4B40B5` 45.6 0.178 281 | `#AFA4F4` 75.8 0.114 290 |
+| textOnAccent | `#FFFFFF` 100.0 0.000 – | `#211B42` 25.3 0.071 287 |
+| accentContainer | `#E7E3FF` 92.7 0.038 292 | `#30294F` 30.8 0.067 290 |
+| onAccentContainer | `#302470` 32.5 0.125 284 | `#E1DAFF` 90.5 0.051 294 |
+| accentText | `#4835A1` 41.8 0.166 285 | `#D0C6FF` 85.4 0.079 293 |
+| brandInk | `#29233F` 27.7 0.051 293 | `#D0C6FF` 85.4 0.079 293 |
+| heroFill | `#292833` 28.3 0.020 289 | `#242330` 26.3 0.024 288 |
+| onHero | `#FFFFFF` 100.0 0.000 – | `#FFFFFF` 100.0 0.000 – |
+| onHeroSecondary | `#DDD9EF` 89.5 0.030 294 | `#DDD9EF` 89.5 0.030 294 |
 | info | `#2A5E98` 47.6 0.109 253 | `#95D3E2` 83.0 0.066 214 |
 | infoContainer | `#DEEFF3` 94.1 0.019 – | `#1E3A41` 32.9 0.036 216 |
 | success | `#2F5711` 41.2 0.108 135 | `#9FE870` 85.7 0.170 135 |
@@ -91,18 +91,18 @@ Every pair is checked in light, dark, and both increased-contrast variants (iOS 
 | dangerFill | `#A8200D` 47.5 0.174 31 | `#A8200D` 47.5 0.174 31 |
 | textOnDanger | `#FFFFFF` 100.0 0.000 – | `#FFFFFF` 100.0 0.000 – |
 | focus | `#2A5E98` 47.6 0.109 253 | `#95D3E2` 83.0 0.066 214 |
-| alarmBackground | `#163300` 28.7 0.084 135 | `#0B1A00` 19.6 0.055 132 |
-| alarmText | `#F2F5EE` 96.6 0.010 – | `#F2F5EE` 96.6 0.010 – |
+| alarmBackground | `#242330` 26.3 0.024 288 | `#101017` 17.7 0.014 – |
+| alarmText | `#FAF9FF` 98.5 0.008 – | `#FAF9FF` 98.5 0.008 – |
 
 ## Palette families (fill / ink)
 
 | Family | Light | Dark | Source |
 |---|---|---|---|
-| lime | `#9FE870` / `#163300` | `#203F05` / `#9FE870` | Wise bright green / forest green (reference 1) |
-| orchid | `#DE82C3` / `#510841` | `#4E2442` / `#DE82C3` | ribbon pink (reference 1); ink derived |
-| sky | `#95D3E2` / `#02343E` | `#1E3A41` / `#95D3E2` | ribbon light blue (reference 1); ink derived |
-| apricot | `#FAAF5F` / `#6C1C0F` | `#4E2D02` / `#FAAF5F` | petal apricot and petal maroon (reference 2) |
-| gold | `#F8C53D` / `#683305` | `#443300` / `#F8C53D` | coin gold and coin brown (reference 1) |
-| aqua | `#A4F2ED` / `#045B49` | `#173C3A` / `#A4F2ED` | globe aqua and globe teal (reference 1) |
-| periwinkle | `#9386E4` / `#251454` | `#282249` / `#9386E4` | ribbon violet (reference 1); ink derived |
-| forest | `#163300` / `#9FE870` | `#163300` / `#9FE870` | Wise forest green with bright green (reference 1) |
+| lime | `#DFD9FF` / `#302470` | `#30294F` / `#D9D0FF` | Daylight native palette, adapted from Alarmi reference; contrast adjusted |
+| orchid | `#F1DFF0` / `#572653` | `#422C43` / `#F1C9EC` | Daylight native palette, adapted from Alarmi reference; contrast adjusted |
+| sky | `#DFE9FA` / `#203E6B` | `#24324B` / `#BDDAFF` | Daylight native palette, adapted from Alarmi reference; contrast adjusted |
+| apricot | `#FFE5CC` / `#773509` | `#4B3020` / `#FFD2AD` | Daylight native palette, adapted from Alarmi reference; contrast adjusted |
+| gold | `#FFF0BC` / `#654908` | `#423B20` / `#FFDF84` | Daylight native palette, adapted from Alarmi reference; contrast adjusted |
+| aqua | `#DDEFE9` / `#214B3F` | `#233D36` / `#B5E3D3` | Daylight native palette, adapted from Alarmi reference; contrast adjusted |
+| periwinkle | `#E5E2FA` / `#39316B` | `#302C48` / `#D0C9FF` | Daylight native palette, adapted from Alarmi reference; contrast adjusted |
+| forest | `#292833` / `#FFFFFF` | `#242330` / `#FFFFFF` | Daylight native palette, adapted from Alarmi reference; contrast adjusted |

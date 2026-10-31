@@ -75,6 +75,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.wakeme.core.DeliveryTrail
 import app.wakeme.core.TrailState
 
@@ -368,10 +369,10 @@ fun WMCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(WakeMeTokens.radiusLg)
-    val colors = CardDefaults.cardColors(containerColor = container ?: WM.colors.surfaceNeutral)
+    val colors = CardDefaults.cardColors(containerColor = container ?: WM.colors.surfaceRaised)
     val inner: @Composable ColumnScope.() -> Unit = {
         CompositionLocalProvider(LocalOnCard provides true) {
-            Column(Modifier.padding(WakeMeTokens.layoutCardPadding), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), content = content)
+            Column(Modifier.padding(WakeMeTokens.layoutCardPadding), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs), content = content)
         }
     }
     if (onClick == null) {
@@ -694,8 +695,13 @@ fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: 
  * it is what TalkBack reads. [name] stays in the signature for callers and previews.
  */
 @Composable
-fun FriendAvatar(@Suppress("UNUSED_PARAMETER") name: String, key: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
-    Image(painterResource(faceFor(key).res), contentDescription = null, modifier = modifier.size(size).clearAndSetSemantics { })
+fun FriendAvatar(name: String, key: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
+    val family = WM.palette.avatars[Math.floorMod(key.hashCode(), WM.palette.avatars.size)]
+    val initials = name.trim().split(' ').filter { it.isNotBlank() }.take(2)
+        .joinToString("") { String(Character.toChars(it.codePointAt(0))).uppercase() }.ifEmpty { "?" }
+    Box(modifier.size(size).clip(CircleShape).background(family.fill).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
+        Text(initials, style = MaterialTheme.typography.titleMedium.copy(fontSize = (size.value * 0.34f).sp), color = family.ink)
+    }
 }
 
 /** The animal for a stable key (a friend's or circle's id); the same on iOS. */

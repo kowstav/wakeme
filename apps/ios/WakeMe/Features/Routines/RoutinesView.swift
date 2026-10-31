@@ -121,24 +121,24 @@ private struct PlanRow: View {
 
     var body: some View {
         let v = plan.pending ?? plan.accepted
-        VStack(alignment: .leading, spacing: WMSpacing.xs) {
+        HeroCard {
             if let v {
                 HStack(alignment: .top, spacing: WMSpacing.sm) {
                     VStack(alignment: .leading, spacing: WMSpacing.xxs) {
-                        Text("\(Text(v.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(v.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
-                        if !v.label.isEmpty { Text(v.label).foregroundStyle(WMColor.textSecondary) }
+                        RoutineTimeLabel(time: v.localTime, days: daysText(v.recurrence))
+                        if !v.label.isEmpty { Text(v.label).foregroundStyle(WMColor.onHeroSecondary) }
                     }
                     Spacer(minLength: 0)
                     let tod = timeOfDay(v.localTime)
                     IconChip(icon: tod.icon, family: tod.family, size: 48)
                 }
             }
-            if !mine { Text("For \(plan.owner.displayName)").foregroundStyle(WMColor.textSecondary) }
-            else if plan.creator.id != plan.owner.id { Text("Suggested by \(plan.creator.displayName)").foregroundStyle(WMColor.textSecondary) }
+            if !mine { Text("For \(plan.owner.displayName)").foregroundStyle(WMColor.onHeroSecondary) }
+            else if plan.creator.id != plan.owner.id { Text("Suggested by \(plan.creator.displayName)").foregroundStyle(WMColor.onHeroSecondary) }
             let readiness = readinessText(plan.readiness, owner: plan.owner.displayName, mine: mine)
             StatusPill(text: readiness.0, tone: readiness.1, icon: toneIcon(readiness.1)).animation(WMMotion.standard, value: readiness.0)
             if let onAccept, let onDecline {
-                Text("Nothing changes until you accept.").font(.footnote).foregroundStyle(WMColor.textSecondary)
+                Text("Nothing changes until you accept.").font(.footnote).foregroundStyle(WMColor.onHeroSecondary)
                 HStack {
                     Button("Accept") { Task { await onAccept() } }.buttonStyle(.borderedProminent).tint(WMColor.accent).foregroundStyle(WMColor.textOnAccent)
                     Button("Decline") { Task { await onDecline() } }.buttonStyle(.bordered)

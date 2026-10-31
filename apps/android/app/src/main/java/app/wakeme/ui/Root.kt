@@ -302,6 +302,7 @@ private fun entries(backStack: NavBackStack<NavKey>, app: AppViewModel) = entryP
                 onSafety = { backStack.add(Route.Safety()) },
                 onFocus = { backStack.add(Route.Focus) },
                 onVoiceSounds = { backStack.add(Route.VoiceSounds) },
+                onReady = { backStack.add(Route.Ready) },
             )
         }
     }

@@ -86,7 +86,7 @@ struct ChallengesView: View {
                             ForEach(i..<min(i + 2, templates.count), id: \.self) { j in
                                 let t = templates[j]
                                 let look = templateLook(j)
-                                BentoTile(title: t.title, icon: look.icon, family: look.family, supporting: t.description) { Task { await fromTemplate(t) } }
+                                BentoTile(title: t.title, icon: look.icon, family: look.family) { Task { await fromTemplate(t) } }
                                     .disabled(busy)
                                     .accessibilityHint("Tries it on this phone. \(t.description)")
                             }

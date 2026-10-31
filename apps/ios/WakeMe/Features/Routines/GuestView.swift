@@ -16,16 +16,17 @@ struct GuestView: View {
                 Group {
                     if routines.isEmpty {
                         Section {
-                            Image("WakeMorning").resizable().scaledToFit().frame(height: 220).accessibilityHidden(true)
+                            Image("WakeDaylight").resizable().scaledToFit().frame(height: 220).accessibilityHidden(true)
                         }
                     } else {
                         Section("On this phone") {
                             ForEach(routines, id: \.planId) { r in
                                 let tod = timeOfDay(r.localTime)
+                                HeroCard {
                                 HStack(alignment: .top, spacing: WMSpacing.sm) {
                                     VStack(alignment: .leading, spacing: WMSpacing.xs) {
-                                        Text("\(Text(r.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(r.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
-                                        if !r.label.isEmpty { Text(r.label).foregroundStyle(WMColor.textSecondary) }
+                                        RoutineTimeLabel(time: r.localTime, days: daysText(r.recurrence))
+                                        if !r.label.isEmpty { Text(r.label).foregroundStyle(WMColor.onHeroSecondary) }
                                         if WakeAlarms.shared.authorization == .authorized && WakeAlarms.shared.armedRoutine(planId: r.planId) != nil {
                                             StatusPill(text: "Ready on this phone", tone: .success, icon: toneIcon(.success))
                                         } else {
@@ -34,6 +35,7 @@ struct GuestView: View {
                                     }
                                     Spacer(minLength: 0)
                                     IconChip(icon: tod.icon, family: tod.family)
+                                }
                                 }
                                 .swipeActions { Button("Delete", role: .destructive) { LocalRoutines.shared.delete(r.planId); reload() } }
                             }

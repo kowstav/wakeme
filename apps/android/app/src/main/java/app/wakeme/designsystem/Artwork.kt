@@ -17,14 +17,11 @@ import app.wakeme.R
 /** Decorative local art. Real times, state and actions are always native accessible controls. */
 @Composable
 fun MorningArtwork(modifier: Modifier = Modifier) {
-    Box(modifier.clip(RoundedCornerShape(32.dp)).background(Brush.verticalGradient(
-        listOf(WM.palette.lime.fill.copy(alpha = 0.4f), WM.colors.surface)))) {
-        Image(painterResource(R.drawable.wm_morning), contentDescription = null,
-            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-    }
+    Image(painterResource(R.drawable.wm_daylight), contentDescription = null,
+        modifier = modifier, contentScale = ContentScale.Fit)
 }
 
 @Composable
 fun ConnectionArtwork(modifier: Modifier = Modifier) {
-    Image(painterResource(R.drawable.wm_connection), contentDescription = null, modifier = modifier, contentScale = ContentScale.Fit)
+    Image(painterResource(R.drawable.wm_orbit), contentDescription = null, modifier = modifier, contentScale = ContentScale.Fit)
 }
