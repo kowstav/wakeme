@@ -46,6 +46,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -73,6 +75,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.wakeme.core.DeliveryTrail
 import app.wakeme.core.TrailState
 
@@ -366,10 +369,10 @@ fun WMCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(WakeMeTokens.radiusLg)
-    val colors = CardDefaults.cardColors(containerColor = container ?: WM.colors.surfaceNeutral)
+    val colors = CardDefaults.cardColors(containerColor = container ?: WM.colors.surfaceRaised)
     val inner: @Composable ColumnScope.() -> Unit = {
         CompositionLocalProvider(LocalOnCard provides true) {
-            Column(Modifier.padding(WakeMeTokens.layoutCardPadding), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm), content = content)
+            Column(Modifier.padding(WakeMeTokens.layoutCardPadding), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs), content = content)
         }
     }
     if (onClick == null) {
@@ -538,15 +541,13 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: (@Compos
 }
 
 /**
- * The hero headline: condensed, heavy and in capitals (tokens: type.roles.display), in forest by
+ * The hero headline: sentence case and system typography (tokens: type.roles.display), in forest by
  * day and lime by night. TalkBack reads the sentence as written, not letter by letter.
  */
 @Composable
 fun DisplayText(text: String, modifier: Modifier = Modifier, color: Color = WM.colors.brandInk, textAlign: TextAlign = TextAlign.Start) {
-    // The configuration's locale, so a language change recomposes the capitals (lint: NonObservableLocale).
-    val locale = LocalConfiguration.current.locales[0]
     Text(
-        text.uppercase(locale),
+        text,
         style = DisplayStyle,
         color = color,
         textAlign = textAlign,
@@ -694,8 +695,13 @@ fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: 
  * it is what TalkBack reads. [name] stays in the signature for callers and previews.
  */
 @Composable
-fun FriendAvatar(@Suppress("UNUSED_PARAMETER") name: String, key: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
-    Image(painterResource(faceFor(key).res), contentDescription = null, modifier = modifier.size(size).clearAndSetSemantics { })
+fun FriendAvatar(name: String, key: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
+    val family = WM.palette.avatars[Math.floorMod(key.hashCode(), WM.palette.avatars.size)]
+    val initials = name.trim().split(' ').filter { it.isNotBlank() }.take(2)
+        .joinToString("") { String(Character.toChars(it.codePointAt(0))).uppercase() }.ifEmpty { "?" }
+    Box(modifier.size(size).clip(CircleShape).background(family.fill).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
+        Text(initials, style = MaterialTheme.typography.titleMedium.copy(fontSize = (size.value * 0.34f).sp), color = family.ink)
+    }
 }
 
 /** The animal for a stable key (a friend's or circle's id); the same on iOS. */
@@ -816,5 +822,22 @@ fun EmptyState(title: String, body: String? = null, modifier: Modifier = Modifie
             }
         }
         action?.invoke()
+    }
+}
+
+
+/** Keep uncommon settings available without filling the first screen with choices. */
+@Composable
+fun DisclosureGroup(label: String, summary: String, content: @Composable ColumnScope.() -> Unit) {
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(label) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth()) {
+        TextButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = WakeMeTokens.buttonHeight)) {
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                Text(label, style = MaterialTheme.typography.titleMedium)
+                Text(summary, style = MaterialTheme.typography.bodyMedium, color = WM.colors.textSecondary)
+            }
+            Text(if (expanded) "Hide" else "Edit", style = MaterialTheme.typography.labelLarge)
+        }
+        if (expanded) Column(Modifier.padding(WakeMeTokens.spaceSm), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceMd), content = content)
     }
 }

@@ -1,6 +1,38 @@
+## Daylight native verification follow-up (2026-10-31, Codex)
+
+- Head 26ba0b7 passed general CI, the iOS simulator journey and all 49 Compose preview renders. All three Android emulator jobs passed their widget and real Focus shield/escape journeys, then failed the broader account/routine journey.
+- Android 16/17 reached account migration with both guest alarms intact; the newly split card assertion accidentally selected both 07:00 weekday alarms. Make the original blank-label card exact and navigate named cards by their visible recurrence/name metadata, retaining the same-card time checks.
+- Android 13 failure evidence shows the second editor with its keyboard open and Save below it; OS IME animation can race Compose idleness. The regression now waits for the real keyboard, invokes Done once, waits for it to close, then scrolls/taps Save once. Both saved alarms and the third-editor cancellation still have to pass.
+- The 4720692 journey reached the real keyboard but exposed Default IME semantics on the single-line name field. Declare Done explicitly and clear focus/hide the keyboard when it is pressed. Saving remains a separate explicit action.
+- Final native review found unused space below the welcome actions. Distribute remaining vertical space between the headline, scene and actions; retain 24-point minimum gaps, a bottom action group, scroll overflow and font-scaled illustration sizing on Android/iOS.
+- The routine list now applies and consumes its remaining safe-drawing insets, including the bottom inset on rail/wide windows. Root top/horizontal consumption is retained. Local build/lint/renders and journey-source compilation passed; fresh source-matched native CI remains required before merge.
 # Wake Me — progress
 
-Last updated: 2026-10-24. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. Nothing is released. Nothing has run on a real phone.
+Last updated: 2026-10-30. Status words: **specified**, **implemented**, **verified (named conditions)**, **released**. No production release. The owner has installed the staging build on Android 13; full physical-device verification is still open.
+
+## Full native Daylight redesign (2026-10-31, Codex)
+
+- Owner rejected the prior welcome again and requested the whole app be redesigned from actual Dribbble/Mobbin screens. Inspected original Alarmi and Habit Tracker reference images and mapped every native screen family in docs/design/daylight-screen-map.md.
+- Replaced the green visual system with lavender/white, ink time cards, violet actions, Manrope typography, flatter category colors and original native vector scenes. Applied shared styling across both apps; rebuilt welcome, local/routine cards, profile overview and template hierarchy, and moved Android's full alarm checklist to its existing readiness route.
+- Preserved real consent, delivery/readiness, escapes, product/provider state and strong alarm time/recurrence assertions. No fake reference statistics, controls or achievements added.
+- Local 0.1.2 (3) staging build, lint, journey-source compilation and 49 preview renders passed; 22 unit tests and 2 tooling tests passed. Lint has 0 errors, 73 warnings and 6 hints. Verified APK version, registered debug certificate, staging markers and bundled font. Routines has a persistent compact add control; its real accessible action is asserted by the journey. Fresh emulator/iOS CI and physical acceptance remain open; no merge or store upload yet.
+
+## Welcome composition revision (2026-10-31, Codex)
+
+- Owner rejected the isolated wordmark, boxed artwork, bold centred type and disconnected “More sign-in options” action. Revised both native welcome compositions using three actually viewed Dribbble references, documented in docs/design/welcome-2026-10-31.md.
+- Removed the top wordmark; integrated the original art into the background and a rounded lower panel; aligned type/actions; made email explicit and local setup secondary. Added small-phone, dark and large-text Compose render coverage.
+- The final local staging APK build, lint and native preview rendering passed (0 lint errors; 71 warnings, 6 hints). Visually inspected phone, 320×640, dark and 1.6× text welcome renders; fixed the dark background blending found during review. APK staging markers and registered debug certificate were verified. Fresh head CI and physical acceptance remain open. The previous iOS run 63 passed; Android run 116 failed the API 33 Focus binding precondition despite passing widget checks. These are not new-source verification or a completed release.
+
+## Android 13 owner report and native hierarchy refresh (2026-10-30, Codex)
+
+- The owner reports a second local-alarm editor immediately closing on a real Android 13 phone, and confirms they only see the guest screen. This is a physical report, not yet an on-device verification by Codex. The guest editor retained an activity-scoped completed ViewModel; it now gets navigation-entry ownership.
+- Simplified guest home/readiness, exposed the account-feature boundary, reduced friend-list repetition, moved uncommon editor options behind disclosure, and refined shared native typography. Design research, selected GitHub skills, source-by-source limitations and feature completion boundaries are in docs/design/review-2026-10-30-native-product.md.
+- Added Android 13 to the native CI matrix, a real second-editor journey assertion and guest light/dark/large-text previews. App version code 2 / 0.1.1 is reserved for this update. Native validation is in progress; no new build or complete visual acceptance is claimed yet.
+- Owner follow-up confirms Google sign-in succeeds on Android 13 and reveals the four tabs. The welcome now offers Google directly, removes Play preview and uses original local morning/connection illustrations with shorter copy. Native Google styling follows its current branding guide; the open-font license is packaged.
+- The initial alarm fix passed android-device #107 on APIs 33/36/37, ios #59 and Android unit/lint CI. General CI exposed an expired fixed-date account deletion fixture; it now follows a database-clock snapshot, retaining seven-day and before/after checks (5 local account tests pass). Final artwork/source CI is pending on PR #10.
+- The local release candidate ran out of disk space; only disposable build/cache output and the already-extracted JDK installer were cleared. Preserve the shared checkout, signing key and deployment configuration. Worker/push, billing/media providers and physical release checks remain open.
+
+- Android-device #111 on Android 13 reproduced the widget reset: RescheduleReceiver enabled at 15:11:40.599, PACKAGE_CHANGED arrived at 15:11:41.603 during the one pointer tap (down 41.551, up 41.788), and the host remained foreground with no friends route. Reviewed PR #9 passed ci #40 and android-device #103 and was merged as 31f8447. This branch was rebased onto that base, retaining both progress entries and the strict widget assertions. Final combined-source verification follows.
 
 ## Widget taps lost to a WorkManager package change (2026-10-24, Claude)
 

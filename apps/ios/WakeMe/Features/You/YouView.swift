@@ -21,22 +21,24 @@ struct YouView: View {
     var body: some View {
         List {
             if let me = app.me {
+                HeroCard {
                 HStack(spacing: WMSpacing.md) {
                     FriendAvatar(name: me.displayName, key: me.id, size: 64)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(me.displayName).font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
+                        Text(me.displayName).font(WMFont.section).foregroundStyle(WMColor.onHero)
                         HStack(spacing: WMSpacing.xxs) {
                             WMIconImage(.globe, size: 16)
                             Text(me.timeZone)
                         }
                         .font(WMFont.supporting)
-                        .foregroundStyle(WMColor.textSecondary)
+                        .foregroundStyle(WMColor.onHeroSecondary)
                     }
+                }
                 }
                 .bentoRow()
                 BentoRow {
                     BentoTile(title: "Safety check-ins and location", icon: .shield, family: WMPalette.orchid) { showSafety = true }
-                    BentoTile(title: "Focus", icon: .focus, family: WMPalette.aqua, supporting: "Time with chosen apps paused") { showFocus = true }
+                    BentoTile(title: "Focus", icon: .focus, family: WMPalette.aqua) { showFocus = true }
                 }
                 .bentoRow()
                 BentoRow {

@@ -47,6 +47,10 @@ jobs:
             release: 17
             image: system-images;android-37.0;google_apis;x86_64
             runner: ubuntu-26.04
+          - api: 33
+            release: 13
+            image: system-images;android-33;google_apis;x86_64
+            runner: ubuntu-24.04
           - api: 36
             release: 16
             image: system-images;android-36;google_apis;x86_64

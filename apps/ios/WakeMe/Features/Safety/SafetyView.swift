@@ -64,7 +64,7 @@ struct SafetyView: View {
                 }
                 Section {
                     Button(role: .destructive) { composing = .sos } label: {
-                        Text("Send SOS to friends").font(.headline).frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
+                        Text("Send SOS to friends").font(WMFont.cardTitle).frame(maxWidth: .infinity, minHeight: WMSize.minTouchTarget)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(WMColor.dangerFill)

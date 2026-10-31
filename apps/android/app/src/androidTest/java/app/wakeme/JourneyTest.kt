@@ -2,13 +2,16 @@ package app.wakeme
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -52,11 +55,45 @@ class JourneyTest {
         tap("New wake-up")
         DeviceEvidence.screenshot("25-new-wake-up")
         tap("Save wake-up")
-        waitFor("07:00 · Weekdays", timeout = 30_000) // the guest list, not the editor
-        waitFor("Ready on this phone", timeout = 30_000)
+        waitFor("07:00", timeout = 30_000)
+        waitFor("Weekdays", timeout = 30_000)
+        waitFor("Scheduled", timeout = 30_000)
+        // Regression: a completed activity-scoped editor used to close this second editor at once.
+        tap("New wake-up")
+        waitFor("Name (optional)")
+        waitFor("Save wake-up")
+        compose.waitForIdle()
+        compose.onNodeWithText("Save wake-up").performScrollTo().assertIsDisplayed()
+        val nameField = compose.onNodeWithText("Name (optional)")
+        nameField.performScrollTo()
+        nameField.performTextInput("Second morning")
+        // The OS keyboard animates independently of Compose idleness. Finish that real
+        // entry with Done before scrolling Save into view; issue each action just once.
+        compose.waitUntil(5_000) {
+            compose.runOnIdle {
+                androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+            }
+        }
+        nameField.performImeAction()
+        compose.waitUntil(5_000) {
+            compose.runOnIdle {
+                androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == false
+            }
+        }
+        DeviceEvidence.screenshot("26-second-guest-editor")
+        tap("Save wake-up")
+        waitFor("Weekdays · Second morning", timeout = 30_000)
+        waitFor("Weekdays") // The first alarm remains after saving the second.
+        DeviceEvidence.screenshot("26-two-guest-wake-ups")
+        tap("New wake-up")
+        waitFor("Name (optional)")
+        tap("Cancel")
+        waitFor("Scheduled", timeout = 30_000)
         DeviceEvidence.screenshot("26-guest-wake-up")
         // Friends need an account; the wake-up moves to it.
-        tap("Sign in to add friends")
+        tap("Sign in")
         tap("Use a local test account (debug build)")
         waitFor("Display name")
         compose.onNodeWithText("Display name").performTextInput("Sam")
@@ -64,7 +101,7 @@ class JourneyTest {
         DeviceEvidence.screenshot("20-profile")
         tap("Continue")
 
-        tap("Invite a friend", timeout = 30_000)
+        tap("Invite", timeout = 30_000)
         waitFor("Share your invite")
         val dialog = compose.onAllNodes(hasText("type this code", substring = true)).fetchSemanticsNodes().first()
         val text = dialog.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()
@@ -87,7 +124,9 @@ class JourneyTest {
         tap("Routines", timeout = 15_000)
         // The guest wake-up is now the account's routine: the server lists it, and readiness is what
         // this phone reported to the server after AlarmManager armed the server version.
-        waitFor("07:00 · Weekdays", timeout = 30_000)
+        waitFor("07:00", timeout = 30_000)
+        // Same real routine card: its time and recurrence now occupy separate visual lines.
+        compose.onNode(hasText("07:00") and hasText("Weekdays")).assertExists()
         waitFor("Ready on this phone", timeout = 60_000)
         DeviceEvidence.screenshot("26b-moved-to-account")
 
@@ -202,12 +241,14 @@ class JourneyTest {
         check(alexChallenges().none { it.getString("id") == shared.getString("id") }) { "Leaving the circle kept access to its quiz" }
 
         tap("Routines")
-        tap("New wake-up")
+        compose.onNode(hasContentDescription("New wake-up")).assertIsDisplayed().performClick()
+        tap("More options")
         tap("Study")
         waitFor("18:00", substring = true)
         tap("Save wake-up")
-        waitInList("18:00 · Weekdays")
-        tap("Study")
+        waitInList("18:00")
+        compose.onNode(hasText("18:00") and hasText("Weekdays · Study")).assertExists()
+        tap("Weekdays · Study")
         tap("Use this routine again")
         waitFor("Study")
         compose.activityRule.scenario.recreate()
@@ -229,8 +270,8 @@ class JourneyTest {
             .put("soundId", "bundled:rise.gentle").put("ringSeconds", 60))
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         tap("Routines")
-        waitInList("Buddy morning")
-        tap("Buddy morning")
+        waitInList("Weekdays · Buddy morning")
+        tap("Weekdays · Buddy morning")
         tap("Accept this version")
         waitFor("Active version")
         val conversationId = (0 until alexFriends.length()).map { alexFriends.getJSONObject(it) }
@@ -258,7 +299,7 @@ class JourneyTest {
         tap("Done")
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         tap("Routines")
-        tap("Study")
+        tap("Weekdays · Study")
         tap("End this routine")
         val ownApi = dagger.hilt.android.EntryPointAccessors.fromApplication(
             InstrumentationRegistry.getInstrumentation().targetContext.applicationContext,

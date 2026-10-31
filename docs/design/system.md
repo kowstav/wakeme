@@ -1,3 +1,5 @@
+> Current system: Daylight / tokens v4. [Screen map and reviewed references](daylight-screen-map.md) supersede the older Bloom palette, typography and artwork below. Historical notes remain for provenance.
+
 # Bloom: the Wake Me design system
 
 Status (2026-10-21): **specified and implemented** on iOS and Android. **Not yet verified**: no

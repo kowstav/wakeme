@@ -71,7 +71,7 @@ struct RoutineEditorView: View {
                         }
                     }
                     Section {
-                        TextField("Label (optional), e.g. 9am class", text: $label)
+                        TextField("Name (optional)", text: $label)
                             .onChange(of: label) { _, v in if v.count > 40 { label = String(v.prefix(40)) } }
                     }
                     Section {
@@ -103,7 +103,9 @@ struct RoutineEditorView: View {
                     }
                     if friend == nil {
                         Section {
-                            Toggle("Follow my phone when I travel", isOn: $followTravel)
+                            DisclosureGroup("Travel & time zone") {
+                                Toggle("Follow my phone when I travel", isOn: $followTravel)
+                            }
                         } footer: {
                             Text(followTravel ? "Rings at this time wherever the phone is." : "Keeps this time in \(TimeZone.current.identifier) when you travel.")
                         }

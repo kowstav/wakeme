@@ -19,8 +19,8 @@ struct CirclesSection: View {
                     HStack(spacing: WMSpacing.sm) {
                         IconChip(icon: .circles, family: familyFor(c.id, offset: 3), size: 48)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(c.name).font(.headline).foregroundStyle(WMColor.textPrimary)
-                            Text("\(c.memberCount) member\(c.memberCount == 1 ? "" : "s")").font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                            Text(c.name).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                            Text("\(c.memberCount) member\(c.memberCount == 1 ? "" : "s")").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
                         }
                     }
                     .frame(minHeight: WMSize.minTouchTarget)
@@ -96,7 +96,7 @@ struct CircleView: View {
                                 FriendAvatar(name: m.user.displayName, key: m.user.id)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(m.user.displayName + (m.user.id == app.me?.id ? " (you)" : "")).foregroundStyle(WMColor.textPrimary)
-                                    Text(roleText(m)).font(.subheadline).foregroundStyle(WMColor.textSecondary)
+                                    Text(roleText(m)).font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
                                 }
                                 Spacer()
                                 if admin && m.role != "owner" && m.user.id != app.me?.id {

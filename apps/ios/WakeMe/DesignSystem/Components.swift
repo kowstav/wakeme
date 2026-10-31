@@ -322,7 +322,7 @@ struct HeroCard<Content: View>: View {
 struct DisplayText: View {
     let text: String
     let alignment: TextAlignment
-    @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 46
+    @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 36
 
     init(_ text: String, alignment: TextAlignment = .leading) {
         self.text = text
@@ -331,8 +331,7 @@ struct DisplayText: View {
 
     var body: some View {
         Text(text)
-            .textCase(.uppercase)
-            .font(.system(size: min(size, 46 * 1.3), weight: .black).width(.condensed))
+            .font(.custom("Manrope-ExtraLight", size: min(size, 34 * 1.3), relativeTo: .largeTitle).weight(.semibold))
             .foregroundStyle(WMColor.brandInk)
             .multilineTextAlignment(alignment)
             .minimumScaleFactor(0.7)
@@ -345,7 +344,7 @@ extension View {
     /// Rows of a grouped list on Bloom's white page: each group takes the card grey, and quiet
     /// controls inside switch to white so they stay visible. Apply to a `Group` of sections.
     func cardRows() -> some View {
-        listRowBackground(WMColor.surfaceNeutral)
+        listRowBackground(WMColor.surfaceRaised)
             .environment(\.wmOnCard, true)
     }
 
@@ -361,11 +360,11 @@ extension View {
 /// A flat card: neutral grey on the white page by day, a lighter tonal surface by night; no border,
 /// no shadow (every reviewed app separates cards by fill alone).
 struct WMCard<Content: View>: View {
-    var fill: Color = WMColor.surfaceNeutral
+    var fill: Color = WMColor.surfaceRaised
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WMSpacing.sm) { content }
+        VStack(alignment: .leading, spacing: WMSpacing.xs) { content }
             .environment(\.wmOnCard, true)
             .padding(WMLayout.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -440,16 +439,21 @@ func toneIcon(_ tone: Tone) -> WMIcon? {
 /// A friend's face: one of ten cartoon animals, chosen from a stable key so the same friend always
 /// has the same animal (on both platforms: same hash, same order). Decorative: the name beside it is
 /// what VoiceOver reads.
+/// Real profile initials, not an invented photograph or a random animal identity.
 struct FriendAvatar: View {
     let name: String
     let key: String
     var size: CGFloat = WMLayout.avatarRow
-
     var body: some View {
-        faceFor(key).image
-            .resizable()
-            .scaledToFit()
+        let hash = key.utf16.reduce(Int32(0)) { $0 &* 31 &+ Int32($1) }
+        let families = WMPalette.avatars
+        let family = families[((Int(hash) % families.count) + families.count) % families.count]
+        let initials = name.split(whereSeparator: { $0.isWhitespace }).prefix(2).compactMap { $0.first }.map(String.init).joined().uppercased()
+        Text(initials.isEmpty ? "?" : initials)
+            .font(.custom("Manrope-ExtraLight", size: size * 0.34).weight(.semibold))
+            .foregroundStyle(family.ink)
             .frame(width: size, height: size)
+            .background(family.fill, in: Circle())
             .accessibilityHidden(true)
     }
 }
@@ -608,7 +612,7 @@ struct QuackSent: View {
     var body: some View {
         HStack(spacing: WMSpacing.xs) {
             QuackBurst(tick: tick, height: 32)
-            Text("Sent to \(name)").font(.headline).foregroundStyle(WMColor.textPrimary)
+            Text("Sent to \(name)").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
         }
         .accessibilityElement(children: .combine)
     }
@@ -635,4 +639,19 @@ struct AppSwitcherCover: ViewModifier {
 
 extension View {
     func appSwitcherCover() -> some View { modifier(AppSwitcherCover()) }
+}
+
+/// A visual time/day stack read as one phrase; readiness remains its own accessibility element.
+struct RoutineTimeLabel: View {
+    let time: String
+    let days: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(time).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.onHero)
+            Text(days).font(WMFont.supporting).foregroundStyle(WMColor.onHeroSecondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(time) · \(days)")
+        .accessibilityAddTraits(.isStaticText)
+    }
 }

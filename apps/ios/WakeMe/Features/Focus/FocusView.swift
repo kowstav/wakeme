@@ -27,7 +27,7 @@ struct FocusView: View {
                 }
                 if let r = focus.request {
                     Section {
-                        Text("\(r.friendName) asks you to focus for \(r.minutes) min").font(.headline).foregroundStyle(WMColor.textPrimary)
+                        Text("\(r.friendName) asks you to focus for \(r.minutes) min").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         PrimaryButton(title: "Start focus") { Task { await accept(r) } }
                             .disabled(!focus.authorized || !focus.hasSelection)
                         Button("Not now") { focus.offer(nil) }.frame(minHeight: WMSize.minTouchTarget)
@@ -36,7 +36,7 @@ struct FocusView: View {
                 switch focus.state(now: now) ?? .finished(reason: "none") {
                 case let .active(remaining):
                     Section {
-                        Text(activeTitle(remaining)).font(.headline).foregroundStyle(WMColor.textPrimary)
+                        Text(activeTitle(remaining)).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         if let s = focus.session, s.breaksTaken < focusMaxBreaks {
                             SecondaryButton(title: "Take a \(focusBreakMinutes)-minute break") { earningBreak = true }
                         }
@@ -44,7 +44,7 @@ struct FocusView: View {
                     }
                 case let .onBreak(breakLeft, sessionLeft):
                     Section {
-                        Text(activeTitle(sessionLeft)).font(.headline).foregroundStyle(WMColor.textPrimary)
+                        Text(activeTitle(sessionLeft)).font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         StatusPill(text: "On a break for \(Self.minutes(breakLeft)) min", tone: .info)
                         Button("End focus", role: .destructive) { focus.end() }.frame(minHeight: WMSize.minTouchTarget)
                     }

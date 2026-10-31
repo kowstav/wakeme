@@ -34,7 +34,7 @@ struct SignInView: View {
                     .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                     .frame(height: WMSize.minTouchTarget)
                     WMCard {
-                        Text("Email me a code").font(.headline).foregroundStyle(WMColor.textPrimary)
+                        Text("Email me a code").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         TextField("Email", text: $email)
                             .textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
                             .padding(WMSpacing.sm).background(WMColor.surfaceSunken, in: RoundedRectangle(cornerRadius: WMRadius.sm))

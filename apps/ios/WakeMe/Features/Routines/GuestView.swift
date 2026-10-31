@@ -16,16 +16,17 @@ struct GuestView: View {
                 Group {
                     if routines.isEmpty {
                         Section {
-                            EmptyState(title: "No wake-ups yet")
+                            Image("WakeDaylight").resizable().scaledToFit().frame(height: 220).accessibilityHidden(true)
                         }
                     } else {
                         Section("On this phone") {
                             ForEach(routines, id: \.planId) { r in
                                 let tod = timeOfDay(r.localTime)
+                                HeroCard {
                                 HStack(alignment: .top, spacing: WMSpacing.sm) {
                                     VStack(alignment: .leading, spacing: WMSpacing.xs) {
-                                        Text("\(Text(r.localTime).font(WMFont.timeInline).monospacedDigit().foregroundStyle(WMColor.textPrimary)) · \(daysText(r.recurrence))").font(WMFont.cardTitle).foregroundStyle(WMColor.textSecondary)
-                                        if !r.label.isEmpty { Text(r.label).foregroundStyle(WMColor.textSecondary) }
+                                        RoutineTimeLabel(time: r.localTime, days: daysText(r.recurrence))
+                                        if !r.label.isEmpty { Text(r.label).foregroundStyle(WMColor.onHeroSecondary) }
                                         if WakeAlarms.shared.authorization == .authorized && WakeAlarms.shared.armedRoutine(planId: r.planId) != nil {
                                             StatusPill(text: "Ready on this phone", tone: .success, icon: toneIcon(.success))
                                         } else {
@@ -34,6 +35,7 @@ struct GuestView: View {
                                     }
                                     Spacer(minLength: 0)
                                     IconChip(icon: tod.icon, family: tod.family)
+                                }
                                 }
                                 .swipeActions { Button("Delete", role: .destructive) { LocalRoutines.shared.delete(r.planId); reload() } }
                             }
@@ -48,10 +50,11 @@ struct GuestView: View {
                     Section {
                         HStack(spacing: WMSpacing.sm) {
                             IconChip(icon: .friends, family: WMPalette.sky)
-                            Text("Wake each other up").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
+                            Text("Better together").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                         }
                         .accessibilityElement(children: .combine)
-                        SecondaryButton(title: "Sign in to add friends", icon: .personPlus) { app.signInFromGuest() }
+                        Text("Friends \u{00b7} Challenges \u{00b7} Check-ins").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
+                        SecondaryButton(title: "Sign in", icon: .personPlus) { app.signInFromGuest() }
                     }
                 }
                 .cardRows()

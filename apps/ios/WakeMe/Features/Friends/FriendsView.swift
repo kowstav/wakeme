@@ -28,14 +28,17 @@ struct FriendsView: View {
                 NextAlarmHero(fireAt: nextAlarm.fireAt, label: nextAlarm.label).bentoRow()
             }
             BentoRow {
-                BentoTile(title: "Invite a friend", icon: .personPlus, family: WMPalette.lime, supporting: "Send a private link") { Task { await createInvite() } }
-                BentoTile(title: "Join with a code", icon: .ticket, family: WMPalette.sky, supporting: "From a friend's invite") { joining = true }
+                SecondaryButton(title: "Invite", icon: .personPlus) { Task { await createInvite() } }.accessibilityLabel("Invite a friend")
+                SecondaryButton(title: "Join", icon: .ticket) { joining = true }.accessibilityLabel("Join with a code")
             }
             .bentoRow()
             Group {
                 if loaded && friends.isEmpty {
                     Section {
-                        EmptyState(title: "Invite someone you trust")
+                        VStack {
+                            Image("WakeOrbit").resizable().scaledToFit().frame(height: 240).accessibilityHidden(true)
+                            Text("Your people, closer.").font(WMFont.section).foregroundStyle(WMColor.textPrimary)
+                        }.frame(maxWidth: .infinity)
                     }
                 }
                 if !friends.isEmpty {
@@ -216,7 +219,7 @@ struct InviteSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: WMSpacing.md) {
-                Text("Share your invite").font(.title2.bold()).foregroundStyle(WMColor.textPrimary)
+                Text("Share your invite").font(WMFont.section).foregroundStyle(WMColor.textPrimary)
                 // The code is the fallback when the link doesn't open the app: big, selectable, on its own card.
                 WMCard {
                     Text("They can also type this code").font(WMFont.supporting).foregroundStyle(WMColor.textSecondary)
@@ -278,7 +281,7 @@ struct FriendDetailView: View {
                     wakeCard(f)
                     if let c = lastCommand {
                         WMCard {
-                            Text("Last request").font(.headline).foregroundStyle(WMColor.textPrimary)
+                            Text("Last request").font(WMFont.cardTitle).foregroundStyle(WMColor.textPrimary)
                             StatusPill(text: statusText(c.displayStatus), tone: statusTone(c.displayStatus), announce: true)
                             if c.capability == Capability.nudge || c.capability == Capability.alarmRequest {
                                 DeliveryTrailView(displayStatus: c.displayStatus, alarm: c.capability == Capability.alarmRequest)

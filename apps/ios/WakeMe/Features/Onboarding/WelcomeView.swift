@@ -1,53 +1,41 @@
 import SwiftUI
 
-/// Doc 03 §5 step 1, laid out like the reference apps' welcome: a picture of the idea (a huddle of
-/// friends, each a cartoon animal), a condensed capital headline, and the two ways in pinned where
-/// a thumb reaches them, lime first. Each face plays its own call on this phone when tapped, and
-/// "Play preview" plays the quack, the default: the sounds explain themselves, so nothing else is
-/// said. The blocks arrive with a short stagger the first time; with Reduce Motion they are simply
-/// there.
+/// Clear account entry and an account-free alarm, with a decorative morning illustration.
 struct WelcomeView: View {
     let onInvite: () -> Void
     let onSelfSetup: () -> Void
 
+    @ScaledMetric(relativeTo: .body) private var actionReserve: CGFloat = 390
+
     var body: some View {
         GeometryReader { space in
             ScrollView {
-                VStack(spacing: WMSpacing.lg) {
-                    FriendHuddle()
-                        .wmEntrance(0)
-                    DisplayText("Alert your friends. Wake each other up.", alignment: .center)
-                        .wmEntrance(1)
-                    PillButton(title: "Play preview", icon: .speaker) { SoundPreview.shared.play() }
-                        .wmEntrance(2)
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Your morning.\nYour rhythm.")
+                            .font(WMFont.display).foregroundStyle(WMColor.textPrimary)
+                            .accessibilityAddTraits(.isHeader)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("A little nudge. A better day.")
+                            .font(WMFont.body).foregroundStyle(WMColor.textSecondary)
+                    }
+                    Spacer(minLength: 24)
+                    Image("WakeDaylight").resizable().scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: min(280, max(100, space.size.height - actionReserve)))
+                        .accessibilityHidden(true)
+                    Spacer(minLength: 24)
+                    VStack(spacing: 16) {
+                        PrimaryButton(title: "Sign in", icon: .personPlus, action: onInvite)
+                        SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
+                    }
                 }
-                .padding(.horizontal, WMLayout.screenMargin)
-                .padding(.vertical, WMSpacing.lg)
-                .frame(maxWidth: WMLayout.readableWidth)
-                // Centred in the space above the actions; at large text sizes it simply scrolls.
-                .frame(maxWidth: .infinity, minHeight: space.size.height)
+                .frame(minHeight: max(0, space.size.height - 48), alignment: .top)
+                .padding(24)
+                .frame(maxWidth: WMLayout.readableWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .top)
             }
-        }
-        .background(WMColor.surface)
-        // The story scrolls; the two ways in stay at the bottom, where a thumb reaches them.
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: WMLayout.controlGap) {
-                PrimaryButton(title: "I have an invite", icon: .ticket, action: onInvite)
-                SecondaryButton(title: "Set up my own wake-up", icon: .alarm, action: onSelfSetup)
-            }
-            .padding(.horizontal, WMLayout.screenMargin)
-            .padding(.vertical, WMSpacing.md)
-            .frame(maxWidth: WMLayout.readableWidth)
-            .frame(maxWidth: .infinity)
             .background(WMColor.surface)
-            // Text scrolling under the pinned actions fades out instead of being cut mid-line.
-            .overlay(alignment: .top) {
-                LinearGradient(colors: [WMColor.surface.opacity(0), WMColor.surface], startPoint: .top, endPoint: .bottom)
-                    .frame(height: WMSpacing.lg)
-                    .offset(y: -WMSpacing.lg)
-                    .allowsHitTesting(false)
-            }
-            .wmEntrance(4)
         }
     }
 }

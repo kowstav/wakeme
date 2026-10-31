@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -14,11 +15,17 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import app.wakeme.designsystem.DisclosureGroup
 import app.wakeme.designsystem.Loading
 import app.wakeme.designsystem.AdaptiveList
 import app.wakeme.designsystem.ReloadWhenBackOnTop
 import app.wakeme.designsystem.fullWidth
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -213,7 +220,22 @@ fun RoutinesScreen(onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: 
 /** The Routines tab's content without its ViewModel (the screenshot tests render it with sample data). */
 @Composable
 fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, onFixReadiness: () -> Unit) {
-    AdaptiveList(Modifier.padding(horizontal = WakeMeTokens.spaceMd), contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues()) {
+    androidx.compose.material3.Scaffold(
+        containerColor = WM.colors.surface,
+        contentWindowInsets = WindowInsets.safeDrawing,
+        floatingActionButton = {
+            androidx.compose.material3.FloatingActionButton(
+                onClick = onNew,
+                shape = androidx.compose.foundation.shape.CircleShape,
+                containerColor = WM.colors.accent,
+                contentColor = WM.colors.textOnAccent,
+            ) {
+                WMIconView(WMIcon.Plus, tint = WM.colors.textOnAccent, contentDescription = "New wake-up")
+            }
+        },
+    ) { listInsets ->
+    AdaptiveList(Modifier.padding(listInsets).consumeWindowInsets(listInsets).padding(horizontal = WakeMeTokens.spaceMd),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)) {
         fullWidth {
             Gap()
             Text("Routines", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
@@ -235,11 +257,8 @@ fun RoutinesList(s: RoutinesState, onNew: () -> Unit, onOpen: (String) -> Unit, 
             fullWidth { SectionTitle("Helping friends") }
             items(s.helping, key = { "h" + it.id }) { p -> PlanCard(p, s.myId, onOpen, Modifier.animateItem()) }
         }
-        fullWidth {
-            Gap()
-            PrimaryButton("New wake-up", onClick = onNew, icon = WMIcon.Plus)
-            Gap(WakeMeTokens.spaceXl)
-        }
+
+    }
     }
 }
 
@@ -248,12 +267,12 @@ private fun PlanCard(p: PlanDto, myId: String?, onOpen: (String) -> Unit, modifi
     val v = p.accepted ?: p.pending ?: return
     val mine = p.owner.id == myId
     val (label, tone) = readinessText(p.readiness, p.owner.displayName, mine)
-    WMCard(modifier, onClick = { onOpen(p.id) }, onClickLabel = "Open routine") {
+    WMCard(modifier, onClick = { onOpen(p.id) }, onClickLabel = "Open routine", container = WM.colors.heroFill) {
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceSm)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(WakeMeTokens.layoutTitleGap)) {
-                Text(timeAndDays(v.localTime, daysText(v.recurrence), WM.colors.textSecondary), style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                if (v.label.isNotBlank()) Text(v.label, style = MaterialTheme.typography.titleMedium, color = WM.colors.textPrimary)
-                if (!mine) Supporting("For ${p.owner.displayName}") else if (p.creator.id != myId) Supporting("Suggested by ${p.creator.displayName}")
+                Text(v.localTime, style = MaterialTheme.typography.displaySmall, color = WM.colors.onHero)
+                Supporting(daysText(v.recurrence) + if (v.label.isBlank()) "" else " · ${v.label}", color = WM.colors.onHeroSecondary)
+                if (!mine) Supporting("For ${p.owner.displayName}", color = WM.colors.onHeroSecondary) else if (p.creator.id != myId) Supporting("Suggested by ${p.creator.displayName}", color = WM.colors.onHeroSecondary)
             }
             val (icon, family) = timeOfDay(v.localTime)
             IconChip(icon, family, size = 48.dp)
@@ -384,6 +403,7 @@ class RoutineEditorViewModel @Inject constructor(private val api: WakeMeApi, pri
     }
 
     fun save(ownerId: String?, terms: PlanTerms, context: android.content.Context) = viewModelScope.launch {
+        if (_s.value.saving) return@launch
         _s.value = _s.value.copy(saving = true)
         try {
             api.createPlan(ownerId, terms)
@@ -430,6 +450,8 @@ private val RoutineWindowSaver = listSaver<LocalWindow, String>(
 
 @Composable
 fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = false, reuseId: String? = null, vm: RoutineEditorViewModel = hiltViewModel()) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val s by vm.state.collectAsState()
     val customSounds by vm.sounds.ready.collectAsState()
     val context = LocalContext.current
@@ -484,7 +506,32 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
     }
     DetailScreen(onBack = onDone) {
         Text(if (ownerId == null) "New wake-up" else "Suggest a wake-up", style = MaterialTheme.typography.headlineMedium, color = WM.colors.textPrimary, modifier = Modifier.semantics { heading() })
-        FieldGroup("Start with") { FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+        TimeDisplay("Rings at", window.start) { window = window.copy(start = it, end = it) }
+        DayChips(window.days) { window = window.copy(days = it) }
+
+        if (limits != null && ownerId != null) {
+            Body("${s.friendName ?: "They"} allow wake-ups: " + limits.windows.joinToString("; ") { "${daysText(Recurrence.weekly(it.days))} ${it.start}–${it.end}" } + ". It rings at this time in their time zone.")
+            if (outsideHours) StatusPill("That's outside the wake hours ${s.friendName ?: "they"} chose.", Tone.Warning)
+        }
+        OutlinedTextField(
+            label, { label = it.take(40) }, label = { Text("Name (optional)") },
+            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                focusManager.clearFocus()
+                keyboardController?.hide()
+            }),
+        )
+        FieldGroup("Sound") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
+                sounds.forEach { id ->
+                    ChoiceChip(soundName(id), selected = sound == id, onClick = { sound = id })
+                }
+            }
+            if (sound.startsWith("media:")) Supporting("If this recording isn't available, Gentle rise rings instead. Recordings aren't available before the first unlock after restarting your phone.")
+        }
+        DisclosureGroup("More options", if (guest) "Routine template, duration and travel" else "Duration, challenges and travel") {
+        FieldGroup("Routine template") { FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
             listOf("Wake-up" to WMIcon.Sun, "Study" to WMIcon.Book, "Gym" to WMIcon.Dumbbell, "Language practice" to WMIcon.Language, "Music practice" to WMIcon.Music).forEach { (preset, icon) ->
                 ChoiceChip(preset, selected = selectedPreset == preset, icon = icon, onClick = {
                     selectedPreset = preset
@@ -499,23 +546,6 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
                 })
             }
         } }
-        TimeDisplay("Rings at", window.start) { window = window.copy(start = it, end = it) }
-        DayChips(window.days) { window = window.copy(days = it) }
-        Body(daysText(Recurrence.weekly(window.days)))
-        if (ownerId == null) Body("Time zone: $timeZone")
-        if (limits != null && ownerId != null) {
-            Body("${s.friendName ?: "They"} allow wake-ups: " + limits.windows.joinToString("; ") { "${daysText(Recurrence.weekly(it.days))} ${it.start}–${it.end}" } + ". It rings at this time in their time zone.")
-            if (outsideHours) StatusPill("That's outside the wake hours ${s.friendName ?: "they"} chose.", Tone.Warning)
-        }
-        OutlinedTextField(label, { label = it.take(40) }, label = { Text("Label (optional), e.g. 9am class") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        FieldGroup("Sound") {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
-                sounds.forEach { id ->
-                    ChoiceChip(soundName(id), selected = sound == id, onClick = { sound = id })
-                }
-            }
-            if (sound.startsWith("media:")) Supporting("If this recording isn't available, Gentle rise rings instead. Recordings aren't available before the first unlock after restarting your phone.")
-        }
         FieldGroup("Ring for") {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(WakeMeTokens.spaceXs)) {
                 rings.forEach { v -> ChoiceChip("${v}s", selected = ring == v, onClick = { ring = v }) }
@@ -532,6 +562,7 @@ fun RoutineEditorScreen(ownerId: String?, onDone: () -> Unit, guest: Boolean = f
             if (canFollowUp) SettingRow("One follow-up alarm", "Rings ${followUpDelay / 60} min later unless the challenge is finished. You can always end the session.", followUp) { followUp = it }
         }
         if (ownerId == null) SettingRow("Follow my phone when I travel", "Off keeps the time in your home time zone.", followTravel) { followTravel = it }
+        }
         if (!vm.exactAlarmsAllowed()) StatusPill("This phone can't ring alarms on time yet. Allow “Alarms & reminders” first.", Tone.Warning, icon = WMIcon.Warning)
         PrimaryButton(if (s.saving) "Saving…" else if (ownerId == null) "Save wake-up" else "Send suggestion", icon = if (ownerId == null) WMIcon.Check else WMIcon.Send, enabled = !s.saving && (reuseId == null || s.reuseChecked) && !outsideHours && sound in sounds && ring in rings, onClick = {
             val terms =

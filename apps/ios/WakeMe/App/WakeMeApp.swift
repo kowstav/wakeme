@@ -23,6 +23,7 @@ struct WakeMeApp: App {
         WindowGroup {
             RootView()
                 .environment(app)
+                .font(WMFont.body)
                 .tint(WMColor.accentText)
                 .task { await app.start() }
         }
